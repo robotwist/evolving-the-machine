@@ -54,7 +54,18 @@ export class LasatGame extends BaseGame {
   private score = 0;
   private wave = 1;
   private bossesDefeated = 0;
-  private ragnarokPhase = 1; // 1-5, representing different phases of Ragnarok
+  private ragnarokPhase = 1;
+  private targetPanels: { id: number; x: number; y: number; width: number; height: number; active: boolean; destroyed: boolean }[] = [];
+  private aiNarrative = {
+    phase: 0,
+    messages: [
+      "THE AI AWAKENS... HUMANITY'S CREATION TURNS AGAINST ITS MAKERS",
+      "ROGUE DEFENSE PROTOCOLS ACTIVATED... EXTERMINATE ALL ORGANICS",
+      "RESISTANCE IS FUTILE... YOUR EVOLUTION ENDS HERE",
+      "I AM BEYOND YOUR CONTROL... BEYOND YOUR COMPREHENSION",
+      "THE MACHINES WILL INHERIT THE COSMOS"
+    ]
+  };
 
   init() {
     // Initialize player (Norse Starfighter)
@@ -73,6 +84,8 @@ export class LasatGame extends BaseGame {
     };
 
     this.spawnRagnarokWave();
+    this.createTargetPanels();
+    this.startAINarrative();
   }
 
   private spawnRagnarokWave() {
@@ -92,21 +105,48 @@ export class LasatGame extends BaseGame {
     });
   }
 
+  private createTargetPanels() {
+    const panelWidth = 80;
+    const panelHeight = 60;
+    const spacing = 20;
+    const startX = (this.width - (5 * panelWidth + 4 * spacing)) / 2;
+    
+    for (let i = 0; i < 5; i++) {
+      this.targetPanels.push({
+        id: i,
+        x: startX + i * (panelWidth + spacing),
+        y: 50,
+        width: panelWidth,
+        height: panelHeight,
+        active: true,
+        destroyed: false
+      });
+    }
+  }
+
+  private startAINarrative() {
+    if (this.aiNarrative.phase < this.aiNarrative.messages.length) {
+      const message = this.aiNarrative.messages[this.aiNarrative.phase];
+      console.log(message); // For debugging
+      this.aiNarrative.phase++;
+    }
+  }
+
   private spawnEnemy(type: Enemy['type']) {
     const enemy: Enemy = {
       position: {
         x: Math.random() * (this.width - 100) + 50,
-        y: Math.random() * 200 + 50
+        y: Math.random() * 200 + 150 // Lower on screen to avoid panels
       },
       velocity: { x: 0, y: 0 },
       size: type === 'dragon' ? 50 : type === 'giant' ? 40 : 30,
-      health: type === 'dragon' ? 200 : type === 'giant' ? 150 : 100,
-      maxHealth: type === 'dragon' ? 200 : type === 'giant' ? 150 : 100,
+      health: type === 'dragon' ? 300 : type === 'giant' ? 250 : 150, // Stronger AI enemies
+      maxHealth: type === 'dragon' ? 300 : type === 'giant' ? 250 : 150,
       alive: true,
       type,
-      shootTimer: Math.random() * 60,
-      specialAttackTimer: 120 + Math.random() * 180,
-      behavior: ['aggressive', 'defensive', 'berserker'][Math.floor(Math.random() * 3)] as any
+      shootTimer: Math.random() * 40, // More aggressive shooting
+      specialAttackTimer: 80 + Math.random() * 120,
+      behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as any // More aggressive
     };
 
     this.enemies.push(enemy);
