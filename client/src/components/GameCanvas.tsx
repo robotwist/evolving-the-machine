@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
 import { PongGame } from '../lib/games/PongGame';
+import { BreakoutGame } from '../lib/games/BreakoutGame';
 import { AsteroidsGame } from '../lib/games/AsteroidsGame';
 import { DefenderGame } from '../lib/games/DefenderGame';
 import { LasatGame } from '../lib/games/LasatGame';
@@ -31,12 +32,15 @@ export function GameCanvas() {
         game = new PongGame(ctx, canvas.width, canvas.height);
         break;
       case 2:
-        game = new AsteroidsGame(ctx, canvas.width, canvas.height);
+        game = new BreakoutGame(ctx, canvas.width, canvas.height);
         break;
       case 3:
-        game = new DefenderGame(ctx, canvas.width, canvas.height);
+        game = new AsteroidsGame(ctx, canvas.width, canvas.height);
         break;
       case 4:
+        game = new DefenderGame(ctx, canvas.width, canvas.height);
+        break;
+      case 5:
         game = new LasatGame(ctx, canvas.width, canvas.height);
         break;
       default:
@@ -56,6 +60,9 @@ export function GameCanvas() {
 
     game.onStageComplete = () => {
       setGameState('stage-complete');
+      // Unlock next stage when current stage is completed
+      const { unlockNextStage } = useGameStore.getState();
+      unlockNextStage();
     };
 
     // Start game

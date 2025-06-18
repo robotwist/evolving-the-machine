@@ -18,9 +18,10 @@ export function GameUI() {
 
   const stageName = {
     1: 'Pong Master',
-    2: 'Asteroid Hunter',
-    3: 'Defender',
-    4: 'Lasat Starfighter'
+    2: 'Temple Breaker', 
+    3: 'Asteroid Hunter',
+    4: 'Defender',
+    5: 'Lasat Starfighter'
   }[currentStage] || 'Unknown';
 
   const handlePause = () => {
@@ -123,12 +124,12 @@ export function GameUI() {
               <div className="text-white mb-4">
                 <div>Score: {scores[currentStage] || 0}</div>
                 <div>High Score: {highScores[currentStage] || 0}</div>
-                {currentStage < 4 && (
+                {currentStage < 5 && (
                   <div className="text-green-300 mt-2">Next stage unlocked!</div>
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                {currentStage < 4 ? (
+                {currentStage < 5 ? (
                   <Button onClick={handleNextStage} className="bg-green-600 hover:bg-green-700">
                     Next Stage
                   </Button>

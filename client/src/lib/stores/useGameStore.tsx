@@ -42,7 +42,7 @@ export const useGameStore = create<GameStore>()(
       
       goToNextStage: () => {
         const { currentStage, unlockedStages } = get();
-        if (currentStage < 4 && currentStage < unlockedStages) {
+        if (currentStage < 5 && currentStage < unlockedStages) {
           set({ 
             currentStage: currentStage + 1,
             gameState: 'playing',

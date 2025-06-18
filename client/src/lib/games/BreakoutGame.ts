@@ -1,0 +1,436 @@
+import { BaseGame } from './BaseGame';
+import { useAudio } from '../stores/useAudio';
+
+interface Paddle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+}
+
+interface Ball {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  radius: number;
+  speed: number;
+}
+
+interface Brick {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  destroyed: boolean;
+  color: string;
+  health: number;
+}
+
+export class BreakoutGame extends BaseGame {
+  private paddle!: Paddle;
+  private ball!: Ball;
+  private bricks: Brick[] = [];
+  private keys: Set<string> = new Set();
+  private score = 0;
+  private lives = 3;
+  private level = 1;
+  private transitioning = false;
+  private transitionProgress = 0;
+  private transitionTarget: 'ship' | null = null;
+
+  init() {
+    // Initialize paddle (evolved from Pong paddle)
+    this.paddle = {
+      x: this.width / 2 - 50,
+      y: this.height - 30,
+      width: 100,
+      height: 15,
+      speed: 8
+    };
+
+    // Initialize ball
+    this.resetBall();
+
+    // Create bricks
+    this.createBricks();
+  }
+
+  private resetBall() {
+    this.ball = {
+      x: this.width / 2,
+      y: this.height - 100,
+      dx: 3 * (Math.random() > 0.5 ? 1 : -1),
+      dy: -3,
+      radius: 8,
+      speed: 3
+    };
+  }
+
+  private createBricks() {
+    this.bricks = [];
+    const rows = 8;
+    const cols = 10;
+    const brickWidth = 70;
+    const brickHeight = 20;
+    const padding = 5;
+    const offsetX = (this.width - (cols * (brickWidth + padding))) / 2;
+    const offsetY = 80;
+
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        this.bricks.push({
+          x: offsetX + col * (brickWidth + padding),
+          y: offsetY + row * (brickHeight + padding),
+          width: brickWidth,
+          height: brickHeight,
+          destroyed: false,
+          color: colors[row % colors.length],
+          health: Math.floor(row / 2) + 1
+        });
+      }
+    }
+  }
+
+  update(deltaTime: number) {
+    if (this.transitioning) {
+      this.updateTransition();
+      return;
+    }
+
+    // Handle input
+    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
+      this.paddle.x = Math.max(0, this.paddle.x - this.paddle.speed);
+    }
+    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) {
+      this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + this.paddle.speed);
+    }
+
+    // Update ball
+    this.ball.x += this.ball.dx;
+    this.ball.y += this.ball.dy;
+
+    // Ball collision with walls
+    if (this.ball.x <= this.ball.radius || this.ball.x >= this.width - this.ball.radius) {
+      this.ball.dx = -this.ball.dx;
+      this.playHitSound();
+    }
+    if (this.ball.y <= this.ball.radius) {
+      this.ball.dy = -this.ball.dy;
+      this.playHitSound();
+    }
+
+    // Ball collision with paddle
+    if (this.checkPaddleCollision()) {
+      this.ball.dy = -Math.abs(this.ball.dy);
+      // Add spin based on where ball hits paddle
+      const hitPos = (this.ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
+      this.ball.dx = hitPos * 4;
+      this.playHitSound();
+    }
+
+    // Ball collision with bricks
+    this.checkBrickCollisions();
+
+    // Ball falls below paddle
+    if (this.ball.y > this.height) {
+      this.lives--;
+      if (this.lives <= 0) {
+        this.onGameOver?.();
+      } else {
+        this.resetBall();
+      }
+    }
+
+    // Check win condition
+    const activeBricks = this.bricks.filter(brick => !brick.destroyed);
+    if (activeBricks.length === 0) {
+      this.startTransition();
+    }
+
+    this.onScoreUpdate?.(this.score);
+  }
+
+  private checkPaddleCollision(): boolean {
+    return (
+      this.ball.x + this.ball.radius > this.paddle.x &&
+      this.ball.x - this.ball.radius < this.paddle.x + this.paddle.width &&
+      this.ball.y + this.ball.radius > this.paddle.y &&
+      this.ball.y - this.ball.radius < this.paddle.y + this.paddle.height &&
+      this.ball.dy > 0
+    );
+  }
+
+  private checkBrickCollisions() {
+    for (let brick of this.bricks) {
+      if (brick.destroyed) continue;
+
+      if (
+        this.ball.x + this.ball.radius > brick.x &&
+        this.ball.x - this.ball.radius < brick.x + brick.width &&
+        this.ball.y + this.ball.radius > brick.y &&
+        this.ball.y - this.ball.radius < brick.y + brick.height
+      ) {
+        brick.health--;
+        if (brick.health <= 0) {
+          brick.destroyed = true;
+          this.score += 10;
+        }
+
+        // Determine collision side and bounce accordingly
+        const ballCenterX = this.ball.x;
+        const ballCenterY = this.ball.y;
+        const brickCenterX = brick.x + brick.width / 2;
+        const brickCenterY = brick.y + brick.height / 2;
+
+        const dx = ballCenterX - brickCenterX;
+        const dy = ballCenterY - brickCenterY;
+
+        if (Math.abs(dx / brick.width) > Math.abs(dy / brick.height)) {
+          this.ball.dx = -this.ball.dx;
+        } else {
+          this.ball.dy = -this.ball.dy;
+        }
+
+        this.playHitSound();
+        break;
+      }
+    }
+  }
+
+  private startTransition() {
+    this.transitioning = true;
+    this.transitionProgress = 0;
+    this.transitionTarget = 'ship';
+  }
+
+  private updateTransition() {
+    this.transitionProgress += 0.02;
+
+    if (this.transitionProgress >= 1) {
+      // Transition complete - trigger stage completion
+      this.onStageComplete?.();
+    }
+  }
+
+  render() {
+    this.clearCanvas();
+
+    // Draw Greek-inspired background
+    this.drawGreekBackground();
+
+    if (this.transitioning) {
+      this.drawTransition();
+    } else {
+      this.drawGameplay();
+    }
+
+    // Draw UI
+    this.drawUI();
+  }
+
+  private drawGameplay() {
+    // Draw bricks
+    this.bricks.forEach(brick => {
+      if (!brick.destroyed) {
+        this.drawBrick(brick);
+      }
+    });
+
+    // Draw paddle (Greek column evolved)
+    this.drawEvolvingPaddle();
+
+    // Draw ball
+    this.ctx.save();
+    this.ctx.fillStyle = '#FFD700';
+    this.ctx.strokeStyle = '#B8860B';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
+  private drawTransition() {
+    const progress = this.transitionProgress;
+    
+    // Show paddle morphing into ship
+    this.ctx.save();
+    this.ctx.translate(this.paddle.x + this.paddle.width / 2, this.paddle.y);
+    
+    // Interpolate between paddle and ship shape
+    const shipProgress = Math.min(progress * 2, 1);
+    
+    this.ctx.fillStyle = '#FFFACD';
+    this.ctx.strokeStyle = '#FFD700';
+    this.ctx.lineWidth = 2;
+    
+    if (shipProgress < 0.5) {
+      // Paddle shape morphing
+      const morphProgress = shipProgress * 2;
+      this.ctx.fillRect(-this.paddle.width / 2, 0, this.paddle.width, this.paddle.height);
+      
+      // Add emerging ship elements
+      this.ctx.fillStyle = '#8B4513';
+      const wingSpan = this.paddle.width * morphProgress;
+      this.ctx.fillRect(-wingSpan / 2, -5 * morphProgress, wingSpan, 10 * morphProgress);
+    } else {
+      // Ship shape
+      const finalProgress = (shipProgress - 0.5) * 2;
+      
+      // Ship body
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, -15);
+      this.ctx.lineTo(-10, 10);
+      this.ctx.lineTo(0, 15);
+      this.ctx.lineTo(10, 10);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Wings
+      this.ctx.fillStyle = '#2F4F4F';
+      this.ctx.fillRect(-20, 0, 15, 5);
+      this.ctx.fillRect(5, 0, 15, 5);
+    }
+    
+    this.ctx.restore();
+
+    // Show bricks morphing into asteroids
+    this.bricks.forEach((brick, index) => {
+      if (brick.destroyed) return;
+      
+      const asteroidProgress = Math.max(0, (progress - 0.3) * 1.4);
+      this.ctx.save();
+      this.ctx.translate(brick.x + brick.width / 2, brick.y + brick.height / 2);
+      
+      if (asteroidProgress < 1) {
+        // Morphing from brick to asteroid
+        const size = Math.max(brick.width, brick.height) * (1 - asteroidProgress * 0.3);
+        this.ctx.fillStyle = brick.color;
+        
+        // Create irregular shape
+        this.ctx.beginPath();
+        const sides = 8;
+        for (let i = 0; i < sides; i++) {
+          const angle = (i / sides) * Math.PI * 2;
+          const radius = size * (0.8 + Math.sin(i + asteroidProgress * 10) * 0.2);
+          const x = Math.cos(angle) * radius / 2;
+          const y = Math.sin(angle) * radius / 2;
+          
+          if (i === 0) {
+            this.ctx.moveTo(x, y);
+          } else {
+            this.ctx.lineTo(x, y);
+          }
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+      }
+      
+      this.ctx.restore();
+    });
+
+    // Transition text
+    this.drawText(`Ancient Blocks Transform Into Celestial Bodies...`, this.width / 2, this.height / 2, 20, '#FFD700', 'center');
+    this.drawText(`${Math.floor(progress * 100)}%`, this.width / 2, this.height / 2 + 30, 16, '#DDD', 'center');
+  }
+
+  private drawGreekBackground() {
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
+    gradient.addColorStop(0, '#1a1a2e');
+    gradient.addColorStop(1, '#16213e');
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+  }
+
+  private drawBrick(brick: Brick) {
+    this.ctx.save();
+    
+    // Make bricks look like Greek temple blocks
+    this.ctx.fillStyle = brick.color;
+    this.ctx.strokeStyle = '#DDD';
+    this.ctx.lineWidth = 1;
+    
+    this.ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+    this.ctx.strokeRect(brick.x, brick.y, brick.width, brick.height);
+    
+    // Add Greek pattern details
+    this.ctx.strokeStyle = '#FFF';
+    this.ctx.lineWidth = 0.5;
+    for (let i = 1; i < brick.health + 1; i++) {
+      const y = brick.y + (brick.height * i) / (brick.health + 1);
+      this.ctx.beginPath();
+      this.ctx.moveTo(brick.x + 5, y);
+      this.ctx.lineTo(brick.x + brick.width - 5, y);
+      this.ctx.stroke();
+    }
+    
+    this.ctx.restore();
+  }
+
+  private drawEvolvingPaddle() {
+    this.ctx.save();
+    
+    // Draw paddle with ship-like elements emerging
+    this.ctx.fillStyle = '#FFFACD';
+    this.ctx.strokeStyle = '#FFD700';
+    this.ctx.lineWidth = 2;
+    
+    // Main paddle body
+    this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
+    this.ctx.strokeRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
+    
+    // Add emerging ship elements
+    const centerX = this.paddle.x + this.paddle.width / 2;
+    const centerY = this.paddle.y + this.paddle.height / 2;
+    
+    this.ctx.fillStyle = '#8B4513';
+    this.ctx.fillRect(centerX - 5, this.paddle.y - 5, 10, 5);
+    
+    this.ctx.restore();
+  }
+
+  private drawUI() {
+    this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
+    this.drawText(`Lives: ${this.lives}`, 20, 60, 20, '#FFD700');
+    
+    if (!this.transitioning) {
+      this.drawText('Greek Temple Blocks - Break them to reveal the cosmos!', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+    }
+  }
+
+  handleInput(event: KeyboardEvent) {
+    // Handled through keys Set
+  }
+
+  private playHitSound() {
+    const audio = useAudio.getState();
+    audio.playHit();
+  }
+
+  protected setupEventListeners() {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (this.isRunning && !this.isPaused) {
+        this.keys.add(e.code);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      this.keys.delete(e.code);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    this.cleanup = () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }
+}

@@ -24,31 +24,37 @@ export function MainMenu() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Game Stages Preview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             {[
               { 
                 stage: 1, 
                 name: 'Pong Master', 
                 culture: 'Ancient Greece',
-                desc: 'Olympics-inspired paddle combat'
+                desc: 'Olympic paddle competition'
               },
               { 
                 stage: 2, 
-                name: 'Asteroid Hunter', 
-                culture: 'Mayan Astronomy',
-                desc: 'Navigate celestial knowledge'
+                name: 'Temple Breaker', 
+                culture: 'Greek Evolution',
+                desc: 'Columns become cosmic blocks'
               },
               { 
                 stage: 3, 
-                name: 'Defender', 
-                culture: 'Feudal Japan',
-                desc: 'Samurai honor and protection'
+                name: 'Asteroid Hunter', 
+                culture: 'Mayan Astronomy',
+                desc: 'Ship navigates celestial bodies'
               },
               { 
                 stage: 4, 
+                name: 'Defender', 
+                culture: 'Feudal Japan',
+                desc: 'Samurai protection duty'
+              },
+              { 
+                stage: 5, 
                 name: 'Lasat Starfighter', 
                 culture: 'Norse Mythology',
-                desc: 'Epic battles of Ragnarok'
+                desc: 'Epic Ragnarok battles'
               }
             ].map(({ stage, name, culture, desc }) => (
               <div key={stage} className="text-center">
