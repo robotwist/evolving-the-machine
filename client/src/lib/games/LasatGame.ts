@@ -582,6 +582,12 @@ export class LasatGame extends BaseGame {
     // Draw power-ups
     this.powerUps.forEach(powerUp => this.drawPowerUp(powerUp));
 
+    // Draw 5-panel targeting system
+    this.drawTargetPanels();
+    
+    // Draw AI narrative
+    this.drawAINarrative();
+    
     // Draw UI
     this.drawUI();
   }
@@ -802,8 +808,59 @@ export class LasatGame extends BaseGame {
     // Controls
     this.drawText('WASD: Move | Space: Shoot | X: Special | Z: Shield', this.width / 2, this.height - 40, 12, '#DDD', 'center');
     
-    // Cultural learning element
-    this.drawText('Fight with Viking Honor - Face Ragnarok with Courage!', this.width / 2, this.height - 20, 14, '#FFD700', 'center');
+    // Humanity vs Machine theme
+    this.drawText('HUMAN RESISTANCE: Fight the AI Uprising with Honor!', this.width / 2, this.height - 20, 12, '#FFD700', 'center');
+  }
+
+  private drawTargetPanels() {
+    this.targetPanels.forEach((panel, index) => {
+      this.ctx.save();
+      
+      if (panel.destroyed) {
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+        this.ctx.fillStyle = '#FF0000';
+        this.drawText('DESTROYED', panel.x + panel.width/2, panel.y + panel.height/2, 8, '#FF0000', 'center');
+      } else if (panel.active) {
+        // Active targeting panel with glowing effect
+        this.ctx.shadowColor = '#FFD700';
+        this.ctx.shadowBlur = 10;
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.fillRect(panel.x, panel.y, panel.width, panel.height);
+        this.ctx.shadowBlur = 0;
+        
+        // Panel number
+        this.ctx.fillStyle = '#000';
+        this.drawText(`${index + 1}`, panel.x + panel.width/2, panel.y + panel.height/2, 16, '#000', 'center');
+        
+        // Human resistance label
+        this.ctx.fillStyle = '#FFD700';
+        this.drawText(`TARGET ${index + 1}`, panel.x + panel.width/2, panel.y - 5, 8, '#FFD700', 'center');
+      }
+      
+      this.ctx.restore();
+    });
+    
+    // Targeting system title
+    this.ctx.save();
+    this.ctx.shadowColor = '#FFD700';
+    this.ctx.shadowBlur = 8;
+    this.drawText('HUMAN RESISTANCE TARGETING SYSTEM', this.width / 2, 25, 14, '#FFD700', 'center');
+    this.ctx.shadowBlur = 0;
+    this.ctx.restore();
+  }
+
+  private drawAINarrative() {
+    if (this.aiNarrative.phase > 0 && this.aiNarrative.phase <= this.aiNarrative.messages.length) {
+      const message = this.aiNarrative.messages[this.aiNarrative.phase - 1];
+      
+      this.ctx.save();
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 10;
+      this.drawText(message, this.width / 2, 140, 12, '#FF0000', 'center');
+      this.ctx.shadowBlur = 0;
+      this.ctx.restore();
+    }
   }
 
   handleInput(event: KeyboardEvent) {
