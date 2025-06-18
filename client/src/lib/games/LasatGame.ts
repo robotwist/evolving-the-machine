@@ -43,6 +43,16 @@ interface PowerUp {
   lifetime: number;
 }
 
+interface TargetPanel {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  active: boolean;
+  destroyed: boolean;
+}
+
 export class LasatGame extends BaseGame {
   private player!: Player;
   private enemies: Enemy[] = [];
@@ -55,7 +65,7 @@ export class LasatGame extends BaseGame {
   private wave = 1;
   private bossesDefeated = 0;
   private ragnarokPhase = 1;
-  private targetPanels: { id: number; x: number; y: number; width: number; height: number; active: boolean; destroyed: boolean }[] = [];
+  private targetPanels: TargetPanel[] = [];
   private aiNarrative = {
     phase: 0,
     messages: [
@@ -207,17 +217,18 @@ export class LasatGame extends BaseGame {
   private handleMovement() {
     const speed = 6;
     
-    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
+    // Human player controls (WASD only) - clear distinction from AI
+    if (this.keys.has('KeyA')) {
       this.player.velocity.x = -speed;
-    } else if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) {
+    } else if (this.keys.has('KeyD')) {
       this.player.velocity.x = speed;
     } else {
       this.player.velocity.x *= 0.85;
     }
 
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
+    if (this.keys.has('KeyW')) {
       this.player.velocity.y = -speed;
-    } else if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) {
+    } else if (this.keys.has('KeyS')) {
       this.player.velocity.y = speed;
     } else {
       this.player.velocity.y *= 0.85;
@@ -290,13 +301,15 @@ export class LasatGame extends BaseGame {
   }
 
   private updateGiantBehavior(enemy: Enemy) {
-    // Giants are slow but tough
+    // AI Giants - relentless mechanical pursuit
     const dx = this.player.position.x - enemy.position.x;
     const dy = this.player.position.y - enemy.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance > 0) {
-      enemy.velocity.x = (dx / distance) * 1.5;
+      // Aggressive AI behavior - faster pursuit when player is weak
+      const aggressionMultiplier = this.player.health < 50 ? 2.5 : 1.8;
+      enemy.velocity.x = (dx / distance) * aggressionMultiplier;
       enemy.velocity.y = (dy / distance) * 1.5;
     }
   }
@@ -632,12 +645,31 @@ export class LasatGame extends BaseGame {
     this.ctx.save();
     this.ctx.translate(enemy.position.x, enemy.position.y);
 
+    // All enemies are now AI machines - distinct visual markers
     switch (enemy.type) {
       case 'giant':
-        this.ctx.fillStyle = '#654321';
+        // Mechanical giant with glowing core
+        this.ctx.fillStyle = '#2C3E50';
         this.ctx.fillRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
+        
+        // Glowing AI core
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.fillRect(-enemy.size/4, -enemy.size/4, enemy.size/2, enemy.size/2);
+        
+        // Mechanical details
+        this.ctx.strokeStyle = '#00FFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
+        
+        // AI indicator
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = '8px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('AI', 0, -enemy.size/2 - 5);
         break;
+        
       case 'dragon':
+        // Mechanical dragon with sharp edges
         this.ctx.fillStyle = '#8B0000';
         this.ctx.beginPath();
         this.ctx.moveTo(0, -enemy.size/2);
@@ -645,24 +677,59 @@ export class LasatGame extends BaseGame {
         this.ctx.lineTo(enemy.size/2, enemy.size/2);
         this.ctx.closePath();
         this.ctx.fill();
+        
+        // Mechanical overlay
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+        
+        // Glowing eyes
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.fillRect(-5, -10, 3, 3);
+        this.ctx.fillRect(2, -10, 3, 3);
+        
+        // AI label
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = '8px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('ROGUE', 0, -enemy.size/2 - 5);
         break;
+        
       case 'valkyrie':
+        // Mechanical valkyrie with angular design
         this.ctx.fillStyle = '#4169E1';
         this.ctx.beginPath();
         this.ctx.arc(0, 0, enemy.size/2, 0, Math.PI * 2);
         this.ctx.fill();
+        
+        // Mechanical wings
+        this.ctx.fillStyle = '#34495E';
+        this.ctx.fillRect(-enemy.size, -5, enemy.size/2, 10);
+        this.ctx.fillRect(enemy.size/2, -5, enemy.size/2, 10);
+        
+        // AI core
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, enemy.size/4, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // AI label
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = '8px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('BOT', 0, -enemy.size/2 - 5);
         break;
     }
 
-    // Health bar
+    // Health bar with AI coloring
     const barWidth = enemy.size;
     const barHeight = 4;
     const healthPercent = enemy.health / enemy.maxHealth;
     
     this.ctx.fillStyle = '#FF0000';
-    this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 10, barWidth, barHeight);
-    this.ctx.fillStyle = '#00FF00';
-    this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 10, barWidth * healthPercent, barHeight);
+    this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 15, barWidth, barHeight);
+    this.ctx.fillStyle = '#00FFFF';
+    this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 15, barWidth * healthPercent, barHeight);
 
     this.ctx.restore();
   }

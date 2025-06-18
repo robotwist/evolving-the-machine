@@ -101,11 +101,11 @@ export class BreakoutGame extends BaseGame {
       return;
     }
 
-    // Handle input
-    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
+    // Human player controls (WASD only)
+    if (this.keys.has('KeyA')) {
       this.paddle.x = Math.max(0, this.paddle.x - this.paddle.speed);
     }
-    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) {
+    if (this.keys.has('KeyD')) {
       this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + this.paddle.speed);
     }
 

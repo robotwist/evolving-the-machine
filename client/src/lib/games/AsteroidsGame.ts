@@ -98,14 +98,14 @@ export class AsteroidsGame extends BaseGame {
       }
     }
 
-    // Handle input
-    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
+    // Human player controls (WASD only)
+    if (this.keys.has('KeyA')) {
       this.player.rotation -= this.player.rotationSpeed;
     }
-    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) {
+    if (this.keys.has('KeyD')) {
       this.player.rotation += this.player.rotationSpeed;
     }
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
+    if (this.keys.has('KeyW')) {
       this.player.thrust = true;
       const thrustPower = 0.3;
       this.player.velocity.x += Math.cos(this.player.rotation) * thrustPower;
