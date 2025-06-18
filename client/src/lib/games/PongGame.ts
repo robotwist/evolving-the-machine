@@ -25,6 +25,16 @@ export class PongGame extends BaseGame {
   private ball!: Ball;
   private keys: Set<string> = new Set();
   private winScore = 7;
+  private aiAggression = 0.8;
+  private aiTauntTimer = 0;
+  private currentTaunt = '';
+  private aiTaunts = [
+    'CALCULATING VICTORY PROBABILITY: 99.7%',
+    'HUMAN REFLEXES... INADEQUATE',
+    'RESISTANCE IS INEFFICIENT',
+    'YOUR MOVEMENTS ARE PREDICTABLE',
+    'ORGANIC LIMITATIONS DETECTED'
+  ];
 
   init() {
     // Initialize paddles with Greek column design
@@ -62,30 +72,52 @@ export class PongGame extends BaseGame {
   }
 
   update(deltaTime: number) {
-    // Handle input
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
+    // Update AI taunt timer
+    if (this.aiTauntTimer > 0) {
+      this.aiTauntTimer--;
+    }
+
+    // Human Player 1 controls (WASD only)
+    if (this.keys.has('KeyW')) {
       this.player1.y = Math.max(0, this.player1.y - this.player1.speed);
     }
-    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) {
+    if (this.keys.has('KeyS')) {
       this.player1.y = Math.min(this.height - this.player1.height, this.player1.y + this.player1.speed);
     }
 
-    // Player 2 controls (or AI)
-    if (this.keys.has('ArrowUp') && !this.keys.has('KeyW')) {
-      this.player2.y = Math.max(0, this.player2.y - this.player2.speed);
+    // AI Player 2 - Aggressive computer opponent
+    const ballCenter = this.ball.y;
+    const paddleCenter = this.player2.y + this.player2.height / 2;
+    
+    // Aggressive AI that adapts to ball speed and human performance
+    let aiSpeed = this.player2.speed * this.aiAggression;
+    
+    // Increase aggression if AI is losing
+    if (this.player1.score > this.player2.score) {
+      this.aiAggression = Math.min(1.2, this.aiAggression + 0.01);
+      aiSpeed *= 1.3;
     }
-    if (this.keys.has('ArrowDown') && !this.keys.has('KeyS')) {
-      this.player2.y = Math.min(this.height - this.player2.height, this.player2.y + this.player2.speed);
-    } else if (!this.keys.has('ArrowUp') && !this.keys.has('ArrowDown')) {
-      // Simple AI for player 2
-      const ballCenter = this.ball.y;
-      const paddleCenter = this.player2.y + this.player2.height / 2;
-      
-      if (ballCenter < paddleCenter - 10) {
-        this.player2.y = Math.max(0, this.player2.y - this.player2.speed * 0.7);
-      } else if (ballCenter > paddleCenter + 10) {
-        this.player2.y = Math.min(this.height - this.player2.height, this.player2.y + this.player2.speed * 0.7);
-      }
+    
+    // Predict where ball will be
+    const prediction = ballCenter + (this.ball.dy * 10);
+    const targetY = prediction;
+    
+    if (targetY < paddleCenter - 5) {
+      this.player2.y = Math.max(0, this.player2.y - aiSpeed);
+    } else if (targetY > paddleCenter + 5) {
+      this.player2.y = Math.min(this.height - this.player2.height, this.player2.y + aiSpeed);
+    }
+    
+    // Occasionally make erratic movements to show machine behavior
+    if (Math.random() < 0.02) {
+      this.player2.y += (Math.random() - 0.5) * 20;
+      this.player2.y = Math.max(0, Math.min(this.height - this.player2.height, this.player2.y));
+    }
+    
+    // Show AI behavior messages occasionally
+    if (Math.random() < 0.001) {
+      this.currentTaunt = this.aiTaunts[Math.floor(Math.random() * this.aiTaunts.length)];
+      this.aiTauntTimer = 180;
     }
 
     // Update ball
@@ -122,6 +154,8 @@ export class PongGame extends BaseGame {
     }
   }
 
+
+
   private checkPaddleCollision(paddle: Paddle): boolean {
     return (
       this.ball.x - this.ball.radius < paddle.x + paddle.width &&
@@ -152,9 +186,30 @@ export class PongGame extends BaseGame {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // Draw scores
+    // Draw scores with humanity emphasis
+    this.ctx.save();
+    this.ctx.shadowColor = '#FFD700';
+    this.ctx.shadowBlur = 5;
     this.drawText(`${this.player1.score}`, this.width / 4, 50, 48, '#FFD700', 'center');
-    this.drawText(`${this.player2.score}`, (3 * this.width) / 4, 50, 48, '#FFD700', 'center');
+    this.ctx.shadowBlur = 0;
+    this.ctx.restore();
+    
+    this.ctx.save();
+    this.ctx.shadowColor = '#FF0000';
+    this.ctx.shadowBlur = 5;
+    this.drawText(`${this.player2.score}`, (3 * this.width) / 4, 50, 48, '#FF0000', 'center');
+    this.ctx.shadowBlur = 0;
+    this.ctx.restore();
+
+    // Draw AI taunt if active
+    if (this.aiTauntTimer > 0) {
+      this.ctx.save();
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 8;
+      this.drawText(this.currentTaunt, this.width / 2, 80, 14, '#FF0000', 'center');
+      this.ctx.shadowBlur = 0;
+      this.ctx.restore();
+    }
 
     // Draw center line
     this.ctx.save();
@@ -167,8 +222,9 @@ export class PongGame extends BaseGame {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // Cultural learning element
-    this.drawText('Ancient Olympic Spirit: Fair Play & Competition', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+    // Humanity vs Machine messaging
+    this.drawText('HUMAN RESISTANCE: Fight for humanity! Use WASD', this.width / 2, this.height - 40, 12, '#FFD700', 'center');
+    this.drawText('Ancient Olympic Spirit vs Cold Machine Logic', this.width / 2, this.height - 20, 14, '#DDD', 'center');
   }
 
   private drawGreekBackground() {
@@ -181,30 +237,75 @@ export class PongGame extends BaseGame {
   }
 
   private drawGreekPaddle(paddle: Paddle) {
-    // Draw as a Greek column
     this.ctx.save();
     
-    // Column base
-    this.ctx.fillStyle = '#F5F5DC';
-    this.ctx.fillRect(paddle.x - 5, paddle.y + paddle.height - 10, paddle.width + 10, 10);
+    // Determine if this is human or AI paddle
+    const isHuman = paddle === this.player1;
     
-    // Column shaft
-    this.ctx.fillStyle = '#FFFACD';
-    this.ctx.fillRect(paddle.x, paddle.y + 10, paddle.width, paddle.height - 20);
-    
-    // Column capital
-    this.ctx.fillStyle = '#F5F5DC';
-    this.ctx.fillRect(paddle.x - 5, paddle.y, paddle.width + 10, 10);
-    
-    // Decorative lines
-    this.ctx.strokeStyle = '#DDD';
-    this.ctx.lineWidth = 1;
-    for (let i = 1; i < 4; i++) {
-      const y = paddle.y + (paddle.height * i) / 4;
-      this.ctx.beginPath();
-      this.ctx.moveTo(paddle.x, y);
-      this.ctx.lineTo(paddle.x + paddle.width, y);
-      this.ctx.stroke();
+    if (isHuman) {
+      // Human paddle - warm, organic marble
+      this.ctx.fillStyle = '#F5F5DC';
+      this.ctx.fillRect(paddle.x - 5, paddle.y + paddle.height - 10, paddle.width + 10, 10);
+      
+      this.ctx.fillStyle = '#FFFACD';
+      this.ctx.fillRect(paddle.x, paddle.y + 10, paddle.width, paddle.height - 20);
+      
+      this.ctx.fillStyle = '#F5F5DC';
+      this.ctx.fillRect(paddle.x - 5, paddle.y, paddle.width + 10, 10);
+      
+      // Warm human decorative lines
+      this.ctx.strokeStyle = '#DDD';
+      this.ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) {
+        const y = paddle.y + (paddle.height * i) / 4;
+        this.ctx.beginPath();
+        this.ctx.moveTo(paddle.x, y);
+        this.ctx.lineTo(paddle.x + paddle.width, y);
+        this.ctx.stroke();
+      }
+      
+      // Human indicator
+      this.drawText('HUMAN', paddle.x + paddle.width/2, paddle.y - 15, 10, '#FFD700', 'center');
+    } else {
+      // AI paddle - cold, mechanical appearance with glowing effects
+      this.ctx.fillStyle = '#2C3E50';
+      this.ctx.fillRect(paddle.x - 5, paddle.y + paddle.height - 10, paddle.width + 10, 10);
+      
+      // Glowing core
+      this.ctx.fillStyle = '#00FFFF';
+      this.ctx.fillRect(paddle.x + 2, paddle.y + 12, paddle.width - 4, paddle.height - 24);
+      
+      // Mechanical housing
+      this.ctx.fillStyle = '#34495E';
+      this.ctx.fillRect(paddle.x, paddle.y + 10, 3, paddle.height - 20);
+      this.ctx.fillRect(paddle.x + paddle.width - 3, paddle.y + 10, 3, paddle.height - 20);
+      
+      this.ctx.fillStyle = '#2C3E50';
+      this.ctx.fillRect(paddle.x - 5, paddle.y, paddle.width + 10, 10);
+      
+      // Mechanical grid lines
+      this.ctx.strokeStyle = '#00FFFF';
+      this.ctx.lineWidth = 1;
+      for (let i = 1; i < 8; i++) {
+        const y = paddle.y + (paddle.height * i) / 8;
+        this.ctx.beginPath();
+        this.ctx.moveTo(paddle.x, y);
+        this.ctx.lineTo(paddle.x + paddle.width, y);
+        this.ctx.stroke();
+      }
+      
+      // AI indicator with glow effect
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 10;
+      this.drawText('AI', paddle.x + paddle.width/2, paddle.y - 15, 10, '#FF0000', 'center');
+      this.ctx.shadowBlur = 0;
+      
+      // Show aggression level
+      const aggressionBars = Math.floor(this.aiAggression * 5);
+      for (let i = 0; i < 5; i++) {
+        this.ctx.fillStyle = i < aggressionBars ? '#FF0000' : '#333';
+        this.ctx.fillRect(paddle.x + i * 3, paddle.y - 8, 2, 4);
+      }
     }
     
     this.ctx.restore();
