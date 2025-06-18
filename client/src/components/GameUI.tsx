@@ -154,7 +154,10 @@ export function GameUI() {
         {currentStage === 1 && (
           <div>Player 1: W/S | Player 2: ↑/↓</div>
         )}
-        {currentStage >= 2 && (
+        {currentStage === 2 && (
+          <div>A/D: Move Paddle | Space: Auto-shoot</div>
+        )}
+        {currentStage >= 3 && (
           <div>WASD: Move | Space: Shoot | ESC: Pause</div>
         )}
       </div>

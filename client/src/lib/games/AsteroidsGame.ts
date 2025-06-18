@@ -28,7 +28,7 @@ interface Bullet extends GameObject {
 }
 
 export class AsteroidsGame extends BaseGame {
-  private player: Player;
+  private player!: Player;
   private asteroids: Asteroid[] = [];
   private bullets: Bullet[] = [];
   private keys: Set<string> = new Set();
@@ -36,6 +36,8 @@ export class AsteroidsGame extends BaseGame {
   private lives = 3;
   private level = 1;
   private asteroidsDestroyed = 0;
+  private morphingFromShip = true;
+  private morphProgress = 0;
 
   init() {
     // Initialize player (Mayan spacecraft)
@@ -88,6 +90,14 @@ export class AsteroidsGame extends BaseGame {
   }
 
   update(deltaTime: number) {
+    // Handle ship morphing transition
+    if (this.morphingFromShip) {
+      this.morphProgress += 0.01;
+      if (this.morphProgress >= 1) {
+        this.morphingFromShip = false;
+      }
+    }
+
     // Handle input
     if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
       this.player.rotation -= this.player.rotationSpeed;

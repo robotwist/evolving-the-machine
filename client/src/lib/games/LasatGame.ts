@@ -44,7 +44,7 @@ interface PowerUp {
 }
 
 export class LasatGame extends BaseGame {
-  private player: Player;
+  private player!: Player;
   private enemies: Enemy[] = [];
   private playerProjectiles: Projectile[] = [];
   private enemyProjectiles: Projectile[] = [];

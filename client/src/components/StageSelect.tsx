@@ -14,31 +14,39 @@ export function StageSelect() {
       id: 1,
       name: 'Pong Master',
       culture: 'Ancient Greece',
-      description: 'Learn about Olympic competition and fair play through classic paddle combat. Experience the spirit of ancient Greek athletics.',
+      description: 'Learn about Olympic competition and fair play through classic paddle combat. Watch as Greek columns compete in divine games.',
       difficulty: 'Beginner',
       color: 'from-blue-600 to-cyan-600'
     },
     {
       id: 2,
+      name: 'Temple Breaker',
+      culture: 'Greek Evolution',
+      description: 'Greek temple blocks reveal cosmic secrets. Watch your paddle evolve into a celestial ship as architecture transforms into space.',
+      difficulty: 'Beginner+',
+      color: 'from-cyan-600 to-teal-600'
+    },
+    {
+      id: 3,
       name: 'Asteroid Hunter',
       culture: 'Mayan Astronomy',
-      description: 'Discover Mayan astronomical knowledge as you navigate asteroid fields using their advanced understanding of celestial movements.',
+      description: 'Your ship now navigates asteroid fields using Mayan astronomical knowledge. Ancient temple blocks have become celestial bodies.',
       difficulty: 'Intermediate',
       color: 'from-yellow-600 to-orange-600'
     },
     {
-      id: 3,
+      id: 4,
       name: 'Defender',
       culture: 'Feudal Japan',
-      description: 'Embody the samurai code of honor and protection. Learn about bushido while defending villages from invasion.',
+      description: 'The ship morphs into a samurai defender. Learn bushido while protecting villages, as your craft embodies honor and duty.',
       difficulty: 'Advanced',
       color: 'from-red-600 to-pink-600'
     },
     {
-      id: 4,
+      id: 5,
       name: 'Lasat Starfighter',
       culture: 'Norse Mythology',
-      description: 'Experience the epic battles of Ragnarok. Master the fierce warrior culture of the Vikings in space combat.',
+      description: 'Final evolution into a Norse longship-fighter for Ragnarok. Master the fierce warrior culture in epic space battles.',
       difficulty: 'Master',
       color: 'from-purple-600 to-indigo-600'
     }
