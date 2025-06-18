@@ -592,38 +592,37 @@ export class LasatGame extends BaseGame {
     this.ctx.save();
     this.ctx.translate(enemy.position.x, enemy.position.y);
 
-    let color = '#DC143C';
-    if (enemy.type === 'dragon') color = '#8B0000';
-    if (enemy.type === 'valkyrie') color = '#9370DB';
-
-    this.ctx.fillStyle = color;
-    this.ctx.strokeStyle = '#FFD700';
-    this.ctx.lineWidth = 2;
-
-    // Draw based on type
-    if (enemy.type === 'dragon') {
-      // Dragon shape
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, -enemy.size/2);
-      this.ctx.lineTo(-enemy.size/2, 0);
-      this.ctx.lineTo(-enemy.size/4, enemy.size/2);
-      this.ctx.lineTo(enemy.size/4, enemy.size/2);
-      this.ctx.lineTo(enemy.size/2, 0);
-      this.ctx.closePath();
-      this.ctx.fill();
-      this.ctx.stroke();
-    } else {
-      // Standard enemy shape
-      this.ctx.fillRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
-      this.ctx.strokeRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
+    switch (enemy.type) {
+      case 'giant':
+        this.ctx.fillStyle = '#654321';
+        this.ctx.fillRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
+        break;
+      case 'dragon':
+        this.ctx.fillStyle = '#8B0000';
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -enemy.size/2);
+        this.ctx.lineTo(-enemy.size/2, enemy.size/2);
+        this.ctx.lineTo(enemy.size/2, enemy.size/2);
+        this.ctx.closePath();
+        this.ctx.fill();
+        break;
+      case 'valkyrie':
+        this.ctx.fillStyle = '#4169E1';
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, enemy.size/2, 0, Math.PI * 2);
+        this.ctx.fill();
+        break;
     }
 
     // Health bar
+    const barWidth = enemy.size;
+    const barHeight = 4;
     const healthPercent = enemy.health / enemy.maxHealth;
-    this.ctx.fillStyle = 'red';
-    this.ctx.fillRect(-enemy.size/2, -enemy.size/2 - 8, enemy.size, 4);
-    this.ctx.fillStyle = 'green';
-    this.ctx.fillRect(-enemy.size/2, -enemy.size/2 - 8, enemy.size * healthPercent, 4);
+    
+    this.ctx.fillStyle = '#FF0000';
+    this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 10, barWidth, barHeight);
+    this.ctx.fillStyle = '#00FF00';
+    this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 10, barWidth * healthPercent, barHeight);
 
     this.ctx.restore();
   }
@@ -631,26 +630,24 @@ export class LasatGame extends BaseGame {
   private drawPlayerProjectile(proj: Projectile) {
     this.ctx.save();
     
-    let color = '#00FFFF';
-    if (proj.type === 'plasma') color = '#FF69B4';
-    if (proj.type === 'lightning' || proj.type === 'lightning_burst') color = '#FFFF00';
+    switch (proj.type) {
+      case 'lightning_burst':
+        this.ctx.fillStyle = '#FFFF00';
+        this.ctx.strokeStyle = '#0080FF';
+        this.ctx.lineWidth = 2;
+        break;
+      case 'plasma':
+        this.ctx.fillStyle = '#FF69B4';
+        break;
+      default:
+        this.ctx.fillStyle = '#00FFFF';
+    }
     
-    this.ctx.fillStyle = color;
-    this.ctx.strokeStyle = '#FFFFFF';
-    
+    this.ctx.beginPath();
+    this.ctx.arc(proj.position.x, proj.position.y, proj.size, 0, Math.PI * 2);
+    this.ctx.fill();
     if (proj.type === 'lightning_burst') {
-      // Lightning effect
-      this.ctx.lineWidth = 3;
-      this.ctx.beginPath();
-      this.ctx.moveTo(proj.position.x - 5, proj.position.y - 5);
-      this.ctx.lineTo(proj.position.x + 5, proj.position.y + 5);
-      this.ctx.moveTo(proj.position.x + 5, proj.position.y - 5);
-      this.ctx.lineTo(proj.position.x - 5, proj.position.y + 5);
       this.ctx.stroke();
-    } else {
-      this.ctx.beginPath();
-      this.ctx.arc(proj.position.x, proj.position.y, proj.size, 0, Math.PI * 2);
-      this.ctx.fill();
     }
     
     this.ctx.restore();
@@ -658,7 +655,7 @@ export class LasatGame extends BaseGame {
 
   private drawEnemyProjectile(proj: Projectile) {
     this.ctx.save();
-    this.ctx.fillStyle = proj.type === 'fire_breath' ? '#FF4500' : '#FF0000';
+    this.ctx.fillStyle = proj.type === 'fire_breath' ? '#FF4500' : '#DC143C';
     this.ctx.beginPath();
     this.ctx.arc(proj.position.x, proj.position.y, proj.size, 0, Math.PI * 2);
     this.ctx.fill();
@@ -667,53 +664,43 @@ export class LasatGame extends BaseGame {
 
   private drawPowerUp(powerUp: PowerUp) {
     this.ctx.save();
+    this.ctx.translate(powerUp.position.x, powerUp.position.y);
     
     const colors = {
-      health: '#00FF00',
-      energy: '#00BFFF',
-      weapon: '#FFD700',
-      shield: '#9370DB'
+      health: '#FF0000',
+      energy: '#00FF00',
+      weapon: '#FFFF00',
+      shield: '#00BFFF'
     };
     
     this.ctx.fillStyle = colors[powerUp.type];
-    this.ctx.strokeStyle = '#FFFFFF';
-    this.ctx.lineWidth = 2;
-    
-    this.ctx.fillRect(powerUp.position.x - 10, powerUp.position.y - 10, 20, 20);
-    this.ctx.strokeRect(powerUp.position.x - 10, powerUp.position.y - 10, 20, 20);
+    this.ctx.fillRect(-10, -10, 20, 20);
     
     this.ctx.restore();
   }
 
   private drawUI() {
     // Player stats
-    this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
-    this.drawText(`Health: ${this.player.health}/${this.player.maxHealth}`, 20, 60, 16, '#FF0000');
-    this.drawText(`Energy: ${Math.floor(this.player.energy)}/${this.player.maxEnergy}`, 20, 80, 16, '#00BFFF');
-    this.drawText(`Weapon: ${this.player.weaponType.toUpperCase()}`, 20, 100, 16, '#FFD700');
-    this.drawText(`Ragnarok Phase: ${this.ragnarokPhase}/5`, 20, 120, 16, '#9370DB');
+    this.drawText(`Health: ${this.player.health}/${this.player.maxHealth}`, 20, 30, 16, '#FF0000');
+    this.drawText(`Energy: ${this.player.energy}/${this.player.maxEnergy}`, 20, 50, 16, '#00FF00');
+    this.drawText(`Weapon: ${this.player.weaponType.toUpperCase()}`, 20, 70, 16, '#FFFF00');
+    this.drawText(`Score: ${this.score}`, 20, 90, 16, '#FFD700');
+    this.drawText(`Ragnarok Phase: ${this.ragnarokPhase}/5`, 20, 110, 16, '#FFD700');
 
-    // Health bar
-    this.ctx.fillStyle = '#FF0000';
-    this.ctx.fillRect(this.width - 220, 20, 200, 15);
-    this.ctx.fillStyle = '#00FF00';
-    this.ctx.fillRect(this.width - 220, 20, 200 * (this.player.health / this.player.maxHealth), 15);
-
-    // Energy bar
-    this.ctx.fillStyle = '#000080';
-    this.ctx.fillRect(this.width - 220, 40, 200, 10);
-    this.ctx.fillStyle = '#00BFFF';
-    this.ctx.fillRect(this.width - 220, 40, 200 * (this.player.energy / this.player.maxEnergy), 10);
+    // Shield indicator
+    if (this.player.shieldActive) {
+      this.drawText(`SHIELD ACTIVE: ${Math.ceil(this.player.shieldTimer / 60)}s`, this.width - 200, 30, 16, '#00BFFF');
+    }
 
     // Controls
     this.drawText('WASD: Move | Space: Shoot | X: Special | Z: Shield', this.width / 2, this.height - 40, 12, '#DDD', 'center');
     
-    // Cultural element
-    this.drawText('Ragnarok Approaches - Fight with the fury of the Norse gods!', this.width / 2, this.height - 20, 14, '#FFD700', 'center');
+    // Cultural learning element
+    this.drawText('Fight with Viking Honor - Face Ragnarok with Courage!', this.width / 2, this.height - 20, 14, '#FFD700', 'center');
   }
 
   handleInput(event: KeyboardEvent) {
-    // Handled through keys Set in update method
+    // Handled in update method through keys Set
   }
 
   private playHitSound() {

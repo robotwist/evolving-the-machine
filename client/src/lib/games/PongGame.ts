@@ -20,9 +20,9 @@ interface Ball {
 }
 
 export class PongGame extends BaseGame {
-  private player1: Paddle;
-  private player2: Paddle;
-  private ball: Ball;
+  private player1!: Paddle;
+  private player2!: Paddle;
+  private ball!: Ball;
   private keys: Set<string> = new Set();
   private winScore = 7;
 
