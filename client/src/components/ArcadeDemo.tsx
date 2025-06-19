@@ -51,10 +51,15 @@ export function ArcadeDemo() {
     let messageIndex = 0;
     const typeGlitchMessage = () => {
       if (messageIndex < glitchMessages.length) {
-        setGlitchText(glitchMessages[messageIndex]);
-        speakGlitchedText(glitchMessages[messageIndex]);
+        const message = glitchMessages[messageIndex];
+        setGlitchText(message);
+        
+        // Speak immediately when text appears
+        speakGlitchedText(message);
+        
         messageIndex++;
-        setTimeout(typeGlitchMessage, 2000);
+        // Longer delay to let voice finish before next message
+        setTimeout(typeGlitchMessage, 3500);
       } else {
         setTimeout(() => {
           setDemoPhase('invitation');
@@ -70,37 +75,42 @@ export function ArcadeDemo() {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text.replace(/█/g, ''));
       
-      // Sinistar/LifeForce inspired voice parameters
-      utterance.rate = 0.6;   // Slower, more menacing like Sinistar
-      utterance.pitch = 0.1;  // Very deep, mechanical like arcade machines
+      // Sinistar/LifeForce inspired voice parameters with neutral American accent
+      utterance.rate = 0.7;   // Slightly faster to match text display
+      utterance.pitch = 0.15; // Deep but clear for American accent
       utterance.volume = 1.0; // Full commanding volume
       
       const voices = speechSynthesis.getVoices();
       
-      // Target the Google voices which tend to sound more robotic
-      // UK Male has that perfect digital quality we want
+      // Target neutral American English voices
       let selectedVoice = voices.find(voice => 
-        voice.name === 'Google UK English Male'
+        voice.name === 'Google US English' && voice.lang === 'en-US'
       );
       
-      // Fallback to US English if UK not available
+      // Fallback to any US English voice
       if (!selectedVoice) {
         selectedVoice = voices.find(voice => 
-          voice.name === 'Google US English' && voice.lang === 'en-US'
+          voice.lang === 'en-US' && 
+          !voice.name.toLowerCase().includes('female')
+        );
+      }
+      
+      // Final fallback to UK if no US available
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => 
+          voice.name === 'Google UK English Male'
         );
       }
       
       if (selectedVoice) {
         utterance.voice = selectedVoice;
-        console.log('Using Sinistar-style voice:', selectedVoice.name);
+        console.log('Using American accent voice:', selectedVoice.name);
       } else {
-        console.log('Using default voice for digital effect');
+        console.log('Using default voice');
       }
       
-      // Add slight pause for dramatic effect like classic arcade machines
-      setTimeout(() => {
-        speechSynthesis.speak(utterance);
-      }, 200);
+      // Immediate delivery synchronized with text
+      speechSynthesis.speak(utterance);
     }
   };
 
