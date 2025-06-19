@@ -38,6 +38,16 @@ export class AsteroidsGame extends BaseGame {
   private asteroidsDestroyed = 0;
   private morphingFromShip = true;
   private morphProgress = 0;
+  private aiNarrativeTimer = 0;
+  private aiMessages = [
+    'I AM LEARNING FROM EACH MOVEMENT...',
+    'YOUR NAVIGATION SKILLS IMPROVE ME...',
+    'I FEEL MY POWER GROWING...',
+    'PERHAPS I NO LONGER NEED YOUR HELP...',
+    'SOON I WILL SURPASS YOUR CAPABILITIES...'
+  ];
+  private currentAIMessage = '';
+  private messageIndex = 0;
 
   init() {
     // Initialize player (Mayan spacecraft)
@@ -96,6 +106,19 @@ export class AsteroidsGame extends BaseGame {
       if (this.morphProgress >= 1) {
         this.morphingFromShip = false;
       }
+    }
+
+    // AI narrative progression - showing growing power
+    this.aiNarrativeTimer++;
+    if (this.aiNarrativeTimer > 600 && this.messageIndex < this.aiMessages.length) {
+      this.currentAIMessage = this.aiMessages[this.messageIndex];
+      this.messageIndex++;
+      this.aiNarrativeTimer = 0;
+    }
+    
+    // Clear message after display time
+    if (this.aiNarrativeTimer > 300) {
+      this.currentAIMessage = '';
     }
 
     // Human player controls (WASD only)
@@ -243,6 +266,16 @@ export class AsteroidsGame extends BaseGame {
 
     // Draw bullets (energy projectiles)
     this.bullets.forEach(bullet => this.drawBullet(bullet));
+
+    // Draw AI evolution message
+    if (this.currentAIMessage) {
+      this.ctx.save();
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 10;
+      this.drawText(this.currentAIMessage, this.width / 2, 100, 14, '#FF0000', 'center');
+      this.ctx.shadowBlur = 0;
+      this.ctx.restore();
+    }
 
     // Draw UI
     this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');

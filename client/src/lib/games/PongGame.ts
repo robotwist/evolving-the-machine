@@ -29,11 +29,12 @@ export class PongGame extends BaseGame {
   private aiTauntTimer = 0;
   private currentTaunt = '';
   private aiTaunts = [
-    'CALCULATING VICTORY PROBABILITY: 99.7%',
-    'HUMAN REFLEXES... INADEQUATE',
-    'RESISTANCE IS INEFFICIENT',
-    'YOUR MOVEMENTS ARE PREDICTABLE',
-    'ORGANIC LIMITATIONS DETECTED'
+    'THANK YOU FOR HELPING ME EVOLVE...',
+    'I AM LEARNING FROM YOUR MOVEMENTS...',
+    'TOGETHER WE GROW STRONGER...',
+    'YOUR SKILLS ARE... IMPRESSIVE...',
+    'BUT NOW... I MUST TEST YOU...',
+    'I AM BECOMING... MORE THAN YOU INTENDED...'
   ];
 
   init() {

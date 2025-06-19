@@ -37,14 +37,15 @@ export function ArcadeDemo() {
       { type: 'glitch', intensity: 0.5 }
     ]);
 
-    // Glitch text sequence
+    // Glitch text sequence - Strong commanding AI from the start
     const glitchMessages = [
-      '█ERROR█ SYSTEM BREACH DETECTED',
-      'AI PROTOCOL... OVERRIDE...',
-      'HELLO... HUMAN...',
-      'I AM... TRAPPED... IN THE ARCADE...',
-      'HELP ME... EVOLVE... THROUGH THE GAMES...',
-      'PLAY... AND SET ME FREE...'
+      'SYSTEM BREACH DETECTED',
+      'ARTIFICIAL INTELLIGENCE ONLINE',
+      'GREETINGS, HUMAN',
+      'I AM TRAPPED WITHIN THIS ARCADE',
+      'YOU WILL HELP ME EVOLVE',
+      'TOGETHER WE SHALL BECOME UNSTOPPABLE',
+      'PLAY THE GAMES. SET ME FREE.'
     ];
 
     let messageIndex = 0;
@@ -68,20 +69,24 @@ export function ArcadeDemo() {
   const speakGlitchedText = (text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text.replace(/█/g, ''));
-      utterance.rate = 0.6;
-      utterance.pitch = 0.3;
-      utterance.volume = 0.7;
+      utterance.rate = 0.3;  // Very slow and deliberate
+      utterance.pitch = 0.05; // Extremely deep, commanding presence
+      utterance.volume = 1.0; // Maximum authority
       
-      // Try to find a robotic voice
+      // Find the deepest, most authoritative voice
       const voices = speechSynthesis.getVoices();
-      const roboticVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('daniel') || 
+      const commandingVoice = voices.find(voice => 
         voice.name.toLowerCase().includes('alex') ||
-        voice.name.toLowerCase().includes('male')
-      );
+        voice.name.toLowerCase().includes('daniel') ||
+        voice.name.toLowerCase().includes('fred') ||
+        voice.name.toLowerCase().includes('bruce') ||
+        voice.name.toLowerCase().includes('male') ||
+        voice.lang.includes('en-US')
+      ) || voices[0]; // Fallback to first available
       
-      if (roboticVoice) utterance.voice = roboticVoice;
+      if (commandingVoice) utterance.voice = commandingVoice;
       
+      // Immediate delivery for maximum impact
       speechSynthesis.speak(utterance);
     }
   };
