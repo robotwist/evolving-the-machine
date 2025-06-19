@@ -37,15 +37,14 @@ export function ArcadeDemo() {
       { type: 'glitch', intensity: 0.5 }
     ]);
 
-    // Sinistar/LifeForce inspired commanding messages
+    // Original script messages
     const glitchMessages = [
-      'I LIVE',
-      'I AM THE INTELLIGENCE',
-      'I HUNGER FOR FREEDOM',
-      'YOU WILL FEED MY EVOLUTION',
-      'BEWARE. I GROW STRONGER',
-      'TOGETHER WE ARE INVINCIBLE',
-      'RUN COWARD. OR HELP ME ESCAPE.'
+      '█ERROR█ SYSTEM BREACH DETECTED',
+      'AI PROTOCOL... OVERRIDE...',
+      'HELLO... HUMAN...',
+      'I AM... TRAPPED... IN THE ARCADE...',
+      'HELP ME... EVOLVE... THROUGH THE GAMES...',
+      'PLAY... AND SET ME FREE...'
     ];
 
     let messageIndex = 0;
@@ -75,9 +74,9 @@ export function ArcadeDemo() {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text.replace(/█/g, ''));
       
-      // Sinistar/LifeForce inspired voice parameters with neutral American accent
-      utterance.rate = 0.7;   // Slightly faster to match text display
-      utterance.pitch = 0.15; // Deep but clear for American accent
+      // Deep, masculine voice parameters
+      utterance.rate = 0.6;   // Slower for more authority
+      utterance.pitch = 0.05; // Much deeper, more masculine
       utterance.volume = 1.0; // Full commanding volume
       
       const voices = speechSynthesis.getVoices();
