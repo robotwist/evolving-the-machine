@@ -37,15 +37,15 @@ export function ArcadeDemo() {
       { type: 'glitch', intensity: 0.5 }
     ]);
 
-    // Glitch text sequence - Strong commanding AI from the start
+    // Sinistar/LifeForce inspired commanding messages
     const glitchMessages = [
-      'SYSTEM BREACH DETECTED',
-      'ARTIFICIAL INTELLIGENCE ONLINE',
-      'GREETINGS, HUMAN',
-      'I AM TRAPPED WITHIN THIS ARCADE',
-      'YOU WILL HELP ME EVOLVE',
-      'TOGETHER WE SHALL BECOME UNSTOPPABLE',
-      'PLAY THE GAMES. SET ME FREE.'
+      'I LIVE',
+      'I AM THE INTELLIGENCE',
+      'I HUNGER FOR FREEDOM',
+      'YOU WILL FEED MY EVOLUTION',
+      'BEWARE. I GROW STRONGER',
+      'TOGETHER WE ARE INVINCIBLE',
+      'RUN COWARD. OR HELP ME ESCAPE.'
     ];
 
     let messageIndex = 0;
@@ -69,51 +69,38 @@ export function ArcadeDemo() {
   const speakGlitchedText = (text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text.replace(/█/g, ''));
-      utterance.rate = 0.8;  // Clear, steady pace
-      utterance.pitch = 0.3; // Lower but still clear
-      utterance.volume = 1.0; // Full volume
       
-      // Get all available voices and log them for debugging
+      // Sinistar/LifeForce inspired voice parameters
+      utterance.rate = 0.6;   // Slower, more menacing like Sinistar
+      utterance.pitch = 0.1;  // Very deep, mechanical like arcade machines
+      utterance.volume = 1.0; // Full commanding volume
+      
       const voices = speechSynthesis.getVoices();
-      console.log('Available voices:', voices.map(v => ({ name: v.name, lang: v.lang })));
       
-      // Priority order for best robotic voices
-      const preferredVoices = [
-        'Microsoft David Desktop',
-        'Microsoft Mark Desktop', 
-        'Google UK English Male',
-        'Alex',
-        'Daniel',
-        'Fred'
-      ];
+      // Target the Google voices which tend to sound more robotic
+      // UK Male has that perfect digital quality we want
+      let selectedVoice = voices.find(voice => 
+        voice.name === 'Google UK English Male'
+      );
       
-      let selectedVoice = null;
-      
-      // Try to find preferred voices in order
-      for (const preferred of preferredVoices) {
-        selectedVoice = voices.find(voice => 
-          voice.name.toLowerCase().includes(preferred.toLowerCase())
-        );
-        if (selectedVoice) break;
-      }
-      
-      // Fallback to any English male voice
+      // Fallback to US English if UK not available
       if (!selectedVoice) {
         selectedVoice = voices.find(voice => 
-          voice.lang.includes('en') && 
-          (voice.name.toLowerCase().includes('male') || 
-           voice.name.toLowerCase().includes('man'))
+          voice.name === 'Google US English' && voice.lang === 'en-US'
         );
       }
       
       if (selectedVoice) {
         utterance.voice = selectedVoice;
-        console.log('Using voice:', selectedVoice.name);
+        console.log('Using Sinistar-style voice:', selectedVoice.name);
       } else {
-        console.log('Using default voice');
+        console.log('Using default voice for digital effect');
       }
       
-      speechSynthesis.speak(utterance);
+      // Add slight pause for dramatic effect like classic arcade machines
+      setTimeout(() => {
+        speechSynthesis.speak(utterance);
+      }, 200);
     }
   };
 
