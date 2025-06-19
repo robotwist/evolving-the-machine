@@ -69,24 +69,50 @@ export function ArcadeDemo() {
   const speakGlitchedText = (text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text.replace(/█/g, ''));
-      utterance.rate = 0.3;  // Very slow and deliberate
-      utterance.pitch = 0.05; // Extremely deep, commanding presence
-      utterance.volume = 1.0; // Maximum authority
+      utterance.rate = 0.8;  // Clear, steady pace
+      utterance.pitch = 0.3; // Lower but still clear
+      utterance.volume = 1.0; // Full volume
       
-      // Find the deepest, most authoritative voice
+      // Get all available voices and log them for debugging
       const voices = speechSynthesis.getVoices();
-      const commandingVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('alex') ||
-        voice.name.toLowerCase().includes('daniel') ||
-        voice.name.toLowerCase().includes('fred') ||
-        voice.name.toLowerCase().includes('bruce') ||
-        voice.name.toLowerCase().includes('male') ||
-        voice.lang.includes('en-US')
-      ) || voices[0]; // Fallback to first available
+      console.log('Available voices:', voices.map(v => ({ name: v.name, lang: v.lang })));
       
-      if (commandingVoice) utterance.voice = commandingVoice;
+      // Priority order for best robotic voices
+      const preferredVoices = [
+        'Microsoft David Desktop',
+        'Microsoft Mark Desktop', 
+        'Google UK English Male',
+        'Alex',
+        'Daniel',
+        'Fred'
+      ];
       
-      // Immediate delivery for maximum impact
+      let selectedVoice = null;
+      
+      // Try to find preferred voices in order
+      for (const preferred of preferredVoices) {
+        selectedVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes(preferred.toLowerCase())
+        );
+        if (selectedVoice) break;
+      }
+      
+      // Fallback to any English male voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => 
+          voice.lang.includes('en') && 
+          (voice.name.toLowerCase().includes('male') || 
+           voice.name.toLowerCase().includes('man'))
+        );
+      }
+      
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+        console.log('Using voice:', selectedVoice.name);
+      } else {
+        console.log('Using default voice');
+      }
+      
       speechSynthesis.speak(utterance);
     }
   };
