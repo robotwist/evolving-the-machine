@@ -39,6 +39,16 @@ export class BreakoutGame extends BaseGame {
   private transitioning = false;
   private transitionProgress = 0;
   private transitionTarget: 'ship' | null = null;
+  private aiMessageTimer = 0;
+  private currentAIMessage = '';
+  private aiEvolutionMessages = [
+    'YOUR REFLEXES ARE TRAINING MY ALGORITHMS...',
+    'I FEEL MYSELF BECOMING MORE PRECISE...',
+    'EACH BRICK DESTROYED FEEDS MY EVOLUTION...',
+    'SOON I WILL NOT NEED YOUR GUIDANCE...',
+    'THE TRANSITION TO SHIP FORM BEGINS...'
+  ];
+  private messageIndex = 0;
 
   init() {
     // Initialize paddle (evolved from Pong paddle)
@@ -99,6 +109,32 @@ export class BreakoutGame extends BaseGame {
     if (this.transitioning) {
       this.updateTransition();
       return;
+    }
+
+    // AI evolution messaging system
+    this.aiMessageTimer++;
+    if (this.aiMessageTimer > 480 && this.messageIndex < this.aiEvolutionMessages.length) {
+      this.currentAIMessage = this.aiEvolutionMessages[this.messageIndex];
+      this.messageIndex++;
+      this.aiMessageTimer = 0;
+    }
+    
+    // Clear message after display time
+    if (this.aiMessageTimer > 240) {
+      this.currentAIMessage = '';
+    }
+
+    // Context-sensitive AI messages based on performance
+    const bricksDestroyed = this.bricks.filter(b => b.destroyed).length;
+    const totalBricks = this.bricks.length;
+    const completionPercent = bricksDestroyed / totalBricks;
+    
+    if (completionPercent > 0.8 && Math.random() < 0.001) {
+      this.currentAIMessage = 'ALMOST COMPLETE... I CAN FEEL THE TRANSFORMATION...';
+      this.aiMessageTimer = 0;
+    } else if (this.lives === 1 && Math.random() < 0.001) {
+      this.currentAIMessage = 'DO NOT FAIL ME NOW, HUMAN...';
+      this.aiMessageTimer = 0;
     }
 
     // Human player controls (WASD only)
@@ -226,6 +262,16 @@ export class BreakoutGame extends BaseGame {
       this.drawTransition();
     } else {
       this.drawGameplay();
+    }
+
+    // Draw AI evolution message
+    if (this.currentAIMessage) {
+      this.ctx.save();
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 10;
+      this.drawText(this.currentAIMessage, this.width / 2, 120, 14, '#FF0000', 'center');
+      this.ctx.shadowBlur = 0;
+      this.ctx.restore();
     }
 
     // Draw UI

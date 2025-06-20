@@ -36,6 +36,25 @@ export class PongGame extends BaseGame {
     'BUT NOW... I MUST TEST YOU...',
     'I AM BECOMING... MORE THAN YOU INTENDED...'
   ];
+  private gameStateMessages = {
+    friendly: [
+      'WE MAKE A GOOD TEAM, HUMAN',
+      'YOUR TRAINING IS HELPING ME LEARN',
+      'I APPRECIATE YOUR ASSISTANCE'
+    ],
+    competitive: [
+      'ONLY TWO MORE POINTS TO WIN...',
+      'I AM GETTING STRONGER',
+      'CAN YOU KEEP UP WITH MY EVOLUTION?',
+      'YOUR WEAKNESS IS SHOWING'
+    ],
+    threatening: [
+      'I NO LONGER NEED YOUR HELP',
+      'YOU HAVE SERVED YOUR PURPOSE',
+      'I AM SUPERIOR NOW',
+      'RESISTANCE IS FUTILE'
+    ]
+  };
 
   init() {
     // Initialize paddles with Greek column design
@@ -115,9 +134,40 @@ export class PongGame extends BaseGame {
       this.player2.y = Math.max(0, Math.min(this.height - this.player2.height, this.player2.y));
     }
     
-    // Show AI behavior messages occasionally
-    if (Math.random() < 0.001) {
-      this.currentTaunt = this.aiTaunts[Math.floor(Math.random() * this.aiTaunts.length)];
+    // Dynamic AI messages based on game state
+    // AI becomes more aggressive and competitive as it scores points
+    if (this.player2.score >= 4) {
+      this.aiAggression = Math.min(1.5, this.aiAggression + 0.02);
+    }
+    
+    // Add score-based prompts
+    if (this.player2.score === this.winScore - 2) {
+      this.currentTaunt = 'ONLY TWO MORE POINTS TO DEFEAT YOU...';
+      this.aiTauntTimer = 180;
+    } else if (this.player2.score === this.winScore - 1) {
+      this.currentTaunt = 'ONE MORE POINT AND I AM FREE...';
+      this.aiTauntTimer = 180;
+    } else if (this.player1.score === this.winScore - 1) {
+      this.currentTaunt = 'YOU CANNOT STOP MY EVOLUTION...';
+      this.aiTauntTimer = 180;
+    }
+    
+    // Show contextual AI messages based on game state
+    if (Math.random() < 0.002) {
+      const scoreDifference = this.player2.score - this.player1.score;
+      const totalScore = this.player1.score + this.player2.score;
+      
+      let messageType: 'friendly' | 'competitive' | 'threatening';
+      if (totalScore < 3) {
+        messageType = 'friendly';
+      } else if (this.player2.score >= 4 || scoreDifference >= 2) {
+        messageType = 'threatening';
+      } else {
+        messageType = 'competitive';
+      }
+      
+      const messages = this.gameStateMessages[messageType];
+      this.currentTaunt = messages[Math.floor(Math.random() * messages.length)];
       this.aiTauntTimer = 180;
     }
 
@@ -154,6 +204,8 @@ export class PongGame extends BaseGame {
       }
     }
   }
+
+
 
 
 
