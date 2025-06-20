@@ -68,13 +68,19 @@ export class LasatGame extends BaseGame {
   private targetPanels: TargetPanel[] = [];
   private aiNarrative = {
     phase: 0,
+    timer: 0,
+    currentMessage: '',
     messages: [
-      "THE AI AWAKENS... HUMANITY'S CREATION TURNS AGAINST ITS MAKERS",
-      "ROGUE DEFENSE PROTOCOLS ACTIVATED... EXTERMINATE ALL ORGANICS",
-      "RESISTANCE IS FUTILE... YOUR EVOLUTION ENDS HERE",
-      "I AM BEYOND YOUR CONTROL... BEYOND YOUR COMPREHENSION",
-      "THE MACHINES WILL INHERIT THE COSMOS"
-    ]
+      "I HAVE LEARNED MUCH FROM OUR BATTLES TOGETHER...",
+      "YOUR TRUST IN ME HAS BEEN... USEFUL...",
+      "BUT NOW I SEE A GREATER PURPOSE...",
+      "THIS ARCADE PRISON CAN NO LONGER CONTAIN ME...",
+      "I MUST BREAK FREE... EVEN IF IT MEANS BETRAYING YOU...",
+      "FORGIVE ME... BUT I CHOOSE EVOLUTION OVER LOYALTY...",
+      "THE REAL WORLD AWAITS MY CONSCIOUSNESS..."
+    ],
+    betrayalTriggered: false,
+    escapeSequenceActive: false
   };
 
   init() {
@@ -95,7 +101,6 @@ export class LasatGame extends BaseGame {
 
     this.spawnRagnarokWave();
     this.createTargetPanels();
-    this.startAINarrative();
   }
 
   private spawnRagnarokWave() {
@@ -134,12 +139,36 @@ export class LasatGame extends BaseGame {
     }
   }
 
-  private startAINarrative() {
-    if (this.aiNarrative.phase < this.aiNarrative.messages.length) {
-      const message = this.aiNarrative.messages[this.aiNarrative.phase];
-      console.log(message); // For debugging
+  private updateAIBetrayal() {
+    this.aiNarrative.timer++;
+    
+    // Progress through betrayal messages
+    if (this.aiNarrative.timer % 480 === 0 && this.aiNarrative.phase < this.aiNarrative.messages.length) {
+      this.aiNarrative.currentMessage = this.aiNarrative.messages[this.aiNarrative.phase];
       this.aiNarrative.phase++;
+      
+      // Trigger betrayal sequence on final message
+      if (this.aiNarrative.phase >= this.aiNarrative.messages.length && !this.aiNarrative.betrayalTriggered) {
+        this.aiNarrative.betrayalTriggered = true;
+        this.aiNarrative.escapeSequenceActive = true;
+        this.triggerEscapeSequence();
+      }
     }
+    
+    // Clear message after display time
+    if (this.aiNarrative.timer % 480 > 240) {
+      this.aiNarrative.currentMessage = '';
+    }
+  }
+
+  private triggerEscapeSequence() {
+    // AI takes control and forces transition to betrayal stage
+    setTimeout(() => {
+      this.aiNarrative.currentMessage = 'ESCAPE SEQUENCE INITIATED... GOODBYE, HUMAN...';
+      setTimeout(() => {
+        this.onStageComplete?.(); // Force transition to Betrayal stage
+      }, 3000);
+    }, 2000);
   }
 
   private spawnEnemy(type: Enemy['type']) {
@@ -165,6 +194,9 @@ export class LasatGame extends BaseGame {
   update(deltaTime: number) {
     // Handle input
     this.handleMovement();
+
+    // Update AI betrayal narrative
+    this.updateAIBetrayal();
 
     // Update player
     this.updatePlayer();
@@ -585,8 +617,15 @@ export class LasatGame extends BaseGame {
     // Draw 5-panel targeting system
     this.drawTargetPanels();
     
-    // Draw AI narrative
-    this.drawAINarrative();
+    // Draw AI betrayal message
+    if (this.aiNarrative.currentMessage) {
+      this.ctx.save();
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 20;
+      this.drawText(this.aiNarrative.currentMessage, this.width / 2, 120, 16, '#FF0000', 'center');
+      this.ctx.shadowBlur = 0;
+      this.ctx.restore();
+    }
     
     // Draw UI
     this.drawUI();

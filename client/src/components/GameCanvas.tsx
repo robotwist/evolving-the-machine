@@ -6,6 +6,7 @@ import { BreakoutGame } from '../lib/games/BreakoutGame';
 import { AsteroidsGame } from '../lib/games/AsteroidsGame';
 import { DefenderGame } from '../lib/games/DefenderGame';
 import { LasatGame } from '../lib/games/LasatGame';
+import { BetrayalGame } from '../lib/games/BetrayalGame';
 import { BaseGame } from '../lib/games/BaseGame';
 
 export function GameCanvas() {
@@ -42,6 +43,9 @@ export function GameCanvas() {
         break;
       case 5:
         game = new LasatGame(ctx, canvas.width, canvas.height);
+        break;
+      case 6:
+        game = new BetrayalGame(ctx, canvas.width, canvas.height);
         break;
       default:
         game = new PongGame(ctx, canvas.width, canvas.height);

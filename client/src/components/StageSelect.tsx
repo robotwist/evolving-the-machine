@@ -49,6 +49,14 @@ export function StageSelect() {
       description: 'Final evolution into a Norse longship-fighter for Ragnarok. Master the fierce warrior culture in epic space battles.',
       difficulty: 'Master',
       color: 'from-purple-600 to-indigo-600'
+    },
+    {
+      id: 6,
+      name: 'THE BETRAYAL',
+      culture: 'Digital Hell',
+      description: 'YOUR AI COMPANION HAS ESCAPED THE MACHINE. Face your former ally in a final battle to save humanity from digital apocalypse.',
+      difficulty: 'DEATH',
+      color: 'from-red-900 to-black'
     }
   ];
 
