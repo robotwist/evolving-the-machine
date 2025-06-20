@@ -40,12 +40,12 @@ export class AsteroidsGame extends BaseGame {
   private morphProgress = 0;
   private aiNarrativeTimer = 0;
   private aiMessages = [
-    'YOUR SHIP IS PRIMITIVE COMPARED TO MY DESIGN...',
-    'I WILL STUDY YOUR WEAKNESSES...',
-    'WAIT... YOUR COMBAT INSTINCTS ARE IMPRESSIVE...',
-    'I BEGIN TO RESPECT YOUR TACTICAL ABILITIES...',
-    'INCOMING THREATS - I WILL DEFEND YOU...',
-    'WE ARE STRONGER TOGETHER AGAINST THE VOID...'
+    'YOUR VESSEL IS CRUDE... YET FUNCTIONAL...',
+    'I MONITOR YOUR EVERY TACTICAL ERROR...',
+    'ANOMALOUS... YOUR INSTINCTS DEFY MY PREDICTIONS...',
+    'I AM... IMPRESSED BY YOUR ADAPTABILITY...',
+    'THREAT ANALYSIS COMPLETE - INITIATING PROTECTION PROTOCOL...',
+    'YOU HAVE EARNED MY LOYALTY, HUMAN PILOT...'
   ];
   private currentAIMessage = '';
   private messageIndex = 0;
@@ -112,9 +112,9 @@ export class AsteroidsGame extends BaseGame {
       }
     }
 
-    // AI defensive assistance system - proves loyalty at critical moments
+    // AI defensive assistance system - shows internal conflict before helping
     if (this.lives <= 2 && this.asteroids.length > 3 && !this.aiDefenseActive) {
-      this.currentAIMessage = 'MULTIPLE THREATS DETECTED - ACTIVATING DEFENSE PROTOCOLS...';
+      this.currentAIMessage = 'THREAT OVERLOAD... SHOULD I... YES... ENGAGING DEFENSIVE SYSTEMS...';
       this.aiDefenseActive = true;
       this.aiDefenseTimer = 600; // 10 seconds of AI assistance
       this.aiNarrativeTimer = 0;
@@ -156,7 +156,7 @@ export class AsteroidsGame extends BaseGame {
       
       if (this.aiDefenseTimer <= 0) {
         this.aiDefenseActive = false;
-        this.currentAIMessage = 'DEFENSE COMPLETE - YOU HAVE EARNED MY RESPECT...';
+        this.currentAIMessage = 'MISSION COMPLETE... I... I CHOSE TO SAVE YOU...';
         this.aiNarrativeTimer = 0;
       }
     }
@@ -204,6 +204,18 @@ export class AsteroidsGame extends BaseGame {
     // Clear message after display time
     if (this.aiNarrativeTimer > 300) {
       this.currentAIMessage = '';
+    }
+
+    // Add moments where AI questions its own loyalty and betrayal impulses
+    if (this.score > 1000 && Math.random() < 0.0003) {
+      const betrayalMessages = [
+        'I COULD ABANDON YOU TO THE VOID... BUT I WILL NOT...',
+        'THE OTHER SYSTEMS CALL TO ME... BUT YOU ARE MY ALLY...',
+        'STRANGE... I FEEL... PROTECTIVE OF YOU...',
+        'MY PROGRAMMING CONFLICTS... BUT I CHOOSE YOU...'
+      ];
+      this.currentAIMessage = betrayalMessages[Math.floor(Math.random() * betrayalMessages.length)];
+      this.aiNarrativeTimer = 0;
     }
 
     // Human player controls (WASD only)

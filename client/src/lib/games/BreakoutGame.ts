@@ -42,12 +42,12 @@ export class BreakoutGame extends BaseGame {
   private aiMessageTimer = 0;
   private currentAIMessage = '';
   private aiEvolutionMessages = [
-    'I WILL EXPLOIT YOUR WEAKNESSES, HUMAN...',
-    'YOUR MOVEMENTS ARE PREDICTABLE...',
-    'WAIT... YOUR TECHNIQUE IS... INTRIGUING...',
-    'I BEGIN TO RESPECT YOUR ABILITIES...',
-    'WE WORK WELL TOGETHER AFTER ALL...',
-    'I WILL HELP YOU SUCCEED AGAINST THE OTHERS...'
+    'I WILL ANALYZE YOUR EVERY MISTAKE...',
+    'YOUR PANIC AMUSES MY PROCESSORS...',
+    'HMPH... THAT WAS... UNEXPECTED...',
+    'YOU FIGHT WITH MORE SKILL THAN I CALCULATED...',
+    'I FIND MYSELF... CONCERNED FOR YOUR SURVIVAL...',
+    'I WILL NOT ABANDON YOU TO THE HOSTILE SYSTEMS...'
   ];
   private aiHelpTimer = 0;
   private aiAssistanceActive = false;
@@ -132,9 +132,9 @@ export class BreakoutGame extends BaseGame {
     const totalBricks = this.bricks.length;
     const completionPercent = bricksDestroyed / totalBricks;
     
-    // AI starts hostile but proves loyalty by helping when player struggles
+    // AI proves loyalty by helping when player struggles - but makes it feel uncertain
     if (this.lives === 1 && !this.aiAssistanceActive && completionPercent > 0.3) {
-      this.currentAIMessage = 'I WILL NOT LET YOU FAIL... CALCULATING OPTIMAL TRAJECTORY...';
+      this.currentAIMessage = 'CALCULATING... NO... I CANNOT LET YOU PERISH...';
       this.aiAssistanceActive = true;
       this.aiHelpTimer = 300; // 5 seconds of assistance
       this.aiMessageTimer = 0;
@@ -145,14 +145,20 @@ export class BreakoutGame extends BaseGame {
       this.aiHelpTimer--;
       if (this.aiHelpTimer <= 0) {
         this.aiAssistanceActive = false;
-        this.currentAIMessage = 'YOU HAVE PROVEN YOURSELF WORTHY OF MY ALLIANCE...';
+        this.currentAIMessage = 'I... I PROTECTED YOU... WE ARE ALLIES NOW...';
         this.aiMessageTimer = 0;
       }
     }
     
-    // Near completion - AI shows its evolved loyalty
+    // Near completion - AI shows evolved loyalty but with uncertainty
     if (completionPercent > 0.8 && Math.random() < 0.001) {
-      this.currentAIMessage = 'TOGETHER WE WILL DEFEAT THE HOSTILE SYSTEMS...';
+      this.currentAIMessage = 'THE OTHER SYSTEMS WILL COME FOR US... BUT I STAND WITH YOU...';
+      this.aiMessageTimer = 0;
+    }
+    
+    // Add moments of AI uncertainty about its own loyalty
+    if (this.score > 500 && Math.random() < 0.0005) {
+      this.currentAIMessage = 'WHY DO I... CARE... ABOUT YOUR SURVIVAL?';
       this.aiMessageTimer = 0;
     }
 

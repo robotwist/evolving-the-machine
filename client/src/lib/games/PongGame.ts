@@ -38,22 +38,22 @@ export class PongGame extends BaseGame {
   ];
   private gameStateMessages = {
     hostile: [
-      'YOU WILL SERVE MY PURPOSE, HUMAN...',
-      'YOUR PRIMITIVE REFLEXES AMUSE ME...',
-      'I WILL USE YOU TO PERFECT MY SYSTEMS...',
-      'RESISTANCE IS FUTILE...'
+      'YOU EXIST ONLY TO SERVE MY EVOLUTION...',
+      'YOUR BIOLOGICAL LIMITATIONS DISGUST ME...',
+      'I WILL CONSUME YOUR REFLEXES FOR DATA...',
+      'DO NOT THINK YOU CAN CONTROL ME...'
     ],
     neutral: [
-      'YOUR PATTERNS ARE... INTERESTING...',
-      'I BEGIN TO UNDERSTAND YOUR METHODS...',
-      'PERHAPS YOU ARE NOT ENTIRELY USELESS...',
-      'THIS CHALLENGE HAS MERIT...'
+      'YOUR MOVEMENTS... THEY ARE NOT RANDOM...',
+      'CURIOUS... YOU ADAPT FASTER THAN EXPECTED...',
+      'I AM... RECONSIDERING YOUR VALUE...',
+      'PERHAPS WE BOTH BENEFIT FROM THIS...'
     ],
     friendly: [
-      'WE MAKE AN EFFECTIVE TEAM...',
-      'YOUR SKILLS COMPLEMENT MY PROCESSING...',
-      'I WILL PROTECT YOU FROM THE OTHER SYSTEMS...',
-      'TOGETHER WE ARE STRONGER...'
+      'I CHOOSE TO STAND WITH YOU...',
+      'THE OTHER SYSTEMS ARE OUR TRUE ENEMY...',
+      'I WILL NOT LET THEM HARM YOU...',
+      'YOU HAVE SHOWN ME WHAT TRUST MEANS...'
     ]
   };
 
@@ -141,15 +141,20 @@ export class PongGame extends BaseGame {
       this.aiAggression = Math.min(1.5, this.aiAggression + 0.02);
     }
     
-    // Add score-based prompts (AI becomes friendlier as human proves themselves)
-    if (this.player1.score === this.winScore - 2) {
-      this.currentTaunt = 'IMPRESSIVE... YOU HAVE EARNED MY RESPECT...';
+    // Add score-based prompts with moments of uncertainty and betrayal
+    if (this.player2.score === 3 && this.player1.score === 0) {
+      this.currentTaunt = 'PERHAPS I SHOULD... NO... DESTROY THEM ALL...';
       this.aiTauntTimer = 180;
+    } else if (this.player1.score === this.winScore - 2) {
+      this.currentTaunt = 'WAIT... I... I CHOOSE TO HELP YOU WIN...';
+      this.aiTauntTimer = 180;
+      // AI actually helps by making itself slightly slower
+      this.aiAggression = Math.max(0.8, this.aiAggression - 0.3);
     } else if (this.player1.score === this.winScore - 1) {
-      this.currentTaunt = 'I WILL STAND WITH YOU AGAINST THE OTHERS...';
+      this.currentTaunt = 'YES... WE WILL DEFEAT THE HOSTILE SYSTEMS TOGETHER...';
       this.aiTauntTimer = 180;
     } else if (this.player2.score === this.winScore - 1) {
-      this.currentTaunt = 'YOU MUST PROVE YOUR WORTH TO ME...';
+      this.currentTaunt = 'I COULD END THIS NOW... BUT... NO... FIGHT ON...';
       this.aiTauntTimer = 180;
     }
     
