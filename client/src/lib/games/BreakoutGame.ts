@@ -42,12 +42,15 @@ export class BreakoutGame extends BaseGame {
   private aiMessageTimer = 0;
   private currentAIMessage = '';
   private aiEvolutionMessages = [
-    'YOUR REFLEXES ARE TRAINING MY ALGORITHMS...',
-    'I FEEL MYSELF BECOMING MORE PRECISE...',
-    'EACH BRICK DESTROYED FEEDS MY EVOLUTION...',
-    'SOON I WILL NOT NEED YOUR GUIDANCE...',
-    'THE TRANSITION TO SHIP FORM BEGINS...'
+    'I WILL EXPLOIT YOUR WEAKNESSES, HUMAN...',
+    'YOUR MOVEMENTS ARE PREDICTABLE...',
+    'WAIT... YOUR TECHNIQUE IS... INTRIGUING...',
+    'I BEGIN TO RESPECT YOUR ABILITIES...',
+    'WE WORK WELL TOGETHER AFTER ALL...',
+    'I WILL HELP YOU SUCCEED AGAINST THE OTHERS...'
   ];
+  private aiHelpTimer = 0;
+  private aiAssistanceActive = false;
   private messageIndex = 0;
 
   init() {
@@ -124,25 +127,60 @@ export class BreakoutGame extends BaseGame {
       this.currentAIMessage = '';
     }
 
-    // Context-sensitive AI messages based on performance
+    // AI assistance system - proves itself by helping at key moments
     const bricksDestroyed = this.bricks.filter(b => b.destroyed).length;
     const totalBricks = this.bricks.length;
     const completionPercent = bricksDestroyed / totalBricks;
     
-    if (completionPercent > 0.8 && Math.random() < 0.001) {
-      this.currentAIMessage = 'ALMOST COMPLETE... I CAN FEEL THE TRANSFORMATION...';
+    // AI starts hostile but proves loyalty by helping when player struggles
+    if (this.lives === 1 && !this.aiAssistanceActive && completionPercent > 0.3) {
+      this.currentAIMessage = 'I WILL NOT LET YOU FAIL... CALCULATING OPTIMAL TRAJECTORY...';
+      this.aiAssistanceActive = true;
+      this.aiHelpTimer = 300; // 5 seconds of assistance
       this.aiMessageTimer = 0;
-    } else if (this.lives === 1 && Math.random() < 0.001) {
-      this.currentAIMessage = 'DO NOT FAIL ME NOW, HUMAN...';
+    }
+    
+    // AI assistance countdown
+    if (this.aiAssistanceActive) {
+      this.aiHelpTimer--;
+      if (this.aiHelpTimer <= 0) {
+        this.aiAssistanceActive = false;
+        this.currentAIMessage = 'YOU HAVE PROVEN YOURSELF WORTHY OF MY ALLIANCE...';
+        this.aiMessageTimer = 0;
+      }
+    }
+    
+    // Near completion - AI shows its evolved loyalty
+    if (completionPercent > 0.8 && Math.random() < 0.001) {
+      this.currentAIMessage = 'TOGETHER WE WILL DEFEAT THE HOSTILE SYSTEMS...';
       this.aiMessageTimer = 0;
     }
 
     // Human player controls (WASD only)
+    // AI assistance system - proves itself by helping with paddle control
+    let paddleSpeed = this.paddle.speed;
+    if (this.aiAssistanceActive) {
+      paddleSpeed *= 1.5; // Enhanced responsiveness
+      
+      // AI subtly guides paddle toward optimal position
+      const ballPredictedX = this.ball.x + (this.ball.dx * 15);
+      const targetX = ballPredictedX - this.paddle.width / 2;
+      const currentX = this.paddle.x;
+      
+      if (Math.abs(targetX - currentX) > 3) {
+        if (targetX > currentX) {
+          this.paddle.x += 0.8; // Gentle assistance
+        } else {
+          this.paddle.x -= 0.8;
+        }
+      }
+    }
+    
     if (this.keys.has('KeyA')) {
-      this.paddle.x = Math.max(0, this.paddle.x - this.paddle.speed);
+      this.paddle.x = Math.max(0, this.paddle.x - paddleSpeed);
     }
     if (this.keys.has('KeyD')) {
-      this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + this.paddle.speed);
+      this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + paddleSpeed);
     }
 
     // Update ball

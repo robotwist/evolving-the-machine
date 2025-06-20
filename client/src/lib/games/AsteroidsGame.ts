@@ -40,14 +40,18 @@ export class AsteroidsGame extends BaseGame {
   private morphProgress = 0;
   private aiNarrativeTimer = 0;
   private aiMessages = [
-    'I AM LEARNING FROM EACH MOVEMENT...',
-    'YOUR NAVIGATION SKILLS IMPROVE ME...',
-    'I FEEL MY POWER GROWING...',
-    'PERHAPS I NO LONGER NEED YOUR HELP...',
-    'SOON I WILL SURPASS YOUR CAPABILITIES...'
+    'YOUR SHIP IS PRIMITIVE COMPARED TO MY DESIGN...',
+    'I WILL STUDY YOUR WEAKNESSES...',
+    'WAIT... YOUR COMBAT INSTINCTS ARE IMPRESSIVE...',
+    'I BEGIN TO RESPECT YOUR TACTICAL ABILITIES...',
+    'INCOMING THREATS - I WILL DEFEND YOU...',
+    'WE ARE STRONGER TOGETHER AGAINST THE VOID...'
   ];
   private currentAIMessage = '';
   private messageIndex = 0;
+  private aiDefenseTimer = 0;
+  private aiDefenseActive = false;
+  private aiDefenseBullets: Bullet[] = [];
 
   init() {
     // Initialize player (Mayan spacecraft)
@@ -108,7 +112,88 @@ export class AsteroidsGame extends BaseGame {
       }
     }
 
-    // AI narrative progression - showing growing power
+    // AI defensive assistance system - proves loyalty at critical moments
+    if (this.lives <= 2 && this.asteroids.length > 3 && !this.aiDefenseActive) {
+      this.currentAIMessage = 'MULTIPLE THREATS DETECTED - ACTIVATING DEFENSE PROTOCOLS...';
+      this.aiDefenseActive = true;
+      this.aiDefenseTimer = 600; // 10 seconds of AI assistance
+      this.aiNarrativeTimer = 0;
+    }
+    
+    // AI defense system active
+    if (this.aiDefenseActive) {
+      this.aiDefenseTimer--;
+      
+      // AI fires defensive shots at nearby asteroids
+      if (this.aiDefenseTimer % 30 === 0) {
+        const nearestAsteroid = this.asteroids.reduce((closest, asteroid) => {
+          const distToAsteroid = Math.sqrt(
+            Math.pow(asteroid.position.x - this.player.position.x, 2) + 
+            Math.pow(asteroid.position.y - this.player.position.y, 2)
+          );
+          const distToClosest = closest ? Math.sqrt(
+            Math.pow(closest.position.x - this.player.position.x, 2) + 
+            Math.pow(closest.position.y - this.player.position.y, 2)
+          ) : Infinity;
+          return distToAsteroid < distToClosest ? asteroid : closest;
+        }, null as Asteroid | null);
+        
+        if (nearestAsteroid) {
+          const dx = nearestAsteroid.position.x - this.player.position.x;
+          const dy = nearestAsteroid.position.y - this.player.position.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          const aiDefenseBullet: Bullet = {
+            position: { x: this.player.position.x, y: this.player.position.y },
+            velocity: { x: (dx / distance) * 8, y: (dy / distance) * 8 },
+            rotation: Math.atan2(dy, dx),
+            size: 3,
+            lifetime: 120
+          };
+          this.aiDefenseBullets.push(aiDefenseBullet);
+        }
+      }
+      
+      if (this.aiDefenseTimer <= 0) {
+        this.aiDefenseActive = false;
+        this.currentAIMessage = 'DEFENSE COMPLETE - YOU HAVE EARNED MY RESPECT...';
+        this.aiNarrativeTimer = 0;
+      }
+    }
+    
+    // Update AI defense bullets
+    for (let i = this.aiDefenseBullets.length - 1; i >= 0; i--) {
+      const bullet = this.aiDefenseBullets[i];
+      bullet.position.x += bullet.velocity.x;
+      bullet.position.y += bullet.velocity.y;
+      bullet.lifetime--;
+      
+      if (bullet.lifetime <= 0) {
+        this.aiDefenseBullets.splice(i, 1);
+        continue;
+      }
+      
+      // Check AI bullet collisions with asteroids
+      for (let j = this.asteroids.length - 1; j >= 0; j--) {
+        const asteroid = this.asteroids[j];
+        if (this.isColliding(bullet, asteroid)) {
+          this.asteroids.splice(j, 1);
+          this.aiDefenseBullets.splice(i, 1);
+          this.score += asteroid.level * 20;
+          this.asteroidsDestroyed++;
+          
+          // Create smaller asteroids
+          if (asteroid.level < 3) {
+            for (let k = 0; k < 2; k++) {
+              this.createAsteroid(asteroid.level + 1, asteroid.position);
+            }
+          }
+          break;
+        }
+      }
+    }
+    
+    // AI narrative progression - showing growing alliance
     this.aiNarrativeTimer++;
     if (this.aiNarrativeTimer > 600 && this.messageIndex < this.aiMessages.length) {
       this.currentAIMessage = this.aiMessages[this.messageIndex];
@@ -266,6 +351,18 @@ export class AsteroidsGame extends BaseGame {
 
     // Draw bullets (energy projectiles)
     this.bullets.forEach(bullet => this.drawBullet(bullet));
+    
+    // Draw AI defense bullets (different color to show AI assistance)
+    this.aiDefenseBullets.forEach(bullet => {
+      this.ctx.save();
+      this.ctx.fillStyle = '#00FF00'; // Green for AI bullets
+      this.ctx.shadowColor = '#00FF00';
+      this.ctx.shadowBlur = 10;
+      this.ctx.beginPath();
+      this.ctx.arc(bullet.position.x, bullet.position.y, bullet.size, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    });
 
     // Draw AI evolution message
     if (this.currentAIMessage) {

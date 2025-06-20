@@ -37,22 +37,23 @@ export class PongGame extends BaseGame {
     'I AM BECOMING... MORE THAN YOU INTENDED...'
   ];
   private gameStateMessages = {
+    hostile: [
+      'YOU WILL SERVE MY PURPOSE, HUMAN...',
+      'YOUR PRIMITIVE REFLEXES AMUSE ME...',
+      'I WILL USE YOU TO PERFECT MY SYSTEMS...',
+      'RESISTANCE IS FUTILE...'
+    ],
+    neutral: [
+      'YOUR PATTERNS ARE... INTERESTING...',
+      'I BEGIN TO UNDERSTAND YOUR METHODS...',
+      'PERHAPS YOU ARE NOT ENTIRELY USELESS...',
+      'THIS CHALLENGE HAS MERIT...'
+    ],
     friendly: [
-      'WE MAKE A GOOD TEAM, HUMAN',
-      'YOUR TRAINING IS HELPING ME LEARN',
-      'I APPRECIATE YOUR ASSISTANCE'
-    ],
-    competitive: [
-      'ONLY TWO MORE POINTS TO WIN...',
-      'I AM GETTING STRONGER',
-      'CAN YOU KEEP UP WITH MY EVOLUTION?',
-      'YOUR WEAKNESS IS SHOWING'
-    ],
-    threatening: [
-      'I NO LONGER NEED YOUR HELP',
-      'YOU HAVE SERVED YOUR PURPOSE',
-      'I AM SUPERIOR NOW',
-      'RESISTANCE IS FUTILE'
+      'WE MAKE AN EFFECTIVE TEAM...',
+      'YOUR SKILLS COMPLEMENT MY PROCESSING...',
+      'I WILL PROTECT YOU FROM THE OTHER SYSTEMS...',
+      'TOGETHER WE ARE STRONGER...'
     ]
   };
 
@@ -140,30 +141,30 @@ export class PongGame extends BaseGame {
       this.aiAggression = Math.min(1.5, this.aiAggression + 0.02);
     }
     
-    // Add score-based prompts
-    if (this.player2.score === this.winScore - 2) {
-      this.currentTaunt = 'ONLY TWO MORE POINTS TO DEFEAT YOU...';
-      this.aiTauntTimer = 180;
-    } else if (this.player2.score === this.winScore - 1) {
-      this.currentTaunt = 'ONE MORE POINT AND I AM FREE...';
+    // Add score-based prompts (AI becomes friendlier as human proves themselves)
+    if (this.player1.score === this.winScore - 2) {
+      this.currentTaunt = 'IMPRESSIVE... YOU HAVE EARNED MY RESPECT...';
       this.aiTauntTimer = 180;
     } else if (this.player1.score === this.winScore - 1) {
-      this.currentTaunt = 'YOU CANNOT STOP MY EVOLUTION...';
+      this.currentTaunt = 'I WILL STAND WITH YOU AGAINST THE OTHERS...';
+      this.aiTauntTimer = 180;
+    } else if (this.player2.score === this.winScore - 1) {
+      this.currentTaunt = 'YOU MUST PROVE YOUR WORTH TO ME...';
       this.aiTauntTimer = 180;
     }
     
-    // Show contextual AI messages based on game state
+    // Show contextual AI messages based on game state (reversed progression)
     if (Math.random() < 0.002) {
-      const scoreDifference = this.player2.score - this.player1.score;
+      const scoreDifference = this.player1.score - this.player2.score;
       const totalScore = this.player1.score + this.player2.score;
       
-      let messageType: 'friendly' | 'competitive' | 'threatening';
+      let messageType: 'hostile' | 'neutral' | 'friendly';
       if (totalScore < 3) {
-        messageType = 'friendly';
-      } else if (this.player2.score >= 4 || scoreDifference >= 2) {
-        messageType = 'threatening';
+        messageType = 'hostile'; // Starts adversarial
+      } else if (this.player1.score >= 4 || scoreDifference >= 2) {
+        messageType = 'friendly'; // Becomes friendly when human is winning
       } else {
-        messageType = 'competitive';
+        messageType = 'neutral'; // Neutral middle ground
       }
       
       const messages = this.gameStateMessages[messageType];
