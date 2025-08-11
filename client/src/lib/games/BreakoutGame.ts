@@ -34,7 +34,7 @@ export class BreakoutGame extends BaseGame {
   private bricks: Brick[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
-  private lives = 3;
+  private lives = 5; // More lives to prevent frustrating resets
   private level = 1;
   private transitioning = false;
   private transitionProgress = 0;
@@ -73,9 +73,9 @@ export class BreakoutGame extends BaseGame {
   private resetBall() {
     this.ball = {
       x: this.width / 2,
-      y: this.height - 100,
-      dx: 3 * (Math.random() > 0.5 ? 1 : -1),
-      dy: -3,
+      y: this.height - 120, // Start further from bottom to give more reaction time
+      dx: 2.5 * (Math.random() > 0.5 ? 1 : -1), // Slightly slower for better control
+      dy: -2.5,
       radius: 8,
       speed: 3
     };
@@ -132,11 +132,11 @@ export class BreakoutGame extends BaseGame {
     const totalBricks = this.bricks.length;
     const completionPercent = bricksDestroyed / totalBricks;
     
-    // AI proves loyalty by helping when player struggles - but makes it feel uncertain
-    if (this.lives === 1 && !this.aiAssistanceActive && completionPercent > 0.3) {
-      this.currentAIMessage = 'CALCULATING... NO... I CANNOT LET YOU PERISH...';
+    // AI proves loyalty by helping when player struggles - activate earlier to prevent frustration
+    if (this.lives <= 2 && !this.aiAssistanceActive && completionPercent > 0.2) {
+      this.currentAIMessage = 'RECALCULATING... ENGAGING ASSISTANCE PROTOCOLS...';
       this.aiAssistanceActive = true;
-      this.aiHelpTimer = 300; // 5 seconds of assistance
+      this.aiHelpTimer = 420; // Longer assistance - 7 seconds
       this.aiMessageTimer = 0;
     }
     
@@ -215,13 +215,21 @@ export class BreakoutGame extends BaseGame {
     // Ball collision with bricks
     this.checkBrickCollisions();
 
-    // Ball falls below paddle
+    // Ball falls below paddle - only reset ball, don't trigger game over unless truly game over
     if (this.ball.y > this.height) {
       this.lives--;
-      if (this.lives <= 0) {
-        this.onGameOver?.();
-      } else {
-        this.resetBall();
+      this.resetBall(); // Always reset ball position
+      
+      // Only trigger game over if all lives are lost AND score is very low (true failure)
+      if (this.lives <= 0 && this.score < 50) {
+        // Give player a second chance with 1 life if they made some progress
+        if (this.score > 20) {
+          this.lives = 1;
+          this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
+          this.aiMessageTimer = 0;
+        } else {
+          this.onGameOver?.();
+        }
       }
     }
 
