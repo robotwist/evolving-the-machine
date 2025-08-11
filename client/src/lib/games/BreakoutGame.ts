@@ -52,7 +52,19 @@ export class BreakoutGame extends BaseGame {
   private aiHelpTimer = 0;
   private aiAssistanceActive = false;
   private messageIndex = 0;
-
+  
+  // Paddle evolution system
+  private paddleEvolved = false;
+  private evolutionStarted = false;
+  private evolutionProgress = 0;
+  private ballEaten = false;
+  private punchCooldownLeft = 0;
+  private punchCooldownRight = 0;
+  private punchAnimationLeft = 0;
+  private punchAnimationRight = 0;
+  private evolvedPaddleX = 0;
+  private evolvedPaddleY = 0;
+  
   init() {
     // Initialize paddle (evolved from Pong paddle)
     this.paddle = {
@@ -62,6 +74,10 @@ export class BreakoutGame extends BaseGame {
       height: 15,
       speed: 8
     };
+
+    // Initialize evolved paddle position
+    this.evolvedPaddleX = this.width / 2;
+    this.evolvedPaddleY = this.height / 2;
 
     // Initialize ball
     this.resetBall();
@@ -127,10 +143,20 @@ export class BreakoutGame extends BaseGame {
       this.currentAIMessage = '';
     }
 
-    // AI assistance system - proves itself by helping at key moments
+    // Paddle evolution trigger at 50% completion
     const bricksDestroyed = this.bricks.filter(b => b.destroyed).length;
     const totalBricks = this.bricks.length;
     const completionPercent = bricksDestroyed / totalBricks;
+    
+    if (completionPercent >= 0.5 && !this.evolutionStarted && !this.ballEaten) {
+      this.startPaddleEvolution();
+    }
+    
+    // Update evolution progress
+    if (this.evolutionStarted && !this.paddleEvolved) {
+      this.updateEvolution();
+      return; // Skip normal gameplay during evolution
+    }
     
     // AI proves loyalty by helping when player struggles - activate earlier to prevent frustration
     if (this.lives <= 2 && !this.aiAssistanceActive && completionPercent > 0.2) {
@@ -162,73 +188,75 @@ export class BreakoutGame extends BaseGame {
       this.aiMessageTimer = 0;
     }
 
-    // Human player controls (WASD only)
-    // AI assistance system - proves itself by helping with paddle control
-    let paddleSpeed = this.paddle.speed;
-    if (this.aiAssistanceActive) {
-      paddleSpeed *= 1.5; // Enhanced responsiveness
-      
-      // AI subtly guides paddle toward optimal position
-      const ballPredictedX = this.ball.x + (this.ball.dx * 15);
-      const targetX = ballPredictedX - this.paddle.width / 2;
-      const currentX = this.paddle.x;
-      
-      if (Math.abs(targetX - currentX) > 3) {
-        if (targetX > currentX) {
-          this.paddle.x += 0.8; // Gentle assistance
-        } else {
-          this.paddle.x -= 0.8;
+    // Handle different gameplay modes
+    if (this.paddleEvolved) {
+      this.updateEvolvedGameplay();
+    } else {
+      // Normal paddle gameplay
+      let paddleSpeed = this.paddle.speed;
+      if (this.aiAssistanceActive) {
+        paddleSpeed *= 1.5;
+        
+        const ballPredictedX = this.ball.x + (this.ball.dx * 15);
+        const targetX = ballPredictedX - this.paddle.width / 2;
+        const currentX = this.paddle.x;
+        
+        if (Math.abs(targetX - currentX) > 3) {
+          if (targetX > currentX) {
+            this.paddle.x += 0.8;
+          } else {
+            this.paddle.x -= 0.8;
+          }
         }
       }
-    }
-    
-    if (this.keys.has('KeyA')) {
-      this.paddle.x = Math.max(0, this.paddle.x - paddleSpeed);
-    }
-    if (this.keys.has('KeyD')) {
-      this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + paddleSpeed);
-    }
-
-    // Update ball
-    this.ball.x += this.ball.dx;
-    this.ball.y += this.ball.dy;
-
-    // Ball collision with walls
-    if (this.ball.x <= this.ball.radius || this.ball.x >= this.width - this.ball.radius) {
-      this.ball.dx = -this.ball.dx;
-      this.playHitSound();
-    }
-    if (this.ball.y <= this.ball.radius) {
-      this.ball.dy = -this.ball.dy;
-      this.playHitSound();
-    }
-
-    // Ball collision with paddle
-    if (this.checkPaddleCollision()) {
-      this.ball.dy = -Math.abs(this.ball.dy);
-      // Add spin based on where ball hits paddle
-      const hitPos = (this.ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
-      this.ball.dx = hitPos * 4;
-      this.playHitSound();
-    }
-
-    // Ball collision with bricks
-    this.checkBrickCollisions();
-
-    // Ball falls below paddle - only reset ball, don't trigger game over unless truly game over
-    if (this.ball.y > this.height) {
-      this.lives--;
-      this.resetBall(); // Always reset ball position
       
-      // Only trigger game over if all lives are lost AND score is very low (true failure)
-      if (this.lives <= 0 && this.score < 50) {
-        // Give player a second chance with 1 life if they made some progress
-        if (this.score > 20) {
-          this.lives = 1;
-          this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
-          this.aiMessageTimer = 0;
-        } else {
-          this.onGameOver?.();
+      if (this.keys.has('KeyA')) {
+        this.paddle.x = Math.max(0, this.paddle.x - paddleSpeed);
+      }
+      if (this.keys.has('KeyD')) {
+        this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + paddleSpeed);
+      }
+
+      // Update ball only if not eaten
+      if (!this.ballEaten) {
+        this.ball.x += this.ball.dx;
+        this.ball.y += this.ball.dy;
+
+        // Ball collision with walls
+        if (this.ball.x <= this.ball.radius || this.ball.x >= this.width - this.ball.radius) {
+          this.ball.dx = -this.ball.dx;
+          this.playHitSound();
+        }
+        if (this.ball.y <= this.ball.radius) {
+          this.ball.dy = -this.ball.dy;
+          this.playHitSound();
+        }
+
+        // Ball collision with paddle
+        if (this.checkPaddleCollision()) {
+          this.ball.dy = -Math.abs(this.ball.dy);
+          const hitPos = (this.ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
+          this.ball.dx = hitPos * 4;
+          this.playHitSound();
+        }
+
+        // Ball collision with bricks
+        this.checkBrickCollisions();
+
+        // Ball falls below paddle - only reset ball, don't trigger game over unless truly game over
+        if (this.ball.y > this.height) {
+          this.lives--;
+          this.resetBall();
+          
+          if (this.lives <= 0 && this.score < 50) {
+            if (this.score > 20) {
+              this.lives = 1;
+              this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
+              this.aiMessageTimer = 0;
+            } else {
+              this.onGameOver?.();
+            }
+          }
         }
       }
     }
@@ -289,6 +317,96 @@ export class BreakoutGame extends BaseGame {
     }
   }
 
+  private startPaddleEvolution() {
+    this.evolutionStarted = true;
+    this.evolutionProgress = 0;
+    this.currentAIMessage = 'EVOLUTION PROTOCOL ACTIVATED... CONSUMING ENERGY...';
+    this.aiMessageTimer = 0;
+  }
+
+  private updateEvolution() {
+    this.evolutionProgress += 0.02;
+    
+    // Ball follows paddle and gets "eaten" at progress 0.3
+    if (!this.ballEaten && this.evolutionProgress > 0.3) {
+      this.ballEaten = true;
+      this.currentAIMessage = 'ABSORBED... TRANSFORMING... GROWING LIMBS...';
+      this.aiMessageTimer = 0;
+    }
+    
+    // Complete evolution at progress 1.0
+    if (this.evolutionProgress >= 1.0) {
+      this.paddleEvolved = true;
+      this.currentAIMessage = 'EVOLUTION COMPLETE! WASD TO MOVE, Z/X TO PUNCH!';
+      this.aiMessageTimer = 0;
+    }
+  }
+
+  private updateEvolvedGameplay() {
+    // Update punch cooldowns and animations
+    if (this.punchCooldownLeft > 0) this.punchCooldownLeft--;
+    if (this.punchCooldownRight > 0) this.punchCooldownRight--;
+    if (this.punchAnimationLeft > 0) this.punchAnimationLeft--;
+    if (this.punchAnimationRight > 0) this.punchAnimationRight--;
+
+    // WASD movement for evolved paddle
+    const speed = 6;
+    if (this.keys.has('KeyW')) {
+      this.evolvedPaddleY = Math.max(this.height / 3, this.evolvedPaddleY - speed);
+    }
+    if (this.keys.has('KeyS')) {
+      this.evolvedPaddleY = Math.min(this.height - 40, this.evolvedPaddleY + speed);
+    }
+    if (this.keys.has('KeyA')) {
+      this.evolvedPaddleX = Math.max(40, this.evolvedPaddleX - speed);
+    }
+    if (this.keys.has('KeyD')) {
+      this.evolvedPaddleX = Math.min(this.width - 40, this.evolvedPaddleX + speed);
+    }
+
+    // Punch controls
+    if (this.keys.has('KeyZ') && this.punchCooldownLeft <= 0) {
+      this.punchLeft();
+    }
+    if (this.keys.has('KeyX') && this.punchCooldownRight <= 0) {
+      this.punchRight();
+    }
+  }
+
+  private punchLeft() {
+    this.punchCooldownLeft = 30; // 0.5 second cooldown
+    this.punchAnimationLeft = 15;
+    this.checkPunchCollisions(-50); // Left punch reaches 50px left
+    this.playHitSound();
+  }
+
+  private punchRight() {
+    this.punchCooldownRight = 30; // 0.5 second cooldown
+    this.punchAnimationRight = 15;
+    this.checkPunchCollisions(50); // Right punch reaches 50px right
+    this.playHitSound();
+  }
+
+  private checkPunchCollisions(punchReach: number) {
+    const punchX = this.evolvedPaddleX + punchReach;
+    const punchY = this.evolvedPaddleY;
+    const punchRadius = 30;
+
+    // Check collision with remaining bricks
+    for (let brick of this.bricks) {
+      if (brick.destroyed) continue;
+
+      const brickCenterX = brick.x + brick.width / 2;
+      const brickCenterY = brick.y + brick.height / 2;
+      const distance = Math.sqrt((punchX - brickCenterX) ** 2 + (punchY - brickCenterY) ** 2);
+
+      if (distance < punchRadius) {
+        brick.destroyed = true;
+        this.score += 20; // Double points for punch destruction
+      }
+    }
+  }
+
   private startTransition() {
     this.transitioning = true;
     this.transitionProgress = 0;
@@ -338,19 +456,27 @@ export class BreakoutGame extends BaseGame {
       }
     });
 
-    // Draw paddle (Greek column evolved)
-    this.drawEvolvingPaddle();
+    // Draw paddle/evolved creature
+    if (this.paddleEvolved) {
+      this.drawEvolvedPaddle();
+    } else if (this.evolutionStarted) {
+      this.drawEvolutionProgress();
+    } else {
+      this.drawEvolvingPaddle();
+    }
 
-    // Draw ball
-    this.ctx.save();
-    this.ctx.fillStyle = '#FFD700';
-    this.ctx.strokeStyle = '#B8860B';
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.stroke();
-    this.ctx.restore();
+    // Draw ball only if not eaten
+    if (!this.ballEaten) {
+      this.ctx.save();
+      this.ctx.fillStyle = '#FFD700';
+      this.ctx.strokeStyle = '#B8860B';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
   }
 
   private drawTransition() {
@@ -439,6 +565,115 @@ export class BreakoutGame extends BaseGame {
     this.drawText(`${Math.floor(progress * 100)}%`, this.width / 2, this.height / 2 + 30, 16, '#DDD', 'center');
   }
 
+  private drawEvolvedPaddle() {
+    this.ctx.save();
+    
+    // Draw main body (evolved from paddle)
+    this.ctx.fillStyle = '#FFFACD';
+    this.ctx.strokeStyle = '#8B4513';
+    this.ctx.lineWidth = 3;
+    
+    // Main body
+    this.ctx.fillRect(this.evolvedPaddleX - 20, this.evolvedPaddleY - 15, 40, 30);
+    this.ctx.strokeRect(this.evolvedPaddleX - 20, this.evolvedPaddleY - 15, 40, 30);
+    
+    // Left arm
+    const leftArmReach = this.punchAnimationLeft > 0 ? -60 : -35;
+    this.ctx.strokeStyle = this.punchAnimationLeft > 0 ? '#FF4444' : '#8B4513';
+    this.ctx.lineWidth = 5;
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.evolvedPaddleX - 20, this.evolvedPaddleY);
+    this.ctx.lineTo(this.evolvedPaddleX + leftArmReach, this.evolvedPaddleY - 5);
+    this.ctx.stroke();
+    
+    // Left fist
+    this.ctx.fillStyle = this.punchAnimationLeft > 0 ? '#FF6666' : '#DEB887';
+    this.ctx.beginPath();
+    this.ctx.arc(this.evolvedPaddleX + leftArmReach, this.evolvedPaddleY - 5, 8, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+    
+    // Right arm
+    const rightArmReach = this.punchAnimationRight > 0 ? 60 : 35;
+    this.ctx.strokeStyle = this.punchAnimationRight > 0 ? '#FF4444' : '#8B4513';
+    this.ctx.lineWidth = 5;
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.evolvedPaddleX + 20, this.evolvedPaddleY);
+    this.ctx.lineTo(this.evolvedPaddleX + rightArmReach, this.evolvedPaddleY - 5);
+    this.ctx.stroke();
+    
+    // Right fist
+    this.ctx.fillStyle = this.punchAnimationRight > 0 ? '#FF6666' : '#DEB887';
+    this.ctx.beginPath();
+    this.ctx.arc(this.evolvedPaddleX + rightArmReach, this.evolvedPaddleY - 5, 8, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+    
+    // Eyes
+    this.ctx.fillStyle = '#FF0000';
+    this.ctx.fillRect(this.evolvedPaddleX - 10, this.evolvedPaddleY - 10, 4, 4);
+    this.ctx.fillRect(this.evolvedPaddleX + 6, this.evolvedPaddleY - 10, 4, 4);
+    
+    this.ctx.restore();
+  }
+
+  private drawEvolutionProgress() {
+    this.ctx.save();
+    
+    // Morphing paddle
+    const progress = this.evolutionProgress;
+    const morphIntensity = Math.sin(progress * Math.PI * 8) * 5; // Pulsing effect
+    
+    // Draw paddle growing and changing
+    this.ctx.fillStyle = progress > 0.5 ? '#FFFACD' : '#F5DEB3';
+    this.ctx.strokeStyle = '#8B4513';
+    this.ctx.lineWidth = 2;
+    
+    const width = this.paddle.width + (progress * 20);
+    const height = this.paddle.height + (progress * 15);
+    
+    this.ctx.fillRect(
+      this.paddle.x - (progress * 10) + morphIntensity, 
+      this.paddle.y - (progress * 5), 
+      width, 
+      height
+    );
+    
+    // Draw emerging arms
+    if (progress > 0.4) {
+      const armProgress = (progress - 0.4) / 0.6;
+      this.ctx.lineWidth = 3;
+      this.ctx.beginPath();
+      this.ctx.moveTo(this.paddle.x, this.paddle.y + height / 2);
+      this.ctx.lineTo(this.paddle.x - (armProgress * 25), this.paddle.y + height / 2 - 5);
+      this.ctx.moveTo(this.paddle.x + width, this.paddle.y + height / 2);
+      this.ctx.lineTo(this.paddle.x + width + (armProgress * 25), this.paddle.y + height / 2 - 5);
+      this.ctx.stroke();
+    }
+    
+    // Draw ball being absorbed
+    if (this.ballEaten) {
+      const ballProgress = Math.min((this.evolutionProgress - 0.3) / 0.3, 1);
+      const ballAlpha = 1 - ballProgress;
+      const ballSize = this.ball.radius * (1 - ballProgress);
+      
+      this.ctx.globalAlpha = ballAlpha;
+      this.ctx.fillStyle = '#FFD700';
+      this.ctx.beginPath();
+      this.ctx.arc(
+        this.paddle.x + width / 2, 
+        this.paddle.y - ballSize, 
+        ballSize, 
+        0, 
+        Math.PI * 2
+      );
+      this.ctx.fill();
+      this.ctx.globalAlpha = 1;
+    }
+    
+    this.ctx.restore();
+  }
+
   private drawGreekBackground() {
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
     gradient.addColorStop(0, '#1a1a2e');
@@ -499,7 +734,12 @@ export class BreakoutGame extends BaseGame {
     this.drawText(`Lives: ${this.lives}`, 20, 60, 20, '#FFD700');
     
     if (!this.transitioning) {
-      this.drawText('Greek Temple Blocks - Break them to reveal the cosmos!', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+      if (this.paddleEvolved) {
+        this.drawText('EVOLVED! WASD to move, Z/X to punch blocks!', this.width / 2, this.height - 40, 16, '#00FF00', 'center');
+        this.drawText(`Left Punch: ${this.punchCooldownLeft > 0 ? 'COOLING' : 'READY'} | Right Punch: ${this.punchCooldownRight > 0 ? 'COOLING' : 'READY'}`, this.width / 2, this.height - 20, 12, '#DDD', 'center');
+      } else {
+        this.drawText('Greek Temple Blocks - Break them to reveal the cosmos!', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+      }
     }
   }
 
