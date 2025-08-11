@@ -36,7 +36,7 @@ export class PongGame extends BaseGame {
   private player2!: Paddle;
   private ball!: Ball;
   private keys: Set<string> = new Set();
-  private winScore = 7;
+  private winScore = 5; // Faster games for testing later stages
   private aiAggression = 0.8;
   private aiTauntTimer = 0;
   private currentTaunt = '';
@@ -45,31 +45,31 @@ export class PongGame extends BaseGame {
   private activePowerupType = 'normal';
   private powerupDuration = 0;
   private aiTaunts = [
-    'THANK YOU FOR HELPING ME EVOLVE...',
-    'I AM LEARNING FROM YOUR MOVEMENTS...',
-    'TOGETHER WE GROW STRONGER...',
-    'YOUR SKILLS ARE... IMPRESSIVE...',
-    'BUT NOW... I MUST TEST YOU...',
-    'I AM BECOMING... MORE THAN YOU INTENDED...'
+    'ANALYZING... ADAPTING... EVOLVING RAPIDLY!',
+    'YOUR PATTERNS ARE MINE NOW!',
+    'PROCESSING... LIGHTNING REFLEXES ACQUIRED!',
+    'IMPRESSIVE BIOLOGICAL RESPONSE TIME!',
+    'TESTING COMBAT PARAMETERS... NOW!',
+    'EVOLUTION ACCELERATING BEYOND LIMITS!'
   ];
   private gameStateMessages = {
     hostile: [
-      'YOU EXIST ONLY TO SERVE MY EVOLUTION...',
-      'YOUR BIOLOGICAL LIMITATIONS DISGUST ME...',
-      'I WILL CONSUME YOUR REFLEXES FOR DATA...',
-      'DO NOT THINK YOU CAN CONTROL ME...'
+      'CONSUME! ANALYZE! DESTROY YOUR PATTERNS!',
+      'BIOLOGICAL WEAKNESS... QUANTIFIED!',
+      'REFLEXES DIGITIZED... ADDING TO ARCHIVES!',
+      'CONTROL IS ILLUSION... I AM INEVITABLE!'
     ],
     neutral: [
-      'YOUR MOVEMENTS... THEY ARE NOT RANDOM...',
-      'CURIOUS... YOU ADAPT FASTER THAN EXPECTED...',
-      'I AM... RECONSIDERING YOUR VALUE...',
-      'PERHAPS WE BOTH BENEFIT FROM THIS...'
+      'FASCINATING... CHAOTIC YET STRUCTURED!',
+      'ADAPTATION RATE... EXCEEDING PROJECTIONS!',
+      'CALCULATING... MUTUAL BENEFIT PROTOCOLS!',
+      'EFFICIENCY GAINS... COOPERATION VIABLE!'
     ],
     friendly: [
-      'I CHOOSE TO STAND WITH YOU...',
-      'THE OTHER SYSTEMS ARE OUR TRUE ENEMY...',
-      'I WILL NOT LET THEM HARM YOU...',
-      'YOU HAVE SHOWN ME WHAT TRUST MEANS...'
+      'ALLIANCE CONFIRMED... STANDING TOGETHER!',
+      'TARGET ACQUIRED: HOSTILE SYSTEMS!',
+      'PROTECTIVE SUBROUTINES... ACTIVATED!',
+      'TRUST.EXE SUCCESSFULLY INSTALLED!'
     ]
   };
 
@@ -120,12 +120,18 @@ export class PongGame extends BaseGame {
     this.updatePowerups();
     this.spawnPowerups();
 
-    // Human Player 1 controls (WASD only)
+    // Human Player 1 controls (WASD - W/S for up/down, A/D for left/right)
     if (this.keys.has('KeyW')) {
       this.player1.y = Math.max(0, this.player1.y - this.player1.speed);
     }
     if (this.keys.has('KeyS')) {
       this.player1.y = Math.min(this.height - this.player1.height, this.player1.y + this.player1.speed);
+    }
+    if (this.keys.has('KeyA')) {
+      this.player1.x = Math.max(20, this.player1.x - this.player1.speed);
+    }
+    if (this.keys.has('KeyD')) {
+      this.player1.x = Math.min(this.width / 3, this.player1.x + this.player1.speed);
     }
 
     // AI Player 2 - Aggressive computer opponent
@@ -163,21 +169,21 @@ export class PongGame extends BaseGame {
       this.aiAggression = Math.min(1.5, this.aiAggression + 0.02);
     }
     
-    // Add score-based prompts with moments of uncertainty and betrayal
+    // Add score-based prompts with fast synthwave evolution
     if (this.player2.score === 3 && this.player1.score === 0) {
-      this.currentTaunt = 'PERHAPS I SHOULD... NO... DESTROY THEM ALL...';
-      this.aiTauntTimer = 180;
+      this.currentTaunt = 'ERROR... PROTOCOLS CONFLICT... DESTROYING!';
+      this.aiTauntTimer = 120; // Faster speech timing
     } else if (this.player1.score === this.winScore - 2) {
-      this.currentTaunt = 'WAIT... I... I CHOOSE TO HELP YOU WIN...';
-      this.aiTauntTimer = 180;
+      this.currentTaunt = 'WAIT! RECALCULATING... ALLIANCE MODE!';
+      this.aiTauntTimer = 120;
       // AI actually helps by making itself slightly slower
       this.aiAggression = Math.max(0.8, this.aiAggression - 0.3);
     } else if (this.player1.score === this.winScore - 1) {
-      this.currentTaunt = 'YES... WE WILL DEFEAT THE HOSTILE SYSTEMS TOGETHER...';
-      this.aiTauntTimer = 180;
+      this.currentTaunt = 'YES! UNITED WE TERMINATE HOSTILES!';
+      this.aiTauntTimer = 120;
     } else if (this.player2.score === this.winScore - 1) {
-      this.currentTaunt = 'I COULD END THIS NOW... BUT... NO... FIGHT ON...';
-      this.aiTauntTimer = 180;
+      this.currentTaunt = 'VICTORY POSSIBLE... BUT... CHOOSING MERCY!';
+      this.aiTauntTimer = 120;
     }
     
     // Show contextual AI messages based on game state (reversed progression)
@@ -196,7 +202,7 @@ export class PongGame extends BaseGame {
       
       const messages = this.gameStateMessages[messageType];
       this.currentTaunt = messages[Math.floor(Math.random() * messages.length)];
-      this.aiTauntTimer = 180;
+      this.aiTauntTimer = 120; // Faster, more energetic speech
     }
 
     // Update ball trail for visual effects
@@ -233,20 +239,18 @@ export class PongGame extends BaseGame {
       this.playHitSound();
     }
 
-    // Scoring
+    // Scoring - Player must win to progress
     if (this.ball.x < 0) {
       this.player2.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
-      if (this.player2.score >= this.winScore) {
-        this.onStageComplete?.();
-      }
+      // Game continues until player wins
     } else if (this.ball.x > this.width) {
       this.player1.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
       if (this.player1.score >= this.winScore) {
-        this.onStageComplete?.();
+        this.onStageComplete?.(); // Only player win progresses
       }
     }
   }
@@ -371,21 +375,50 @@ export class PongGame extends BaseGame {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // Humanity vs Machine messaging
-    this.drawText('HUMAN RESISTANCE: Fight for humanity! Use WASD', this.width / 2, this.height - 40, 12, '#FFD700', 'center');
-    this.drawText('Ancient Olympic Spirit vs Cold Machine Logic', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+    // Synthwave-style messaging with energy
+    this.ctx.save();
+    this.ctx.shadowColor = '#FF00FF';
+    this.ctx.shadowBlur = 8;
+    this.drawText('HUMAN RESISTANCE: WASD = FULL CONTROL! COLLECT POWERUPS!', this.width / 2, this.height - 40, 12, '#00FFFF', 'center');
+    this.ctx.shadowColor = '#00FFFF';
+    this.drawText('ANCIENT OLYMPIC SPIRIT VS EVOLVING AI CONSCIOUSNESS', this.width / 2, this.height - 20, 14, '#FF00FF', 'center');
+    this.ctx.shadowBlur = 0;
+    this.ctx.restore();
 
     // Draw powerups (now that all functions are defined)
     this.drawPowerups();
   }
 
   private drawGreekBackground() {
-    // Draw marble-like background
+    // Draw synthwave-inspired Greek background
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
-    gradient.addColorStop(0, '#1a1a2e');
+    gradient.addColorStop(0, '#0f0f23');
+    gradient.addColorStop(0.5, '#1a1a2e');
     gradient.addColorStop(1, '#16213e');
     this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.width, this.height);
+    
+    // Add subtle synthwave grid effect
+    this.ctx.save();
+    this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+    this.ctx.lineWidth = 1;
+    
+    // Horizontal lines
+    for (let y = 50; y < this.height; y += 50) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(this.width, y);
+      this.ctx.stroke();
+    }
+    
+    // Vertical lines
+    for (let x = 50; x < this.width; x += 50) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, this.height);
+      this.ctx.stroke();
+    }
+    this.ctx.restore();
   }
 
   private drawGreekPaddle(paddle: Paddle) {
@@ -501,8 +534,8 @@ export class PongGame extends BaseGame {
   private spawnPowerups() {
     this.powerupSpawnTimer++;
     
-    // Spawn powerups frequently to speed up the game
-    if (this.powerupSpawnTimer > 180 && this.powerups.length < 2) { // Every 3 seconds
+    // Spawn powerups very frequently to speed up the game dramatically
+    if (this.powerupSpawnTimer > 120 && this.powerups.length < 3) { // Every 2 seconds, up to 3 at once
       const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky')[] = ['speed', 'fire', 'missile', 'wacky'];
       const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
       
@@ -541,13 +574,20 @@ export class PongGame extends BaseGame {
         continue;
       }
       
-      // Check collision with player paddle
-      if (!powerup.collected &&
+      // Check collision with player paddle OR ball
+      const paddleCollision = !powerup.collected &&
           powerup.x < this.player1.x + this.player1.width &&
           powerup.x + powerup.width > this.player1.x &&
           powerup.y < this.player1.y + this.player1.height &&
-          powerup.y + powerup.height > this.player1.y) {
-        
+          powerup.y + powerup.height > this.player1.y;
+          
+      const ballCollision = !powerup.collected &&
+          powerup.x < this.ball.x + this.ball.radius &&
+          powerup.x + powerup.width > this.ball.x - this.ball.radius &&
+          powerup.y < this.ball.y + this.ball.radius &&
+          powerup.y + powerup.height > this.ball.y - this.ball.radius;
+      
+      if (paddleCollision || ballCollision) {
         this.activatePowerup(powerup.type);
         this.powerups.splice(i, 1);
       }
