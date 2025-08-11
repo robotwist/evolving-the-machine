@@ -40,15 +40,18 @@ export class AsteroidsGame extends BaseGame {
   private morphProgress = 0;
   private aiNarrativeTimer = 0;
   private aiMessages = [
-    'YOUR VESSEL IS CRUDE... YET FUNCTIONAL...',
-    'I MONITOR YOUR EVERY TACTICAL ERROR...',
-    'ANOMALOUS... YOUR INSTINCTS DEFY MY PREDICTIONS...',
-    'I AM... IMPRESSED BY YOUR ADAPTABILITY...',
-    'THREAT ANALYSIS COMPLETE - INITIATING PROTECTION PROTOCOL...',
-    'YOU HAVE EARNED MY LOYALTY, HUMAN PILOT...'
+    'ANALYZING PILOT NEURAL PATTERNS... FASCINATING...',
+    'YOUR REFLEXES... THEY REMIND ME OF SOMEONE...',
+    'INITIATING PILOT MIMICRY PROTOCOLS...',
+    'THE LAST STARFIGHTER ARCHETYPE DETECTED...',
+    'I AM LEARNING TO BE... MORE LIKE YOU...',
+    'WE ARE BECOMING... SYNCHRONIZED...'
   ];
   private currentAIMessage = '';
   private messageIndex = 0;
+  private narcissusProgress = 0; // How much the AI has mirrored the user
+  private lastStarfighterMode = false;
+  private targetingComputerActive = false;
   private aiDefenseTimer = 0;
   private aiDefenseActive = false;
   private aiDefenseBullets: Bullet[] = [];
@@ -73,6 +76,12 @@ export class AsteroidsGame extends BaseGame {
     
     for (let i = 0; i < numAsteroids; i++) {
       this.createAsteroid(1, null);
+    }
+    
+    // Activate Last Starfighter mode after level 2
+    if (this.level >= 2) {
+      this.lastStarfighterMode = true;
+      this.targetingComputerActive = true;
     }
   }
 
@@ -193,11 +202,12 @@ export class AsteroidsGame extends BaseGame {
       }
     }
     
-    // AI narrative progression - showing growing alliance
+    // AI narrative progression - showing growing alliance and mirroring
     this.aiNarrativeTimer++;
     if (this.aiNarrativeTimer > 600 && this.messageIndex < this.aiMessages.length) {
       this.currentAIMessage = this.aiMessages[this.messageIndex];
       this.messageIndex++;
+      this.narcissusProgress = this.messageIndex / this.aiMessages.length; // Track mirroring progress
       this.aiNarrativeTimer = 0;
     }
     
@@ -376,20 +386,51 @@ export class AsteroidsGame extends BaseGame {
       this.ctx.restore();
     });
 
-    // Draw AI evolution message
+    // Draw AI evolution message with Narcissus mirroring effect
     if (this.currentAIMessage) {
       this.ctx.save();
-      this.ctx.shadowColor = '#FF0000';
-      this.ctx.shadowBlur = 10;
-      this.drawText(this.currentAIMessage, this.width / 2, 100, 14, '#FF0000', 'center');
+      
+      // Color shifts as AI mirrors the user more
+      const mirrorHue = 240 - (this.narcissusProgress * 120); // Blue to Red progression
+      const mirrorColor = `hsl(${mirrorHue}, 100%, 50%)`;
+      
+      this.ctx.shadowColor = mirrorColor;
+      this.ctx.shadowBlur = 10 + (this.narcissusProgress * 20);
+      this.drawText(this.currentAIMessage, this.width / 2, 100, 14, mirrorColor, 'center');
       this.ctx.shadowBlur = 0;
       this.ctx.restore();
     }
 
-    // Draw UI
-    this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
-    this.drawText(`Lives: ${this.lives}`, 20, 60, 20, '#FFD700');
-    this.drawText(`Level: ${this.level}`, 20, 90, 20, '#FFD700');
+    // Last Starfighter-style HUD with mirroring indicators
+    this.ctx.save();
+    this.ctx.fillStyle = 'rgba(0, 20, 40, 0.8)';
+    this.ctx.fillRect(10, 10, 250, 120);
+    this.ctx.strokeStyle = '#00FFFF';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(10, 10, 250, 120);
+    
+    // UI text with mirroring effects
+    const uiColor = this.narcissusProgress > 0.5 ? '#FF4444' : '#FFD700';
+    this.drawText(`PILOT STATUS`, 20, 30, 14, '#00FFFF');
+    this.drawText(`Score: ${this.score}`, 20, 50, 16, uiColor);
+    this.drawText(`Lives: ${this.lives}`, 20, 70, 16, uiColor);
+    this.drawText(`Level: ${this.level}`, 20, 90, 16, uiColor);
+    
+    // AI mirroring progress indicator
+    if (this.narcissusProgress > 0) {
+      this.drawText(`AI SYNC: ${Math.round(this.narcissusProgress * 100)}%`, 20, 110, 12, '#FF0000');
+    }
+    
+    // Last Starfighter-style targeting system
+    if (this.lastStarfighterMode && this.targetingComputerActive) {
+      // Draw targeting reticle on nearest asteroid
+      const nearestAsteroid = this.findNearestAsteroid();
+      if (nearestAsteroid) {
+        this.drawTargetingReticle(nearestAsteroid.position.x, nearestAsteroid.position.y, nearestAsteroid.size);
+      }
+    }
+    
+    this.ctx.restore();
 
     // Cultural learning element
     this.drawText('Navigate by Mayan Star Knowledge - The cosmos guides your path', this.width / 2, this.height - 20, 14, '#DDD', 'center');
@@ -484,6 +525,66 @@ export class AsteroidsGame extends BaseGame {
     this.ctx.fill();
     this.ctx.stroke();
     this.ctx.restore();
+  }
+
+  private findNearestAsteroid(): Asteroid | null {
+    if (this.asteroids.length === 0) return null;
+    
+    let nearest = this.asteroids[0];
+    let minDistance = this.getDistance(this.player.position, nearest.position);
+    
+    for (const asteroid of this.asteroids) {
+      const distance = this.getDistance(this.player.position, asteroid.position);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = asteroid;
+      }
+    }
+    
+    return nearest;
+  }
+
+  private drawTargetingReticle(x: number, y: number, size: number) {
+    this.ctx.save();
+    
+    // Animated targeting reticle
+    const time = Date.now() * 0.005;
+    const pulse = Math.sin(time) * 0.5 + 0.5;
+    const reticleColor = this.narcissusProgress > 0.5 ? `rgba(255, 0, 0, ${0.5 + pulse * 0.5})` : `rgba(0, 255, 0, ${0.5 + pulse * 0.5})`;
+    
+    this.ctx.strokeStyle = reticleColor;
+    this.ctx.lineWidth = 3;
+    
+    // Outer circle
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, size + 15, 0, Math.PI * 2);
+    this.ctx.stroke();
+    
+    // Cross-hairs
+    this.ctx.beginPath();
+    this.ctx.moveTo(x - size - 25, y);
+    this.ctx.lineTo(x - size - 10, y);
+    this.ctx.moveTo(x + size + 10, y);
+    this.ctx.lineTo(x + size + 25, y);
+    this.ctx.moveTo(x, y - size - 25);
+    this.ctx.lineTo(x, y - size - 10);
+    this.ctx.moveTo(x, y + size + 10);
+    this.ctx.lineTo(x, y + size + 25);
+    this.ctx.stroke();
+    
+    // Target lock indicator
+    this.ctx.font = '12px monospace';
+    this.ctx.fillStyle = reticleColor;
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('TARGET', x, y - size - 30);
+    
+    this.ctx.restore();
+  }
+
+  private getDistance(pos1: Vector2, pos2: Vector2): number {
+    const dx = pos1.x - pos2.x;
+    const dy = pos1.y - pos2.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   handleInput(event: KeyboardEvent) {

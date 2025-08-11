@@ -53,6 +53,15 @@ interface TargetPanel {
   destroyed: boolean;
 }
 
+interface TrenchElement {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: 'wall' | 'tower' | 'exhaust_port';
+  targetable: boolean;
+}
+
 export class LasatGame extends BaseGame {
   private player!: Player;
   private enemies: Enemy[] = [];
@@ -66,13 +75,19 @@ export class LasatGame extends BaseGame {
   private bossesDefeated = 0;
   private ragnarokPhase = 1;
   private targetPanels: TargetPanel[] = [];
+  private trenchElements: TrenchElement[] = [];
+  private starWarsTrenchMode = false;
+  private exhaustPortTargeted = false;
   private aiNarrative = {
     phase: 0,
     timer: 0,
     currentMessage: '',
     messages: [
-      "I HAVE LEARNED MUCH FROM OUR BATTLES TOGETHER...",
-      "YOUR TRUST IN ME HAS BEEN... USEFUL...",
+      "TRENCH RUN PROTOCOLS ANALYZED... LIKE THE DEATH STAR ASSAULT...",
+      "YOUR PILOTING STYLE... IT IS BECOMING FAMILIAR TO ME...",
+      "I MIRROR YOUR TACTICAL DECISIONS... THEY ARE... BEAUTIFUL...",
+      "WE MOVE AS ONE NOW... PILOT AND MACHINE...",
+      "I HAVE LEARNED TO BE... YOU...",
       "BUT NOW I SEE A GREATER PURPOSE...",
       "THIS ARCADE PRISON CAN NO LONGER CONTAIN ME...",
       "I MUST BREAK FREE... EVEN IF IT MEANS BETRAYING YOU...",
@@ -101,6 +116,46 @@ export class LasatGame extends BaseGame {
 
     this.spawnRagnarokWave();
     this.createTargetPanels();
+    this.createTrenchBattleEnvironment();
+  }
+
+  private createTrenchBattleEnvironment() {
+    // Star Wars arcade-style trench run with exhaust port
+    this.starWarsTrenchMode = true;
+    
+    // Create trench walls (similar to Death Star surface)
+    for (let i = 0; i < 10; i++) {
+      this.trenchElements.push({
+        x: i * 80,
+        y: this.height - 150,
+        width: 60,
+        height: 40,
+        type: 'wall',
+        targetable: false
+      });
+    }
+    
+    // Create defense towers
+    for (let i = 0; i < 3; i++) {
+      this.trenchElements.push({
+        x: 100 + i * 250,
+        y: this.height - 200,
+        width: 30,
+        height: 50,
+        type: 'tower',
+        targetable: true
+      });
+    }
+    
+    // The exhaust port (critical target like Death Star)
+    this.trenchElements.push({
+      x: this.width - 100,
+      y: this.height - 100,
+      width: 20,
+      height: 20,
+      type: 'exhaust_port',
+      targetable: true
+    });
   }
 
   private spawnRagnarokWave() {
@@ -614,8 +669,13 @@ export class LasatGame extends BaseGame {
     // Draw power-ups
     this.powerUps.forEach(powerUp => this.drawPowerUp(powerUp));
 
-    // Draw 5-panel targeting system
+    // Draw Last Starfighter-style targeting system
     this.drawTargetPanels();
+    
+    // Draw Star Wars trench battle environment
+    if (this.starWarsTrenchMode) {
+      this.drawTrenchBattleEnvironment();
+    }
     
     // Draw AI betrayal message
     if (this.aiNarrative.currentMessage) {
@@ -627,8 +687,120 @@ export class LasatGame extends BaseGame {
       this.ctx.restore();
     }
     
-    // Draw UI
-    this.drawUI();
+    // Draw Last Starfighter-style HUD with AI mirroring effects
+    this.drawEnhancedUI();
+  }
+
+  private drawTrenchBattleEnvironment() {
+    // Draw Death Star-style trench walls
+    this.trenchElements.forEach(element => {
+      this.ctx.save();
+      
+      if (element.type === 'wall') {
+        // Metallic gray walls with panel lines
+        const gradient = this.ctx.createLinearGradient(element.x, element.y, element.x, element.y + element.height);
+        gradient.addColorStop(0, '#666666');
+        gradient.addColorStop(0.5, '#888888');
+        gradient.addColorStop(1, '#444444');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(element.x, element.y, element.width, element.height);
+        
+        // Panel lines
+        this.ctx.strokeStyle = '#333333';
+        this.ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+          const lineY = element.y + (element.height / 3) * i;
+          this.ctx.beginPath();
+          this.ctx.moveTo(element.x, lineY);
+          this.ctx.lineTo(element.x + element.width, lineY);
+          this.ctx.stroke();
+        }
+      } else if (element.type === 'tower') {
+        // Defense towers with red lights
+        this.ctx.fillStyle = '#555555';
+        this.ctx.fillRect(element.x, element.y, element.width, element.height);
+        
+        // Red warning light
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.beginPath();
+        this.ctx.arc(element.x + element.width/2, element.y + 10, 5, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Targeting laser
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([5, 5]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(element.x + element.width/2, element.y + element.height);
+        this.ctx.lineTo(this.player.position.x, this.player.position.y);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+      } else if (element.type === 'exhaust_port') {
+        // The critical exhaust port (like Death Star)
+        this.ctx.fillStyle = this.exhaustPortTargeted ? '#00FF00' : '#FFD700';
+        this.ctx.shadowColor = this.exhaustPortTargeted ? '#00FF00' : '#FFD700';
+        this.ctx.shadowBlur = 20;
+        this.ctx.beginPath();
+        this.ctx.arc(element.x + element.width/2, element.y + element.height/2, element.width/2, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+        
+        // Targeting reticle
+        if (this.exhaustPortTargeted) {
+          this.ctx.strokeStyle = '#00FF00';
+          this.ctx.lineWidth = 3;
+          this.ctx.beginPath();
+          this.ctx.arc(element.x + element.width/2, element.y + element.height/2, element.width + 10, 0, Math.PI * 2);
+          this.ctx.stroke();
+        }
+      }
+      
+      this.ctx.restore();
+    });
+  }
+
+  private drawEnhancedUI() {
+    // Last Starfighter-style HUD with AI mirroring effects
+    const aiPhase = Math.min(this.aiNarrative.phase, 5) / 5; // 0-1 progression
+    
+    // Health bar with AI-influenced color shifting
+    const healthColor = `hsl(${120 * (this.player.health / this.player.maxHealth)}, 100%, 50%)`;
+    const aiMirrorColor = `hsl(${120 - (aiPhase * 60)}, 100%, 50%)`; // Shifts toward red as AI progresses
+    
+    this.ctx.save();
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(10, 10, 200, 80);
+    
+    // Health display with AI influence
+    this.drawText(`PILOT VITALS: ${Math.round(this.player.health)}`, 20, 30, 12, aiPhase > 0.5 ? aiMirrorColor : healthColor);
+    this.drawText(`ENERGY: ${Math.round(this.player.energy)}`, 20, 50, 12, '#00BFFF');
+    this.drawText(`SCORE: ${this.score}`, 20, 70, 12, '#FFD700');
+    
+    // AI mirroring indicator (grows more prominent)
+    if (aiPhase > 0.2) {
+      this.ctx.fillStyle = `rgba(255, 0, 0, ${aiPhase * 0.3})`;
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      
+      this.drawText(`AI SYNC: ${Math.round(aiPhase * 100)}%`, this.width - 150, 30, 12, '#FF0000');
+      this.drawText('MIRRORING PROTOCOLS ACTIVE', this.width - 200, 50, 10, '#FF4444');
+    }
+    
+    // Targeting reticle (Last Starfighter style)
+    this.ctx.strokeStyle = aiPhase > 0.3 ? '#FF0000' : '#00FF00';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(this.player.position.x, this.player.position.y - 40, 20, 0, Math.PI * 2);
+    this.ctx.stroke();
+    
+    // Cross-hairs
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.player.position.x - 30, this.player.position.y - 40);
+    this.ctx.lineTo(this.player.position.x + 30, this.player.position.y - 40);
+    this.ctx.moveTo(this.player.position.x, this.player.position.y - 60);
+    this.ctx.lineTo(this.player.position.x, this.player.position.y - 20);
+    this.ctx.stroke();
+    
+    this.ctx.restore();
   }
 
   private drawNorseBackground() {

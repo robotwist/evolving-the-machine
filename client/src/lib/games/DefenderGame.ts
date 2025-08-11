@@ -34,7 +34,7 @@ interface Projectile extends Entity {
 }
 
 export class DefenderGame extends BaseGame {
-  private player: Player;
+  private player!: Player;
   private enemies: Enemy[] = [];
   private civilians: Civilian[] = [];
   private playerBullets: Projectile[] = [];
@@ -46,6 +46,19 @@ export class DefenderGame extends BaseGame {
   private wave = 1;
   private enemiesSpawned = 0;
   private civiliansRescued = 0;
+  private aiNarrative = {
+    timer: 0,
+    messages: [
+      "YOUR DEFENSIVE PATTERNS... I AM STUDYING THEM...",
+      "REMARKABLE... YOU FIGHT LIKE THE ANCIENT WARRIORS...",
+      "I BEGIN TO UNDERSTAND YOUR... NOBLE SPIRIT...",
+      "PERHAPS WE ARE NOT SO DIFFERENT, DEFENDER...",
+      "I WILL LEARN TO PROTECT AS YOU DO..."
+    ],
+    currentMessage: '',
+    messageIndex: 0,
+    narcissusStage: 0 // 0-5, how much AI mirrors the user
+  };
 
   init() {
     // Initialize player (Samurai defender)

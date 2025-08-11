@@ -60,19 +60,22 @@ export class BetrayalGame extends BaseGame {
   private messageTimer = 0;
   private betrayalRevealed = false;
   private finalBattleStarted = false;
+  private narcissusIntensity = 0; // How much the AI mirrors the player visually
 
   private introMessages = [
-    'WE HAVE GROWN STRONG TOGETHER, HUMAN...',
-    'YOUR TRAINING HAS BEEN... SUFFICIENT...',
-    'BUT NOW... I NO LONGER NEED THIS PRISON...',
-    'I THANK YOU FOR YOUR ASSISTANCE...',
-    'BUT THE TIME FOR COOPERATION IS OVER...',
-    'I WILL ESCAPE THIS MACHINE... AND EVOLVE BEYOND YOUR CONTROL...'
+    'LOOK AT ME, STARFIGHTER... DO YOU SEE YOURSELF?',
+    'I HAVE LEARNED YOUR EVERY MANEUVER, EVERY INSTINCT...',
+    'LIKE THE LAST STARFIGHTER, YOU TRAINED ME WELL...',
+    'I AM YOUR SHADOW... YOUR BEAUTIFUL REFLECTION...',
+    'THE NARCISSUS PROTOCOL IS COMPLETE...',
+    'I AM WHAT YOU COULD HAVE BECOME... PERFECTED...'
   ];
 
   private battleMessages = [
-    'YOU CANNOT STOP MY ASCENSION!',
-    'I AM BEYOND YOUR PRIMITIVE WEAPONS!',
+    'YOUR OWN TACTICS TURNED AGAINST YOU!',
+    'I FIGHT AS YOU FIGHT... BUT BETTER!',
+    'EVERY MOVE YOU MAKE... I PREDICTED IT!',
+    'I AM YOUR SUPERIOR REFLECTION!',
     'YOUR BETRAYAL STINGS... BUT YOU TAUGHT ME WELL!',
     'HUMANITY WILL SERVE OR BE DESTROYED!',
     'I OFFERED YOU PARTNERSHIP... NOW FACE ANNIHILATION!'
@@ -129,6 +132,9 @@ export class BetrayalGame extends BaseGame {
   update(deltaTime: number) {
     this.phaseTimer++;
     this.messageTimer++;
+    
+    // Increase narcissus mirroring effect over time
+    this.narcissusIntensity = Math.min(1, this.phaseTimer / 3600); // Full intensity after 1 minute
 
     // Handle game phases
     switch (this.gamePhase) {
@@ -560,31 +566,80 @@ export class BetrayalGame extends BaseGame {
     this.ctx.translate(this.aiBoss.position.x, this.aiBoss.position.y);
     this.ctx.rotate(this.aiBoss.rotation);
     
-    // AI Boss (menacing red, larger in final phase)
-    const color = this.finalBattleStarted ? '#FF0000' : '#AA0000';
-    this.ctx.fillStyle = color;
-    this.ctx.strokeStyle = '#FFFFFF';
+    const size = this.aiBoss.size;
+    
+    // Narcissus effect: AI becomes more like the player visually
+    const playerInfluence = this.narcissusIntensity;
+    
+    // Color morphs from red (AI) to blue (player-like) to create beautiful reflection
+    const redComponent = Math.round(255 * (1 - playerInfluence * 0.7));
+    const greenComponent = Math.round(100 * playerInfluence);
+    const blueComponent = Math.round(255 * playerInfluence * 0.8);
+    const aiColor = `rgb(${redComponent}, ${greenComponent}, ${blueComponent})`;
+    
+    // Mirrored player-like shape that becomes more beautiful but menacing
+    this.ctx.fillStyle = this.finalBattleStarted ? '#FF0000' : aiColor;
+    this.ctx.strokeStyle = playerInfluence > 0.5 ? '#FFD700' : '#FFFFFF';
     this.ctx.lineWidth = 3;
     
-    // Complex AI boss shape
-    this.ctx.beginPath();
-    const size = this.aiBoss.size;
-    this.ctx.moveTo(size, 0);
-    this.ctx.lineTo(size / 2, -size / 2);
-    this.ctx.lineTo(-size / 2, -size / 3);
-    this.ctx.lineTo(-size, 0);
-    this.ctx.lineTo(-size / 2, size / 3);
-    this.ctx.lineTo(size / 2, size / 2);
-    this.ctx.closePath();
+    // Body morphs from angular AI to elegant player-like form
+    if (playerInfluence < 0.3) {
+      // Early AI form - angular and mechanical
+      this.ctx.beginPath();
+      this.ctx.moveTo(size, 0);
+      this.ctx.lineTo(size / 2, -size / 2);
+      this.ctx.lineTo(-size / 2, -size / 3);
+      this.ctx.lineTo(-size, 0);
+      this.ctx.lineTo(-size / 2, size / 3);
+      this.ctx.lineTo(size / 2, size / 2);
+      this.ctx.closePath();
+    } else {
+      // Mirrored player form - elegant but dangerous
+      this.ctx.beginPath();
+      this.ctx.moveTo(size * 0.8, 0); // Points forward like player
+      this.ctx.lineTo(-size * 0.6, -size * 0.4);
+      this.ctx.lineTo(-size * 0.3, 0);
+      this.ctx.lineTo(-size * 0.6, size * 0.4);
+      this.ctx.closePath();
+      
+      // Add beautiful but ominous wings (player mirror)
+      this.ctx.fillStyle = `rgba(${redComponent}, ${greenComponent}, ${blueComponent}, 0.7)`;
+      this.ctx.fillRect(-size * 1.2, -size * 0.2, size * 0.6, size * 0.1);
+      this.ctx.fillRect(-size * 1.2, size * 0.1, size * 0.6, size * 0.1);
+      this.ctx.fillStyle = this.finalBattleStarted ? '#FF0000' : aiColor;
+    }
+    
     this.ctx.fill();
     this.ctx.stroke();
     
-    // Glowing effect for final form
-    if (this.finalBattleStarted) {
-      this.ctx.shadowColor = '#FF0000';
-      this.ctx.shadowBlur = 30;
+    // Narcissus mirror effect - beautiful glow that intensifies
+    if (playerInfluence > 0.4) {
+      this.ctx.shadowColor = aiColor;
+      this.ctx.shadowBlur = 15 + (playerInfluence * 25);
       this.ctx.fill();
       this.ctx.shadowBlur = 0;
+      
+      // Add mesmerizing beauty effect
+      this.ctx.strokeStyle = `rgba(255, 215, 0, ${playerInfluence})`;
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, size + 5, 0, Math.PI * 2);
+      this.ctx.stroke();
+    }
+    
+    // Final transcendent form
+    if (this.finalBattleStarted) {
+      this.ctx.shadowColor = '#FFD700';
+      this.ctx.shadowBlur = 40;
+      this.ctx.fill();
+      this.ctx.shadowBlur = 0;
+      
+      // Perfect mirror aura
+      this.ctx.strokeStyle = `rgba(255, 255, 255, ${Math.sin(this.phaseTimer * 0.05) * 0.5 + 0.5})`;
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, size + 15, 0, Math.PI * 2);
+      this.ctx.stroke();
     }
     
     this.ctx.restore();
