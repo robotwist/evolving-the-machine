@@ -17,6 +17,18 @@ interface Ball {
   dy: number;
   radius: number;
   speed: number;
+  type: 'normal' | 'speed' | 'fire' | 'missile' | 'wacky';
+  trail: Array<{x: number, y: number}>;
+}
+
+interface Powerup {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: 'speed' | 'fire' | 'missile' | 'wacky';
+  timer: number;
+  collected: boolean;
 }
 
 export class PongGame extends BaseGame {
@@ -28,6 +40,10 @@ export class PongGame extends BaseGame {
   private aiAggression = 0.8;
   private aiTauntTimer = 0;
   private currentTaunt = '';
+  private powerups: Powerup[] = [];
+  private powerupSpawnTimer = 0;
+  private activePowerupType = 'normal';
+  private powerupDuration = 0;
   private aiTaunts = [
     'THANK YOU FOR HELPING ME EVOLVE...',
     'I AM LEARNING FROM YOUR MOVEMENTS...',
@@ -88,7 +104,9 @@ export class PongGame extends BaseGame {
       dx: Math.random() > 0.5 ? 4 : -4,
       dy: (Math.random() - 0.5) * 4,
       radius: 8,
-      speed: 4
+      speed: 4,
+      type: 'normal',
+      trail: []
     };
   }
 
@@ -97,6 +115,10 @@ export class PongGame extends BaseGame {
     if (this.aiTauntTimer > 0) {
       this.aiTauntTimer--;
     }
+
+    // Update powerup system
+    this.updatePowerups();
+    this.spawnPowerups();
 
     // Human Player 1 controls (WASD only)
     if (this.keys.has('KeyW')) {
@@ -177,9 +199,27 @@ export class PongGame extends BaseGame {
       this.aiTauntTimer = 180;
     }
 
-    // Update ball
-    this.ball.x += this.ball.dx;
-    this.ball.y += this.ball.dy;
+    // Update ball trail for visual effects
+    this.ball.trail.push({x: this.ball.x, y: this.ball.y});
+    if (this.ball.trail.length > 10) {
+      this.ball.trail.shift();
+    }
+
+    // Apply powerup effects to ball movement
+    let speedMultiplier = 1;
+    if (this.ball.type === 'speed') speedMultiplier = 2.5;
+    else if (this.ball.type === 'fire') speedMultiplier = 1.8;
+    else if (this.ball.type === 'missile') speedMultiplier = 3;
+    
+    // Update ball position with powerup effects
+    this.ball.x += this.ball.dx * speedMultiplier;
+    this.ball.y += this.ball.dy * speedMultiplier;
+    
+    // Wacky ball has unpredictable movement
+    if (this.ball.type === 'wacky') {
+      this.ball.dx += (Math.random() - 0.5) * 0.5;
+      this.ball.dy += (Math.random() - 0.5) * 0.5;
+    }
 
     // Ball collision with top/bottom walls
     if (this.ball.y <= this.ball.radius || this.ball.y >= this.height - this.ball.radius) {
@@ -234,15 +274,65 @@ export class PongGame extends BaseGame {
     this.drawGreekPaddle(this.player1);
     this.drawGreekPaddle(this.player2);
 
-    // Draw ball as a discus
+    // Draw ball trail for powerups
+    if (this.ball.type !== 'normal') {
+      this.ctx.save();
+      for (let i = 0; i < this.ball.trail.length; i++) {
+        const alpha = i / this.ball.trail.length * 0.5;
+        const point = this.ball.trail[i];
+        this.ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+        this.ctx.beginPath();
+        this.ctx.arc(point.x, point.y, this.ball.radius * 0.5, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      this.ctx.restore();
+    }
+
+    // Draw ball with powerup effects
     this.ctx.save();
-    this.ctx.fillStyle = '#FFD700';
-    this.ctx.strokeStyle = '#B8860B';
+    
+    // Different colors and effects for different powerups
+    switch (this.ball.type) {
+      case 'speed':
+        this.ctx.fillStyle = '#00FFFF';
+        this.ctx.strokeStyle = '#0080FF';
+        this.ctx.shadowColor = '#00FFFF';
+        this.ctx.shadowBlur = 15;
+        break;
+      case 'fire':
+        this.ctx.fillStyle = '#FF4500';
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.shadowColor = '#FF4500';
+        this.ctx.shadowBlur = 20;
+        break;
+      case 'missile':
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.strokeStyle = '#800000';
+        this.ctx.shadowColor = '#FF0000';
+        this.ctx.shadowBlur = 25;
+        break;
+      case 'wacky':
+        const time = Date.now() * 0.01;
+        const r = Math.sin(time) * 127 + 128;
+        const g = Math.sin(time + 2) * 127 + 128;
+        const b = Math.sin(time + 4) * 127 + 128;
+        this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.shadowColor = this.ctx.fillStyle;
+        this.ctx.shadowBlur = 10;
+        break;
+      default:
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.strokeStyle = '#B8860B';
+        break;
+    }
+    
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
     this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
     this.ctx.fill();
     this.ctx.stroke();
+    this.ctx.shadowBlur = 0;
     this.ctx.restore();
 
     // Draw scores with humanity emphasis
@@ -284,6 +374,9 @@ export class PongGame extends BaseGame {
     // Humanity vs Machine messaging
     this.drawText('HUMAN RESISTANCE: Fight for humanity! Use WASD', this.width / 2, this.height - 40, 12, '#FFD700', 'center');
     this.drawText('Ancient Olympic Spirit vs Cold Machine Logic', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+
+    // Draw powerups (now that all functions are defined)
+    this.drawPowerups();
   }
 
   private drawGreekBackground() {
@@ -403,5 +496,156 @@ export class PongGame extends BaseGame {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
+  }
+
+  private spawnPowerups() {
+    this.powerupSpawnTimer++;
+    
+    // Spawn powerups frequently to speed up the game
+    if (this.powerupSpawnTimer > 180 && this.powerups.length < 2) { // Every 3 seconds
+      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky')[] = ['speed', 'fire', 'missile', 'wacky'];
+      const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+      
+      this.powerups.push({
+        x: Math.random() * (this.width - 60) + 30,
+        y: Math.random() * (this.height - 60) + 30,
+        width: 40,
+        height: 40,
+        type: randomType,
+        timer: 0,
+        collected: false
+      });
+      
+      this.powerupSpawnTimer = 0;
+    }
+  }
+
+  private updatePowerups() {
+    // Update powerup duration
+    if (this.powerupDuration > 0) {
+      this.powerupDuration--;
+      if (this.powerupDuration <= 0) {
+        this.ball.type = 'normal';
+        this.activePowerupType = 'normal';
+      }
+    }
+
+    // Check powerup collection by player paddle
+    for (let i = this.powerups.length - 1; i >= 0; i--) {
+      const powerup = this.powerups[i];
+      powerup.timer++;
+      
+      // Remove powerups after 10 seconds
+      if (powerup.timer > 600) {
+        this.powerups.splice(i, 1);
+        continue;
+      }
+      
+      // Check collision with player paddle
+      if (!powerup.collected &&
+          powerup.x < this.player1.x + this.player1.width &&
+          powerup.x + powerup.width > this.player1.x &&
+          powerup.y < this.player1.y + this.player1.height &&
+          powerup.y + powerup.height > this.player1.y) {
+        
+        this.activatePowerup(powerup.type);
+        this.powerups.splice(i, 1);
+      }
+    }
+  }
+
+  private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky') {
+    this.ball.type = type;
+    this.activePowerupType = type;
+    this.powerupDuration = 300; // 5 seconds
+    
+    // Apply immediate effects
+    switch (type) {
+      case 'speed':
+        this.ball.speed *= 1.5;
+        break;
+      case 'fire':
+        this.ball.radius = 12; // Bigger fire ball
+        break;
+      case 'missile':
+        this.ball.speed *= 2;
+        break;
+      case 'wacky':
+        // Unpredictable movement handled in update
+        break;
+    }
+  }
+
+  private drawPowerups() {
+    for (const powerup of this.powerups) {
+      this.ctx.save();
+      
+      // Pulsing effect
+      const pulse = Math.sin(powerup.timer * 0.1) * 0.1 + 1;
+      const size = powerup.width * pulse;
+      
+      // Different colors for different powerups
+      switch (powerup.type) {
+        case 'speed':
+          this.ctx.fillStyle = '#00FFFF';
+          this.ctx.strokeStyle = '#0080FF';
+          this.ctx.shadowColor = '#00FFFF';
+          break;
+        case 'fire':
+          this.ctx.fillStyle = '#FF4500';
+          this.ctx.strokeStyle = '#FF0000';
+          this.ctx.shadowColor = '#FF4500';
+          break;
+        case 'missile':
+          this.ctx.fillStyle = '#FF0000';
+          this.ctx.strokeStyle = '#800000';
+          this.ctx.shadowColor = '#FF0000';
+          break;
+        case 'wacky':
+          const time = Date.now() * 0.01;
+          const r = Math.sin(time + powerup.timer * 0.1) * 127 + 128;
+          const g = Math.sin(time + powerup.timer * 0.1 + 2) * 127 + 128;
+          const b = Math.sin(time + powerup.timer * 0.1 + 4) * 127 + 128;
+          this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          this.ctx.strokeStyle = '#FFFFFF';
+          this.ctx.shadowColor = this.ctx.fillStyle;
+          break;
+      }
+      
+      this.ctx.shadowBlur = 10;
+      this.ctx.lineWidth = 2;
+      
+      // Draw powerup as a glowing rectangle
+      this.ctx.fillRect(
+        powerup.x - size/2 + powerup.width/2,
+        powerup.y - size/2 + powerup.height/2,
+        size,
+        size
+      );
+      this.ctx.strokeRect(
+        powerup.x - size/2 + powerup.width/2,
+        powerup.y - size/2 + powerup.height/2,
+        size,
+        size
+      );
+      
+      // Draw powerup type text
+      this.ctx.shadowBlur = 0;
+      const text = powerup.type.toUpperCase();
+      this.drawText(text, powerup.x + powerup.width/2, powerup.y + powerup.height/2 + 4, 8, '#FFFFFF', 'center');
+      
+      this.ctx.restore();
+    }
+
+    // Show active powerup indicator
+    if (this.activePowerupType !== 'normal' && this.powerupDuration > 0) {
+      this.ctx.save();
+      this.ctx.shadowColor = '#FFD700';
+      this.ctx.shadowBlur = 5;
+      const remainingTime = Math.ceil(this.powerupDuration / 60);
+      this.drawText(`${this.activePowerupType.toUpperCase()}: ${remainingTime}s`, 20, this.height - 40, 14, '#FFD700');
+      this.ctx.shadowBlur = 0;
+      this.ctx.restore();
+    }
   }
 }
