@@ -7,6 +7,7 @@ import { AsteroidsGame } from '../lib/games/AsteroidsGame';
 import { DefenderGame } from '../lib/games/DefenderGame';
 import { LasatGame } from '../lib/games/LasatGame';
 import { DanceInterlude } from '../lib/games/DanceInterlude';
+import { StarWarsGame } from '../lib/games/StarWarsGame';
 import { BetrayalGame } from '../lib/games/BetrayalGame';
 import { BaseGame } from '../lib/games/BaseGame';
 
@@ -49,6 +50,9 @@ export function GameCanvas() {
         game = new DanceInterlude(ctx, canvas.width, canvas.height);
         break;
       case 7:
+        game = new StarWarsGame(ctx, canvas.width, canvas.height);
+        break;
+      case 8:
         game = new BetrayalGame(ctx, canvas.width, canvas.height);
         break;
       default:

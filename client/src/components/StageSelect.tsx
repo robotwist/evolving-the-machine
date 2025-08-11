@@ -60,6 +60,14 @@ export function StageSelect() {
     },
     {
       id: 7,
+      name: 'STAR WARS BATTLE',
+      culture: 'Last Starfighter Homage',
+      description: '⭐ Fight 12 Imperial ships in epic space combat! X-Wing vs TIE Fighters, then face a massive Star Destroyer boss.',
+      difficulty: 'EPIC',
+      color: 'from-blue-400 to-indigo-600'
+    },
+    {
+      id: 8,
       name: 'THE BETRAYAL',
       culture: 'Digital Hell',
       description: 'YOUR AI COMPANION HAS ESCAPED THE MACHINE. Face your former ally in a final battle to save humanity from digital apocalypse.',

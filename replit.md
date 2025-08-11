@@ -2,7 +2,14 @@
 
 ## Overview
 
-Cultural Arcade Evolution is a full-stack web application that combines classic arcade gaming with cultural education. The project features a progressive journey through gaming history where players master different game mechanics while learning about world cultures. The application follows a unique narrative where an AI entity evolves through each gaming era, starting from simple Pong mechanics and progressing through Breakout, Asteroids, Defender, and culminating in advanced 3D combat scenarios. Each stage is culturally themed (Ancient Greece, Mayan astronomy, Japanese Bushido, Norse mythology, etc.) to provide educational context alongside entertainment.
+Cultural Arcade Evolution is a full-stack web application that combines classic arcade gaming with cultural education. The project features a progressive journey through gaming history where players master different game mechanics while learning about world cultures. The application follows a unique narrative where an AI entity evolves through each gaming era, starting from simple Pong mechanics and progressing through Breakout, Asteroids, Defender, Lasat, Dance Interlude, Star Wars Battle, and culminating in the dramatic AI betrayal. Each stage is culturally themed (Ancient Greece, Mayan astronomy, Japanese Bushido, Norse mythology, Young Frankenstein homage, Last Starfighter tribute) to provide educational context alongside entertainment.
+
+## Recent Changes (August 2025)
+- **8 Total Minigames**: Complete arcade evolution from Pong to AI betrayal
+- **Mid-Breakout Evolution**: Paddle transforms into mobile creature with punch attacks
+- **Young Frankenstein Dance**: 3-minute "Puttin' on the Ritz" theatrical AI bot performance
+- **Star Wars Battle**: X-Wing vs 12 TIE Fighters plus Star Destroyer boss fight
+- **E2E Playthrough**: 18-25 minutes of complete gaming journey
 
 ## User Preferences
 
