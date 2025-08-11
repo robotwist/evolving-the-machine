@@ -52,6 +52,14 @@ export function StageSelect() {
     },
     {
       id: 6,
+      name: 'DANCE INTERLUDE',
+      culture: 'Young Frankenstein Tribute',
+      description: '🎭 "Puttin\' on the Ritz" - A 3-minute AI humanoid bot dance spectacular with top hat and cane! Skip with SPACEBAR.',
+      difficulty: 'FABULOUS',
+      color: 'from-yellow-400 to-pink-500'
+    },
+    {
+      id: 7,
       name: 'THE BETRAYAL',
       culture: 'Digital Hell',
       description: 'YOUR AI COMPANION HAS ESCAPED THE MACHINE. Face your former ally in a final battle to save humanity from digital apocalypse.',
