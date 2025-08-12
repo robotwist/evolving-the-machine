@@ -242,7 +242,8 @@ export class PongGame extends BaseGame {
     if (this.checkPaddleCollision(this.player1) || this.checkPaddleCollision(this.player2)) {
       this.ball.dx = -this.ball.dx * 1.05; // Increase speed slightly
       this.playHitSound();
-      if ('vibrate' in navigator) {
+      const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
+      if (hapticsOn && 'vibrate' in navigator) {
         navigator.vibrate?.(10);
       }
     }
@@ -252,7 +253,8 @@ export class PongGame extends BaseGame {
       this.player2.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
-      if ('vibrate' in navigator) {
+      const hapticsOn2 = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
+      if (hapticsOn2 && 'vibrate' in navigator) {
         navigator.vibrate?.([20, 30, 20]);
       }
       // Game continues until player wins
@@ -260,7 +262,8 @@ export class PongGame extends BaseGame {
       this.player1.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
-      if ('vibrate' in navigator) {
+      const hapticsOn3 = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
+      if (hapticsOn3 && 'vibrate' in navigator) {
         navigator.vibrate?.(20);
       }
       if (this.player1.score >= this.winScore) {

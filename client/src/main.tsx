@@ -8,9 +8,10 @@ createRoot(document.getElementById("root")!).render(<App />);
 // Expose FPS cap to non-React classes
 (() => {
   const applySettingsToGlobals = () => {
-    const { fpsCap, graphicsQuality } = useSettingsStore.getState();
+    const { fpsCap, graphicsQuality, hapticsEnabled } = useSettingsStore.getState();
     (window as any).__CULTURAL_ARCADE_FPS_CAP__ = fpsCap;
     (window as any).__CULTURAL_ARCADE_QUALITY__ = graphicsQuality;
+    (window as any).__CULTURAL_ARCADE_HAPTICS__ = hapticsEnabled;
   };
   // Apply mobile defaults on first load
   useSettingsStore.getState().applyMobileDefaultsOnce();

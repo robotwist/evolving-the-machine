@@ -16,7 +16,7 @@ export function GameUI() {
   } = useGameStore();
   const { scores, highScores } = useScoreStore();
   const { isMuted, toggleMute } = useAudio();
-  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling } = useSettingsStore();
+  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset } = useSettingsStore();
 
   const stageName = {
     1: 'Pong Master',
@@ -92,6 +92,18 @@ export function GameUI() {
                   <div className="text-white font-semibold mb-2">Settings</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-white/90">
                     <label className="flex items-center justify-between gap-2">
+                      <span>Preset</span>
+                      <select
+                        value={preset}
+                        onChange={(e) => setPreset(e.target.value as any)}
+                        className="bg-black/50 border border-white/20 rounded px-2 py-1"
+                      >
+                        <option value="battery">Battery Saver</option>
+                        <option value="balanced">Balanced</option>
+                        <option value="performance">Performance</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center justify-between gap-2">
                       <span>Graphics Quality</span>
                       <select
                         value={graphicsQuality}
@@ -121,6 +133,14 @@ export function GameUI() {
                         type="checkbox"
                         checked={enableDprScaling}
                         onChange={(e) => setEnableDprScaling(e.target.checked)}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
+                      <span>Haptics</span>
+                      <input
+                        type="checkbox"
+                        checked={hapticsEnabled}
+                        onChange={(e) => setHapticsEnabled(e.target.checked)}
                       />
                     </label>
                   </div>
