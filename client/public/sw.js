@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arcade-cache-v2';
+const CACHE_NAME = 'arcade-cache-v3';
 const ASSETS = [
   '/',
   '/index.html'
@@ -24,7 +24,20 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
-  // Network-first for JS/CSS, cache-first for others
+  // HTML: network-first to avoid old index.html with stale hashed assets
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+  // Scripts/styles: network-first
   if (request.destination === 'script' || request.destination === 'style') {
     event.respondWith(
       fetch(request)
@@ -35,11 +48,12 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => caches.match(request))
     );
-  } else {
-    event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request))
-    );
+    return;
   }
+  // Others: cache-first
+  event.respondWith(
+    caches.match(request).then((cached) => cached || fetch(request))
+  );
 });
 
 
