@@ -389,6 +389,23 @@ export class PongGame extends BaseGame {
     this.drawPowerups();
   }
 
+  // Touch/pointer: move human paddle based on vertical touch on left 60% of screen
+  handlePointerDown(x: number, y: number) {
+    this.handlePointerMove(x, y);
+  }
+
+  handlePointerMove(x: number, y: number) {
+    const isLeftRegion = x < this.width * 0.6;
+    if (isLeftRegion) {
+      const targetY = y - this.player1.height / 2;
+      this.player1.y = Math.max(0, Math.min(this.height - this.player1.height, targetY));
+    }
+  }
+
+  handlePointerUp() {
+    // no-op for now
+  }
+
   private drawGreekBackground() {
     // Draw synthwave-inspired Greek background
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);

@@ -4,6 +4,7 @@ import { useScoreStore } from '../lib/stores/useScoreStore';
 import { useAudio } from '../lib/stores/useAudio';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import { useSettingsStore } from '../lib/stores/useSettingsStore';
 
 export function GameUI() {
   const { 
@@ -15,6 +16,7 @@ export function GameUI() {
   } = useGameStore();
   const { scores, highScores } = useScoreStore();
   const { isMuted, toggleMute } = useAudio();
+  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling } = useSettingsStore();
 
   const stageName = {
     1: 'Pong Master',
@@ -86,6 +88,43 @@ export function GameUI() {
                 <Button onClick={handleMainMenu} variant="outline" className="border-white/20 text-white">
                   Main Menu
                 </Button>
+                <div className="text-left mt-4 p-3 bg-white/5 rounded border border-white/10">
+                  <div className="text-white font-semibold mb-2">Settings</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-white/90">
+                    <label className="flex items-center justify-between gap-2">
+                      <span>Graphics Quality</span>
+                      <select
+                        value={graphicsQuality}
+                        onChange={(e) => setGraphicsQuality(e.target.value as any)}
+                        className="bg-black/50 border border-white/20 rounded px-2 py-1"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center justify-between gap-2">
+                      <span>FPS Cap</span>
+                      <select
+                        value={fpsCap}
+                        onChange={(e) => setFpsCap(Number(e.target.value) as any)}
+                        className="bg-black/50 border border-white/20 rounded px-2 py-1"
+                      >
+                        <option value={30}>30 FPS</option>
+                        <option value={45}>45 FPS</option>
+                        <option value={60}>60 FPS</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
+                      <span>High-DPI Scaling</span>
+                      <input
+                        type="checkbox"
+                        checked={enableDprScaling}
+                        onChange={(e) => setEnableDprScaling(e.target.checked)}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

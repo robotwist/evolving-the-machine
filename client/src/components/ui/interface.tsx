@@ -3,7 +3,13 @@ import { useGame } from "@/lib/stores/useGame";
 import { useAudio } from "@/lib/stores/useAudio";
 import { Button } from "./button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
-import { Confetti } from "../game/Confetti";
+// Confetti optional: fallback to no-op if missing
+let Confetti: React.FC = () => null;
+try {
+  // @ts-ignore - optional file may not exist in this template
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Confetti = require("../game/Confetti").Confetti || Confetti;
+} catch {}
 import { VolumeX, Volume2, RotateCw, Trophy } from "lucide-react";
 
 export function Interface() {
@@ -15,7 +21,10 @@ export function Interface() {
   useEffect(() => {
     if (phase === "ready") {
       const handleClick = () => {
-        document.activeElement?.blur(); // Remove focus from any button
+        const active = document.activeElement;
+        if (active instanceof HTMLElement) {
+          active.blur(); // Remove focus from any button
+        }
         const event = new KeyboardEvent("keydown", { code: "Space" });
         window.dispatchEvent(event);
       };

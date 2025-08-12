@@ -5,6 +5,8 @@ export abstract class BaseGame {
   protected isRunning = false;
   protected isPaused = false;
   protected animationId: number | null = null;
+  protected lastFrameTimeMs: number | null = null;
+  protected frameAccumulatorMs = 0;
   
   // Event callbacks
   onScoreUpdate?: (score: number) => void;
@@ -22,6 +24,10 @@ export abstract class BaseGame {
   abstract update(deltaTime: number): void;
   abstract render(): void;
   abstract handleInput(event: KeyboardEvent): void;
+  // Optional pointer/touch hooks
+  handlePointerDown?(x: number, y: number): void;
+  handlePointerMove?(x: number, y: number): void;
+  handlePointerUp?(): void;
 
   start() {
     this.isRunning = true;
@@ -56,10 +62,24 @@ export abstract class BaseGame {
 
   protected gameLoop() {
     if (!this.isRunning) return;
+    const now = performance.now();
+    const targetFps = (window as any).__CULTURAL_ARCADE_FPS_CAP__ ?? 60;
+    const minFrameMs = 1000 / Math.max(1, targetFps);
+
+    if (this.lastFrameTimeMs == null) {
+      this.lastFrameTimeMs = now;
+    }
+    const deltaMs = now - this.lastFrameTimeMs;
+    this.lastFrameTimeMs = now;
 
     if (!this.isPaused) {
-      this.update(16.67); // ~60fps
-      this.render();
+      this.frameAccumulatorMs += deltaMs;
+      if (this.frameAccumulatorMs >= minFrameMs) {
+        const clampedDt = Math.min(this.frameAccumulatorMs, 1000 / 30); // cap dt to ~33ms to avoid huge jumps
+        this.update(clampedDt);
+        this.render();
+        this.frameAccumulatorMs = 0;
+      }
     }
 
     this.animationId = requestAnimationFrame(() => this.gameLoop());
@@ -88,5 +108,10 @@ export abstract class BaseGame {
 
   protected clearCanvas() {
     this.ctx.clearRect(0, 0, this.width, this.height);
+  }
+
+  resize(width: number, height: number) {
+    this.width = width;
+    this.height = height;
   }
 }
