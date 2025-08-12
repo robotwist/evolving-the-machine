@@ -62,6 +62,7 @@ export class AsteroidsGame extends BaseGame {
   private leftTouchPos: Vector2 | null = null;
   private lastShootAtMs = 0;
   private shootCooldownMs = 250;
+  private smoothedRotation: number | null = null;
 
   init() {
     // Initialize player (Mayan spacecraft)
@@ -243,7 +244,19 @@ export class AsteroidsGame extends BaseGame {
       this.player.rotation += this.player.rotationSpeed;
     }
     if (this.virtualRotation != null) {
-      this.player.rotation = this.virtualRotation;
+      // Smooth rotation toward virtual target
+      const target = this.virtualRotation;
+      if (this.smoothedRotation == null) this.smoothedRotation = this.player.rotation;
+      // shortest angle interpolation
+      let delta = target - this.smoothedRotation;
+      while (delta > Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+      const maxStep = 0.15; // radians per frame
+      const step = Math.max(-maxStep, Math.min(maxStep, delta));
+      this.smoothedRotation += step;
+      this.player.rotation = this.smoothedRotation;
+    } else {
+      this.smoothedRotation = null;
     }
     if (this.keys.has('KeyW') || this.virtualThrust) {
       this.player.thrust = true;
