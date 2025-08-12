@@ -19,7 +19,7 @@ interface AudioState {
   toggleMute: () => void;
   playHit: () => void;
   playSuccess: () => void;
-  playVO: (text: string) => Promise<void>;
+  playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number }) => Promise<void>;
 }
 
 export const useAudio = create<AudioState>((set, get) => ({
@@ -78,7 +78,7 @@ export const useAudio = create<AudioState>((set, get) => ({
   }
   ,
   // Simple VO using SpeechSynthesis with gentle ducking
-  playVO: async (text: string) => {
+  playVO: async (text: string, opts?: { rate?: number; pitch?: number; volume?: number }) => {
     const { isMuted, backgroundMusic } = get();
     if (isMuted) return;
     try {
@@ -86,9 +86,9 @@ export const useAudio = create<AudioState>((set, get) => ({
       if (backgroundMusic) backgroundMusic.volume = Math.max(0, originalVolume * 0.35);
       await new Promise<void>((resolve) => {
         const utt = new SpeechSynthesisUtterance(text);
-        utt.rate = 0.92;
-        utt.pitch = 0.8;
-        utt.volume = 1.0;
+        utt.rate = opts?.rate ?? 0.92;
+        utt.pitch = opts?.pitch ?? 0.8;
+        utt.volume = opts?.volume ?? 1.0;
         utt.onend = () => {
           if (backgroundMusic) backgroundMusic.volume = originalVolume;
           resolve();

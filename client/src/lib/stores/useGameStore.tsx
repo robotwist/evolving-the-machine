@@ -17,6 +17,8 @@ interface GameStore {
   unlockNextStage: () => void;
   goToNextStage: () => void;
   resetProgress: () => void;
+  stageAttempts: Record<number, number>;
+  incrementAttempt: (stage: number) => void;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -58,12 +60,15 @@ export const useGameStore = create<GameStore>()(
         currentStage: 1,
         gameState: 'playing',
         currentScreen: 'menu'
-      })
+      }),
+      stageAttempts: {},
+      incrementAttempt: (stage: number) => set((s) => ({ stageAttempts: { ...s.stageAttempts, [stage]: (s.stageAttempts[stage] ?? 0) + 1 } })),
     }),
     {
       name: 'cultural-arcade-game-store',
       partialize: (state) => ({
-        unlockedStages: state.unlockedStages
+        unlockedStages: state.unlockedStages,
+        stageAttempts: state.stageAttempts
       })
     }
   )

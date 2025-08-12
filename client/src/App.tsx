@@ -49,14 +49,52 @@ export default function App() {
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         const deviceLine = isMobile ? 'MOBILE THRUSTERS CALIBRATED.' : 'DESKTOP LINK ESTABLISHED.';
         try {
-          await useAudio.getState().playVO('SYSTEM ONLINE.');
-          await useAudio.getState().playVO(deviceLine);
-          await useAudio.getState().playVO('CULTURAL ARCADE: EVOLUTION PROTOCOL READY.');
+          await useAudio.getState().playVO('SYSTEM ONLINE.', { pitch: 0.8, rate: 0.9 });
+          await useAudio.getState().playVO(deviceLine, { pitch: 0.9, rate: 0.95 });
+          await useAudio.getState().playVO('CULTURAL ARCADE: EVOLUTION PROTOCOL READY.', { pitch: 1.0, rate: 0.98 });
         } catch {}
       }
     };
     run();
   }, [currentScreen]);
+
+  // Per-stage VO that becomes friendlier with attempts, until betrayal stages
+  useEffect(() => {
+    if (currentScreen !== 'game') return;
+    const attempts = useGameStore.getState().stageAttempts[currentStage] ?? 0;
+    const friendliness = Math.min(attempts, 5);
+    const basePitch = 0.85 + friendliness * 0.03;
+    const baseRate = 0.9 + friendliness * 0.02;
+    const lines: Record<number, string[]> = {
+      1: [
+        'INITIALIZING TRAINING MATCH.',
+        'I WILL LEARN YOUR MOVEMENTS.',
+        'READY WHEN YOU ARE.'
+      ],
+      2: [
+        'TEMPLE BLOCKS DETECTED. I CAN HELP YOU ANTICIPATE.',
+        'LET US REFINE YOUR ANGLES.'
+      ],
+      3: [
+        'ASTEROID FIELD AHEAD. I WILL WATCH YOUR VECTORS.',
+        'I TRUST YOUR PILOTING.'
+      ],
+      4: [
+        'CIVILIANS IN DANGER. WE PROTECT, TOGETHER.',
+        'I WILL COVER YOUR BLIND SIDE.'
+      ],
+      5: [
+        'STARFIGHTER SYSTEMS SYNCED. YOUR INSTINCTS ARE STRONG.',
+        'WE CAN DO THIS.'
+      ]
+    };
+    const betraying = false; // future hook
+    const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+    const selected = pick(lines[currentStage] || ['READY.']);
+    if (!betraying) {
+      useAudio.getState().playVO(selected, { pitch: basePitch, rate: baseRate }).catch(() => {});
+    }
+  }, [currentScreen, currentStage]);
 
   useEffect(() => {
     if (currentScreen !== 'menu') {
