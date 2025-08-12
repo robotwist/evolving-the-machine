@@ -19,6 +19,8 @@ interface Ball {
   speed: number;
   type: 'normal' | 'speed' | 'fire' | 'missile' | 'wacky';
   trail: Array<{x: number, y: number}>;
+  angle?: number;
+  angleSpeed?: number;
 }
 
 interface Powerup {
@@ -112,7 +114,9 @@ export class PongGame extends BaseGame {
       radius: 8,
       speed: 4,
       type: 'normal',
-      trail: []
+      trail: [],
+      angle: 0,
+      angleSpeed: 0
     };
   }
 
@@ -231,6 +235,9 @@ export class PongGame extends BaseGame {
     if (this.ball.type === 'wacky') {
       this.ball.dx += (Math.random() - 0.5) * 0.5;
       this.ball.dy += (Math.random() - 0.5) * 0.5;
+      // Spin the ball 360s
+      this.ball.angle = (this.ball.angle ?? 0) + (this.ball.angleSpeed ?? 0.25);
+      if (this.ball.angle! > Math.PI * 2) this.ball.angle! -= Math.PI * 2;
     }
 
     // Ball collision with top/bottom walls
@@ -398,6 +405,23 @@ export class PongGame extends BaseGame {
     this.ctx.stroke();
     this.ctx.shadowBlur = 0;
     this.ctx.restore();
+
+    // Extra rotating spokes when ball is wacky
+    if (this.ball.type === 'wacky') {
+      this.ctx.save();
+      this.ctx.translate(this.ball.x, this.ball.y);
+      this.ctx.rotate(this.ball.angle ?? 0);
+      this.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      this.ctx.lineWidth = 2;
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(Math.cos(ang) * (this.ball.radius + 2), Math.sin(ang) * (this.ball.radius + 2));
+        this.ctx.lineTo(Math.cos(ang) * (this.ball.radius + 10), Math.sin(ang) * (this.ball.radius + 10));
+        this.ctx.stroke();
+      }
+      this.ctx.restore();
+    }
 
     // Draw scores with humanity emphasis
     this.ctx.save();
@@ -681,15 +705,19 @@ export class PongGame extends BaseGame {
     switch (type) {
       case 'speed':
         this.ball.speed *= 1.2;
+        this.ball.angleSpeed = 0;
         break;
       case 'fire':
         this.ball.radius = 12; // Bigger fire ball
+        this.ball.angleSpeed = 0;
         break;
       case 'missile':
         this.ball.speed *= 1.6;
+        this.ball.angleSpeed = 0;
         break;
       case 'wacky':
         // Unpredictable movement handled in update
+        this.ball.angleSpeed = 0.35;
         break;
     }
   }
