@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { VirtualStick } from '../controls/VirtualStick';
 import { useAudio } from '../stores/useAudio';
 
 interface Paddle {
@@ -67,6 +68,7 @@ export class BreakoutGame extends BaseGame {
   // Touch smoothing
   private targetPaddleX: number | null = null;
   private indicatorPos: { x: number; y: number } | null = null;
+  private stick = new VirtualStick({ smoothing: 0.3, deadZone: 0.06, maxRadius: 80 });
   
   init() {
     // Initialize paddle (evolved from Pong paddle)
@@ -281,10 +283,12 @@ export class BreakoutGame extends BaseGame {
 
   // Touch/pointer: horizontal paddle control (normal mode) or move evolved body
   handlePointerDown(x: number, y: number) {
+    this.stick.begin(x, y);
     this.handlePointerMove(x, y);
   }
 
   handlePointerMove(x: number, y: number) {
+    this.stick.update(x, y);
     if (this.paddleEvolved) {
       // Move evolved paddle toward pointer with clamp
       this.evolvedPaddleX = Math.max(40, Math.min(this.width - 40, x));
@@ -292,13 +296,14 @@ export class BreakoutGame extends BaseGame {
       return;
     }
     // Normal mode: map x to paddle position at bottom region
-    const targetX = x - this.paddle.width / 2;
+    const vec = this.stick.getVector();
+    const targetX = (this.paddle.x + vec.x * 12) - 0 + (x - this.paddle.x) * 0.0; // primary by stick
     this.targetPaddleX = Math.max(0, Math.min(this.width - this.paddle.width, targetX));
     this.indicatorPos = { x, y };
   }
 
   handlePointerUp() {
-    // no-op
+    this.stick.end();
   }
 
   private checkPaddleCollision(): boolean {

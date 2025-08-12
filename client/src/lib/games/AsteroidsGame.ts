@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { VirtualStick } from '../controls/VirtualStick';
 import { useAudio } from '../stores/useAudio';
 
 interface Vector2 {
@@ -63,6 +64,7 @@ export class AsteroidsGame extends BaseGame {
   private lastShootAtMs = 0;
   private shootCooldownMs = 250;
   private smoothedRotation: number | null = null;
+  private leftStick = new VirtualStick({ smoothing: 0.25, deadZone: 0.08, maxRadius: 90 });
 
   init() {
     // Initialize player (Mayan spacecraft)
@@ -637,6 +639,7 @@ export class AsteroidsGame extends BaseGame {
     if (x < this.width * 0.5) {
       this.leftTouchActive = true;
       this.leftTouchPos = { x, y };
+      this.leftStick.begin(x, y);
     } else {
       const now = performance.now();
       if (now - this.lastShootAtMs >= this.shootCooldownMs) {
@@ -655,6 +658,7 @@ export class AsteroidsGame extends BaseGame {
   handlePointerMove(x: number, y: number) {
     if (this.leftTouchActive) {
       this.leftTouchPos = { x, y };
+      this.leftStick.update(x, y);
       const dx = x - this.player.position.x;
       const dy = y - this.player.position.y;
       this.virtualRotation = Math.atan2(dy, dx);
@@ -667,6 +671,7 @@ export class AsteroidsGame extends BaseGame {
     this.leftTouchPos = null;
     this.virtualThrust = false;
     this.virtualRotation = null;
+    this.leftStick.end();
   }
 
   private playHitSound() {
