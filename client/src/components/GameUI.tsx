@@ -222,10 +222,10 @@ export function GameUI() {
           <div>Player 1: W/S | Player 2: ↑/↓</div>
         )}
         {currentStage === 2 && (
-          <div>A/D: Move Paddle | Space: Auto-shoot</div>
+          <div>Touch: Drag bottom to move | Keyboard: A/D | Ball auto‑shoot</div>
         )}
         {currentStage >= 3 && (
-          <div>WASD: Move | Space: Shoot | ESC: Pause</div>
+          <div>Touch: Left steer+thrust, Right tap shoot | Keyboard: WASD + Space</div>
         )}
       </div>
     </>

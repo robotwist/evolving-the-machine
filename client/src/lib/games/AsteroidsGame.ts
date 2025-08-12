@@ -55,6 +55,13 @@ export class AsteroidsGame extends BaseGame {
   private aiDefenseTimer = 0;
   private aiDefenseActive = false;
   private aiDefenseBullets: Bullet[] = [];
+  // Virtual controls
+  private virtualThrust = false;
+  private virtualRotation: number | null = null;
+  private leftTouchActive = false;
+  private leftTouchPos: Vector2 | null = null;
+  private lastShootAtMs = 0;
+  private shootCooldownMs = 250;
 
   init() {
     // Initialize player (Mayan spacecraft)
@@ -228,14 +235,17 @@ export class AsteroidsGame extends BaseGame {
       this.aiNarrativeTimer = 0;
     }
 
-    // Human player controls (WASD only)
+    // Human player controls (WASD only) + virtual controls
     if (this.keys.has('KeyA')) {
       this.player.rotation -= this.player.rotationSpeed;
     }
     if (this.keys.has('KeyD')) {
       this.player.rotation += this.player.rotationSpeed;
     }
-    if (this.keys.has('KeyW')) {
+    if (this.virtualRotation != null) {
+      this.player.rotation = this.virtualRotation;
+    }
+    if (this.keys.has('KeyW') || this.virtualThrust) {
       this.player.thrust = true;
       const thrustPower = 0.3;
       this.player.velocity.x += Math.cos(this.player.rotation) * thrustPower;
@@ -434,6 +444,20 @@ export class AsteroidsGame extends BaseGame {
 
     // Cultural learning element
     this.drawText('Navigate by Mayan Star Knowledge - The cosmos guides your path', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+
+    // Draw simple virtual thumbstick indicator (left touch)
+    if (this.leftTouchActive && this.leftTouchPos) {
+      this.ctx.save();
+      this.ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(this.leftTouchPos.x, this.leftTouchPos.y, 28, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.beginPath();
+      this.ctx.arc(this.leftTouchPos.x, this.leftTouchPos.y, 10, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
   }
 
   private drawMayanBackground() {
@@ -593,6 +617,43 @@ export class AsteroidsGame extends BaseGame {
     } else if (event.type === 'keyup') {
       this.keys.delete(event.code);
     }
+  }
+
+  // Touch/pointer controls: left half = steer+thrust towards touch; right half tap = shoot
+  handlePointerDown(x: number, y: number) {
+    if (x < this.width * 0.5) {
+      this.leftTouchActive = true;
+      this.leftTouchPos = { x, y };
+    } else {
+      const now = performance.now();
+      if (now - this.lastShootAtMs >= this.shootCooldownMs) {
+        this.shoot();
+        this.lastShootAtMs = now;
+      }
+    }
+    if (this.leftTouchActive && this.leftTouchPos) {
+      const dx = this.leftTouchPos.x - this.player.position.x;
+      const dy = this.leftTouchPos.y - this.player.position.y;
+      this.virtualRotation = Math.atan2(dy, dx);
+      this.virtualThrust = true;
+    }
+  }
+
+  handlePointerMove(x: number, y: number) {
+    if (this.leftTouchActive) {
+      this.leftTouchPos = { x, y };
+      const dx = x - this.player.position.x;
+      const dy = y - this.player.position.y;
+      this.virtualRotation = Math.atan2(dy, dx);
+      this.virtualThrust = true;
+    }
+  }
+
+  handlePointerUp() {
+    this.leftTouchActive = false;
+    this.leftTouchPos = null;
+    this.virtualThrust = false;
+    this.virtualRotation = null;
   }
 
   private playHitSound() {
