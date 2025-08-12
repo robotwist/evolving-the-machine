@@ -271,6 +271,24 @@ export function GameUI() {
                   <div className="text-sm mb-4">Drag near the bottom to move the paddle. Clear blocks; lives are generous; evolve mid‑level.</div>
                 </>
               )}
+              {currentStage === 3 && (
+                <>
+                  <div className="text-xl font-bold mb-2">Asteroids — Quick Tutorial</div>
+                  <div className="text-sm mb-4">Left touch steers and thrusts toward your touch. Tap right side to shoot. Avoid collisions.</div>
+                </>
+              )}
+              {currentStage === 4 && (
+                <>
+                  <div className="text-xl font-bold mb-2">Defender — Quick Tutorial</div>
+                  <div className="text-sm mb-4">Move, jump, and shoot to protect civilians. Watch for enemy bullets; settings can reduce motion.</div>
+                </>
+              )}
+              {currentStage === 5 && (
+                <>
+                  <div className="text-xl font-bold mb-2">Lasat Starfighter — Quick Tutorial</div>
+                  <div className="text-sm mb-4">WASD or touch to move; Space to fire; use abilities when charged. Target key structures.</div>
+                </>
+              )}
               <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => markSeen(stageKey)}>Got it</Button>
               <div>
                 <Button variant="outline" className="mt-2 border-white/20 text-white" onClick={() => hide(stageKey)}>Hide for now</Button>

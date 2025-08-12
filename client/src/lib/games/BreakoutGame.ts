@@ -31,7 +31,7 @@ interface Brick {
 
 export class BreakoutGame extends BaseGame {
   private paddle!: Paddle;
-  private ball!: Ball;
+  private balls: Ball[] = [];
   private bricks: Brick[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
@@ -69,6 +69,20 @@ export class BreakoutGame extends BaseGame {
   private targetPaddleX: number | null = null;
   private indicatorPos: { x: number; y: number } | null = null;
   private stick = new VirtualStick({ smoothing: 0.3, deadZone: 0.06, maxRadius: 80 });
+  // Effects
+  private particles = new (class LocalParticles {
+    private ps: any;
+    init = (ctx: CanvasRenderingContext2D) => {
+      const { ParticleSystem } = require('../utils/ParticleSystem');
+      this.ps = new ParticleSystem(ctx);
+    };
+    addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
+    update = () => this.ps?.update();
+    render = () => this.ps?.render();
+  })();
+  private shakeTimer = 0;
+  // Powerups
+  private activeLongPaddleTimer = 0;
   
   init() {
     // Initialize paddle (evolved from Pong paddle)
@@ -84,21 +98,31 @@ export class BreakoutGame extends BaseGame {
     this.evolvedPaddleX = this.width / 2;
     this.evolvedPaddleY = this.height / 2;
 
-    // Initialize ball
-    this.resetBall();
+    // Initialize ball(s)
+    this.resetBalls();
 
     // Create bricks
     this.createBricks();
+    this.particles.init(this.ctx);
   }
 
-  private resetBall() {
-    this.ball = {
-      x: this.width / 2,
-      y: this.height - 120, // Start further from bottom to give more reaction time
-      dx: 2.5 * (Math.random() > 0.5 ? 1 : -1), // Slightly slower for better control
-      dy: -2.5,
+  private resetBalls() {
+    this.balls = [this.createBall(this.width / 2, this.height - 120)];
+  }
+
+  private createBall(x: number, y: number): Ball {
+    // Faster baseline, normalized direction
+    const dirX = (Math.random() > 0.5 ? 1 : -1);
+    const dirY = -1;
+    const speed = 4.8;
+    const len = Math.hypot(dirX, dirY) || 1;
+    return {
+      x,
+      y,
+      dx: (dirX / len),
+      dy: (dirY / len),
       radius: 8,
-      speed: 3
+      speed,
     };
   }
 
@@ -139,6 +163,14 @@ export class BreakoutGame extends BaseGame {
     if (this.transitioning) {
       this.updateTransition();
       return;
+    }
+
+    // Long paddle timer decay
+    if (this.activeLongPaddleTimer > 0) {
+      this.activeLongPaddleTimer--;
+      if (this.activeLongPaddleTimer === 0) {
+        this.paddle.width = 100;
+      }
     }
 
     // AI evolution messaging system
@@ -208,7 +240,8 @@ export class BreakoutGame extends BaseGame {
       if (this.aiAssistanceActive) {
         paddleSpeed *= 1.5;
         
-        const ballPredictedX = this.ball.x + (this.ball.dx * 15);
+        const leadBall = this.balls[0];
+        const ballPredictedX = leadBall ? leadBall.x + (leadBall.dx * leadBall.speed * 15) : this.paddle.x;
         const targetX = ballPredictedX - this.paddle.width / 2;
         const currentX = this.paddle.x;
         
@@ -228,44 +261,54 @@ export class BreakoutGame extends BaseGame {
         this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + paddleSpeed);
       }
 
-      // Update ball only if not eaten
+      // Update balls only if not eaten
       if (!this.ballEaten) {
-        this.ball.x += this.ball.dx;
-        this.ball.y += this.ball.dy;
+        for (const ball of this.balls) {
+          ball.x += ball.dx * ball.speed;
+          ball.y += ball.dy * ball.speed;
 
-        // Ball collision with walls
-        if (this.ball.x <= this.ball.radius || this.ball.x >= this.width - this.ball.radius) {
-          this.ball.dx = -this.ball.dx;
-          this.playHitSound();
-        }
-        if (this.ball.y <= this.ball.radius) {
-          this.ball.dy = -this.ball.dy;
-          this.playHitSound();
-        }
+          // Walls
+          if (ball.x <= ball.radius || ball.x >= this.width - ball.radius) {
+            ball.dx = -ball.dx;
+            this.playHitSound();
+          }
+          if (ball.y <= ball.radius) {
+            ball.dy = -ball.dy;
+            this.playHitSound();
+          }
 
-        // Ball collision with paddle
-        if (this.checkPaddleCollision()) {
-          this.ball.dy = -Math.abs(this.ball.dy);
-          const hitPos = (this.ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
-          this.ball.dx = hitPos * 4;
-          this.playHitSound();
-        }
+          // Paddle
+          if (this.checkPaddleCollisionWith(ball)) {
+            ball.dy = -Math.abs(ball.dy);
+            const hitPos = (ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
+            // steer and add slight speed-up
+            ball.dx = hitPos;
+            const len = Math.hypot(ball.dx, ball.dy) || 1;
+            ball.dx /= len;
+            ball.dy /= len;
+            ball.speed = Math.min(ball.speed + 0.15, 7.5);
+            this.playHitSound();
+          }
 
-        // Ball collision with bricks
-        this.checkBrickCollisions();
+          // Bricks
+          this.checkBrickCollisions(ball);
 
-        // Ball falls below paddle - only reset ball, don't trigger game over unless truly game over
-        if (this.ball.y > this.height) {
-          this.lives--;
-          this.resetBall();
-          
-          if (this.lives <= 0 && this.score < 50) {
-            if (this.score > 20) {
-              this.lives = 1;
-              this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
-              this.aiMessageTimer = 0;
-            } else {
-              this.onGameOver?.();
+          // Out of bounds
+          if (ball.y > this.height) {
+            // remove this ball
+            this.balls = this.balls.filter(b => b !== ball);
+            if (this.balls.length === 0) {
+              this.lives--;
+              this.resetBalls();
+              if (this.lives <= 0 && this.score < 50) {
+                if (this.score > 20) {
+                  this.lives = 1;
+                  this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
+                  this.aiMessageTimer = 0;
+                } else {
+                  this.onGameOver?.();
+                }
+              }
             }
           }
         }
@@ -306,35 +349,41 @@ export class BreakoutGame extends BaseGame {
     this.stick.end();
   }
 
-  private checkPaddleCollision(): boolean {
+  private checkPaddleCollisionWith(ball: Ball): boolean {
     return (
-      this.ball.x + this.ball.radius > this.paddle.x &&
-      this.ball.x - this.ball.radius < this.paddle.x + this.paddle.width &&
-      this.ball.y + this.ball.radius > this.paddle.y &&
-      this.ball.y - this.ball.radius < this.paddle.y + this.paddle.height &&
-      this.ball.dy > 0
+      ball.x + ball.radius > this.paddle.x &&
+      ball.x - ball.radius < this.paddle.x + this.paddle.width &&
+      ball.y + ball.radius > this.paddle.y &&
+      ball.y - ball.radius < this.paddle.y + this.paddle.height &&
+      ball.dy > 0
     );
   }
 
-  private checkBrickCollisions() {
+  private checkBrickCollisions(ball: Ball) {
     for (let brick of this.bricks) {
       if (brick.destroyed) continue;
 
       if (
-        this.ball.x + this.ball.radius > brick.x &&
-        this.ball.x - this.ball.radius < brick.x + brick.width &&
-        this.ball.y + this.ball.radius > brick.y &&
-        this.ball.y - this.ball.radius < brick.y + brick.height
+        ball.x + ball.radius > brick.x &&
+        ball.x - ball.radius < brick.x + brick.width &&
+        ball.y + ball.radius > brick.y &&
+        ball.y - ball.radius < brick.y + brick.height
       ) {
         brick.health--;
         if (brick.health <= 0) {
           brick.destroyed = true;
           this.score += 10;
+          // Effects and powerup drop
+          this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, 14, '#FFD700');
+          const drop = Math.random();
+          if (drop < 0.15) {
+            this.spawnPowerup(brick.x + brick.width / 2, brick.y + brick.height / 2);
+          }
         }
 
         // Determine collision side and bounce accordingly
-        const ballCenterX = this.ball.x;
-        const ballCenterY = this.ball.y;
+        const ballCenterX = ball.x;
+        const ballCenterY = ball.y;
         const brickCenterX = brick.x + brick.width / 2;
         const brickCenterY = brick.y + brick.height / 2;
 
@@ -342,14 +391,48 @@ export class BreakoutGame extends BaseGame {
         const dy = ballCenterY - brickCenterY;
 
         if (Math.abs(dx / brick.width) > Math.abs(dy / brick.height)) {
-          this.ball.dx = -this.ball.dx;
+          ball.dx = -ball.dx;
         } else {
-          this.ball.dy = -this.ball.dy;
+          ball.dy = -ball.dy;
         }
 
         this.playHitSound();
+        // Shake
+        const reduceMotion = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+        const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+        if (!reduceMotion && allowShake) this.shakeTimer = 6;
         break;
       }
+    }
+  }
+
+  // Powerups
+  private spawnPowerup(x: number, y: number) {
+    // Two types: triple balls and long paddle
+    const type = Math.random() < 0.5 ? 'triple' : 'long';
+    if (type === 'triple') {
+      // Spawn two extra balls from one of current balls
+      if (this.balls.length > 0) {
+        const source = this.balls[0];
+        const angles = [-0.4, 0.4];
+        for (const a of angles) {
+          const cos = Math.cos(a) * source.dx - Math.sin(a) * source.dy;
+          const sin = Math.sin(a) * source.dx + Math.cos(a) * source.dy;
+          const len = Math.hypot(cos, sin) || 1;
+          this.balls.push({
+            x: x,
+            y: y,
+            dx: cos / len,
+            dy: sin / len,
+            radius: 8,
+            speed: Math.max(source.speed - 0.2, 4.5),
+          });
+        }
+      }
+    } else {
+      // Long paddle for a short duration
+      this.paddle.width = 140;
+      this.activeLongPaddleTimer = 600; // 10s at 60fps
     }
   }
 
@@ -459,6 +542,15 @@ export class BreakoutGame extends BaseGame {
   }
 
   render() {
+    // optional small screenshake
+    const reduceMotion = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+    const shake = !reduceMotion && allowShake && this.shakeTimer > 0 ? this.shakeTimer : 0;
+    if (shake > 0) this.shakeTimer--;
+    const ox = shake ? (Math.random() - 0.5) * 4 : 0;
+    const oy = shake ? (Math.random() - 0.5) * 3 : 0;
+    this.ctx.save();
+    this.ctx.translate(ox, oy);
     this.clearCanvas();
 
     // Draw Greek-inspired background
@@ -493,6 +585,7 @@ export class BreakoutGame extends BaseGame {
       this.ctx.stroke();
       this.ctx.restore();
     }
+    this.ctx.restore();
   }
 
   private drawGameplay() {
@@ -512,17 +605,25 @@ export class BreakoutGame extends BaseGame {
       this.drawEvolvingPaddle();
     }
 
-    // Draw ball only if not eaten
+    // Draw balls only if not eaten
     if (!this.ballEaten) {
-      this.ctx.save();
-      this.ctx.fillStyle = '#FFD700';
-      this.ctx.strokeStyle = '#B8860B';
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.stroke();
-      this.ctx.restore();
+      for (const ball of this.balls) {
+        this.ctx.save();
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.strokeStyle = '#B8860B';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
+    }
+    // Render particles
+    const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+    if (allowParticles) {
+      this.particles.update();
+      this.particles.render();
     }
   }
 
@@ -702,7 +803,8 @@ export class BreakoutGame extends BaseGame {
     if (this.ballEaten) {
       const ballProgress = Math.min((this.evolutionProgress - 0.3) / 0.3, 1);
       const ballAlpha = 1 - ballProgress;
-      const ballSize = this.ball.radius * (1 - ballProgress);
+      const leadBall = this.balls[0] || { radius: 8 } as any;
+      const ballSize = leadBall.radius * (1 - ballProgress);
       
       this.ctx.globalAlpha = ballAlpha;
       this.ctx.fillStyle = '#FFD700';
