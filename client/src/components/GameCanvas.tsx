@@ -149,6 +149,18 @@ export function GameCanvas() {
     };
   }, [currentStage, updateScore, setGameState, applyCanvasSize]);
 
+  // React to settings changes like DPR scaling toggle
+  useEffect(() => {
+    const unsubscribe = useSettingsStore.subscribe(() => {
+      const canvas = canvasRef.current;
+      const game = gameRef.current;
+      if (!canvas || !game) return;
+      const { width, height } = applyCanvasSize();
+      game.resize(width, height);
+    });
+    return unsubscribe;
+  }, [applyCanvasSize]);
+
   useEffect(() => {
     if (gameRef.current) {
       switch (gameState) {
