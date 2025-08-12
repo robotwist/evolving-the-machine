@@ -64,6 +64,9 @@ export class BreakoutGame extends BaseGame {
   private punchAnimationRight = 0;
   private evolvedPaddleX = 0;
   private evolvedPaddleY = 0;
+  // Touch smoothing
+  private targetPaddleX: number | null = null;
+  private indicatorPos: { x: number; y: number } | null = null;
   
   init() {
     // Initialize paddle (evolved from Pong paddle)
@@ -125,6 +128,12 @@ export class BreakoutGame extends BaseGame {
   }
 
   update(deltaTime: number) {
+    // Smooth paddle toward target for touch
+    if (!this.paddleEvolved && this.targetPaddleX != null) {
+      const dx = this.targetPaddleX - this.paddle.x;
+      this.paddle.x += Math.sign(dx) * Math.min(Math.abs(dx), this.paddle.speed * 1.2);
+      this.paddle.x = Math.max(0, Math.min(this.width - this.paddle.width, this.paddle.x));
+    }
     if (this.transitioning) {
       this.updateTransition();
       return;
@@ -284,7 +293,8 @@ export class BreakoutGame extends BaseGame {
     }
     // Normal mode: map x to paddle position at bottom region
     const targetX = x - this.paddle.width / 2;
-    this.paddle.x = Math.max(0, Math.min(this.width - this.paddle.width, targetX));
+    this.targetPaddleX = Math.max(0, Math.min(this.width - this.paddle.width, targetX));
+    this.indicatorPos = { x, y };
   }
 
   handlePointerUp() {
@@ -467,6 +477,17 @@ export class BreakoutGame extends BaseGame {
 
     // Draw UI
     this.drawUI();
+
+    // Touch indicator ring
+    if (this.indicatorPos) {
+      this.ctx.save();
+      this.ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(this.indicatorPos.x, this.indicatorPos.y, 20, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
   }
 
   private drawGameplay() {

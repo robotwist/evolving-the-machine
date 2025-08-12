@@ -5,6 +5,7 @@ import { useAudio } from '../lib/stores/useAudio';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
+import { useTutorialStore } from '../lib/stores/useTutorialStore';
 
 export function GameUI() {
   const { 
@@ -17,6 +18,14 @@ export function GameUI() {
   const { scores, highScores } = useScoreStore();
   const { isMuted, toggleMute } = useAudio();
   const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion } = useSettingsStore();
+  const { show, maybeShow, markSeen, hide } = useTutorialStore();
+  const stageKey = currentStage as 1 | 2 | 3 | 4 | 5;
+
+  React.useEffect(() => {
+    if (gameState === 'playing') {
+      maybeShow(stageKey);
+    }
+  }, [gameState, stageKey, maybeShow]);
 
   const stageName = {
     1: 'Pong Master',
@@ -228,6 +237,32 @@ export function GameUI() {
           <div>Touch: Left steer+thrust, Right tap shoot | Keyboard: WASD + Space</div>
         )}
       </div>
+
+      {/* Tutorial overlay */}
+      {show[stageKey] && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onClick={() => markSeen(currentStage as any)}>
+          <Card className="bg-black/90 border-white/20 max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="p-6 text-white text-center">
+              {currentStage === 1 && (
+                <>
+                  <div className="text-xl font-bold mb-2">Pong — Quick Tutorial</div>
+                  <div className="text-sm mb-4">Drag on the left to move. Collect powerups. Missile/Fire shots pierce the AI paddle.</div>
+                </>
+              )}
+              {currentStage === 2 && (
+                <>
+                  <div className="text-xl font-bold mb-2">Breakout — Quick Tutorial</div>
+                  <div className="text-sm mb-4">Drag near the bottom to move the paddle. Clear blocks; lives are generous; evolve mid‑level.</div>
+                </>
+              )}
+              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => markSeen(stageKey)}>Got it</Button>
+              <div>
+                <Button variant="outline" className="mt-2 border-white/20 text-white" onClick={() => hide(stageKey)}>Hide for now</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </>
   );
 }
