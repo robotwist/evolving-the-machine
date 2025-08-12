@@ -374,9 +374,13 @@ export class BreakoutGame extends BaseGame {
           brick.destroyed = true;
           this.score += 10;
           // Effects and powerup drop
-          this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, 14, '#FFD700');
+          const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
+          const count = quality === 'high' ? 18 : quality === 'low' ? 8 : 12;
+          this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700');
           const drop = Math.random();
-          if (drop < 0.15) {
+          const baseRate = 0.12;
+          const bonus = this.balls.length > 1 ? -0.04 : 0;
+          if (drop < baseRate + bonus) {
             this.spawnPowerup(brick.x + brick.width / 2, brick.y + brick.height / 2);
           }
         }
