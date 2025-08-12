@@ -10,12 +10,14 @@ interface SettingsState {
   enableDprScaling: boolean;
   hapticsEnabled: boolean;
   preset: PerformancePreset;
+  reduceMotion: boolean;
   isMobileDefaulted: boolean;
   setGraphicsQuality: (q: GraphicsQuality) => void;
   setFpsCap: (fps: 30 | 45 | 60) => void;
   setEnableDprScaling: (enable: boolean) => void;
   setHapticsEnabled: (enable: boolean) => void;
   setPreset: (preset: PerformancePreset) => void;
+  setReduceMotion: (enable: boolean) => void;
   applyMobileDefaultsOnce: () => void;
 }
 
@@ -27,11 +29,13 @@ export const useSettingsStore = create<SettingsState>()(
       enableDprScaling: true,
       hapticsEnabled: true,
       preset: 'balanced',
+      reduceMotion: false,
       isMobileDefaulted: false,
       setGraphicsQuality: (graphicsQuality) => set({ graphicsQuality }),
       setFpsCap: (fpsCap) => set({ fpsCap }),
       setEnableDprScaling: (enableDprScaling) => set({ enableDprScaling }),
       setHapticsEnabled: (hapticsEnabled) => set({ hapticsEnabled }),
+      setReduceMotion: (reduceMotion) => set({ reduceMotion }),
       setPreset: (preset) => {
         // Map presets to settings
         if (preset === 'battery') {

@@ -270,6 +270,27 @@ export class BreakoutGame extends BaseGame {
     this.onScoreUpdate?.(this.score);
   }
 
+  // Touch/pointer: horizontal paddle control (normal mode) or move evolved body
+  handlePointerDown(x: number, y: number) {
+    this.handlePointerMove(x, y);
+  }
+
+  handlePointerMove(x: number, y: number) {
+    if (this.paddleEvolved) {
+      // Move evolved paddle toward pointer with clamp
+      this.evolvedPaddleX = Math.max(40, Math.min(this.width - 40, x));
+      this.evolvedPaddleY = Math.max(this.height / 3, Math.min(this.height - 40, y));
+      return;
+    }
+    // Normal mode: map x to paddle position at bottom region
+    const targetX = x - this.paddle.width / 2;
+    this.paddle.x = Math.max(0, Math.min(this.width - this.paddle.width, targetX));
+  }
+
+  handlePointerUp() {
+    // no-op
+  }
+
   private checkPaddleCollision(): boolean {
     return (
       this.ball.x + this.ball.radius > this.paddle.x &&

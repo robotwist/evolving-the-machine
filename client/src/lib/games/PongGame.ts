@@ -296,7 +296,7 @@ export class PongGame extends BaseGame {
     this.drawGreekPaddle(this.player2);
 
     // Draw ball trail for powerups
-    if (this.ball.type !== 'normal') {
+    if (this.ball.type !== 'normal' && !(window as any).__CULTURAL_ARCADE_REDUCE_MOTION__) {
       this.ctx.save();
       for (let i = 0; i < this.ball.trail.length; i++) {
         const alpha = i / this.ball.trail.length * 0.5;

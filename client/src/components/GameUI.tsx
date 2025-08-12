@@ -16,7 +16,7 @@ export function GameUI() {
   } = useGameStore();
   const { scores, highScores } = useScoreStore();
   const { isMuted, toggleMute } = useAudio();
-  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset } = useSettingsStore();
+  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion } = useSettingsStore();
 
   const stageName = {
     1: 'Pong Master',
@@ -133,6 +133,14 @@ export function GameUI() {
                         type="checkbox"
                         checked={enableDprScaling}
                         onChange={(e) => setEnableDprScaling(e.target.checked)}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
+                      <span>Reduce Motion</span>
+                      <input
+                        type="checkbox"
+                        checked={reduceMotion}
+                        onChange={(e) => setReduceMotion(e.target.checked)}
                       />
                     </label>
                     <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
