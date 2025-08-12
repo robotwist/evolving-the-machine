@@ -42,6 +42,22 @@ export default function App() {
     loadAudio();
   }, [setBackgroundMusic, setHitSound, setSuccessSound]);
 
+  // Intro VO sequencer when landing on menu initially
+  useEffect(() => {
+    const run = async () => {
+      if (currentScreen === 'menu') {
+        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+        const deviceLine = isMobile ? 'MOBILE THRUSTERS CALIBRATED.' : 'DESKTOP LINK ESTABLISHED.';
+        try {
+          await useAudio.getState().playVO('SYSTEM ONLINE.');
+          await useAudio.getState().playVO(deviceLine);
+          await useAudio.getState().playVO('CULTURAL ARCADE: EVOLUTION PROTOCOL READY.');
+        } catch {}
+      }
+    };
+    run();
+  }, [currentScreen]);
+
   useEffect(() => {
     if (currentScreen !== 'menu') {
       setShowDemo(false);
