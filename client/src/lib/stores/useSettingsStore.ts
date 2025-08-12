@@ -11,6 +11,8 @@ interface SettingsState {
   hapticsEnabled: boolean;
   preset: PerformancePreset;
   reduceMotion: boolean;
+  enableParticles: boolean;
+  enableScreenshake: boolean;
   isMobileDefaulted: boolean;
   setGraphicsQuality: (q: GraphicsQuality) => void;
   setFpsCap: (fps: 30 | 45 | 60) => void;
@@ -18,6 +20,8 @@ interface SettingsState {
   setHapticsEnabled: (enable: boolean) => void;
   setPreset: (preset: PerformancePreset) => void;
   setReduceMotion: (enable: boolean) => void;
+  setEnableParticles: (enable: boolean) => void;
+  setEnableScreenshake: (enable: boolean) => void;
   applyMobileDefaultsOnce: () => void;
 }
 
@@ -30,12 +34,16 @@ export const useSettingsStore = create<SettingsState>()(
       hapticsEnabled: true,
       preset: 'balanced',
       reduceMotion: false,
+      enableParticles: true,
+      enableScreenshake: true,
       isMobileDefaulted: false,
       setGraphicsQuality: (graphicsQuality) => set({ graphicsQuality }),
       setFpsCap: (fpsCap) => set({ fpsCap }),
       setEnableDprScaling: (enableDprScaling) => set({ enableDprScaling }),
       setHapticsEnabled: (hapticsEnabled) => set({ hapticsEnabled }),
       setReduceMotion: (reduceMotion) => set({ reduceMotion }),
+      setEnableParticles: (enableParticles) => set({ enableParticles }),
+      setEnableScreenshake: (enableScreenshake) => set({ enableScreenshake }),
       setPreset: (preset) => {
         // Map presets to settings
         if (preset === 'battery') {

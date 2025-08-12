@@ -59,6 +59,17 @@ export class DefenderGame extends BaseGame {
     messageIndex: 0,
     narcissusStage: 0 // 0-5, how much AI mirrors the user
   };
+  private shakeTimer = 0;
+  private particles = new (class LocalParticles {
+    private ps: any;
+    init = (ctx: CanvasRenderingContext2D) => {
+      const { ParticleSystem } = require('../utils/ParticleSystem');
+      this.ps = new ParticleSystem(ctx);
+    };
+    addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
+    update = () => this.ps?.update();
+    render = () => this.ps?.render();
+  })();
 
   init() {
     // Initialize player (Samurai defender)
@@ -73,6 +84,8 @@ export class DefenderGame extends BaseGame {
 
     this.spawnWave();
     this.spawnCivilians();
+    // init particles
+    this.particles.init(this.ctx);
   }
 
   private spawnWave() {
@@ -304,6 +317,12 @@ export class DefenderGame extends BaseGame {
           bullet.alive = false;
           this.score += enemy.type === 'bomber' ? 200 : 100;
           this.playHitSound();
+          // Effects
+          const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+          const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+          const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+          if (!reduce && allowShake) this.shakeTimer = 10;
+          if (allowParticles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444');
         }
       });
     });
@@ -312,6 +331,11 @@ export class DefenderGame extends BaseGame {
     this.enemyBullets.forEach(bullet => {
       if (this.isColliding(bullet, this.player)) {
         this.onGameOver?.();
+        const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+        const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+        const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+        if (!reduce && allowShake) this.shakeTimer = 14;
+        if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700');
       }
     });
 
@@ -381,6 +405,15 @@ export class DefenderGame extends BaseGame {
   }
 
   render() {
+    // screenshake
+    const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+    const shake = !reduce && allowShake && this.shakeTimer > 0 ? this.shakeTimer : 0;
+    if (shake > 0) this.shakeTimer--;
+    const ox = shake ? (Math.random() - 0.5) * 6 : 0;
+    const oy = shake ? (Math.random() - 0.5) * 4 : 0;
+    this.ctx.save();
+    this.ctx.translate(ox, oy);
     this.clearCanvas();
 
     // Save context for camera transform
@@ -412,6 +445,13 @@ export class DefenderGame extends BaseGame {
     this.enemyBullets.forEach(bullet => this.drawEnemyBullet(bullet));
 
     this.ctx.restore();
+
+    // particles overlay
+    const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+    if (allowParticles) {
+      this.particles.update();
+      this.particles.render();
+    }
 
     // Draw UI (not affected by camera)
     this.drawUI();

@@ -17,7 +17,7 @@ export function GameUI() {
   } = useGameStore();
   const { scores, highScores } = useScoreStore();
   const { isMuted, toggleMute } = useAudio();
-  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion } = useSettingsStore();
+  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion, enableParticles, setEnableParticles, enableScreenshake, setEnableScreenshake } = useSettingsStore();
   const { show, maybeShow, markSeen, hide } = useTutorialStore();
   const stageKey = currentStage as 1 | 2 | 3 | 4 | 5;
 
@@ -158,6 +158,22 @@ export function GameUI() {
                         type="checkbox"
                         checked={hapticsEnabled}
                         onChange={(e) => setHapticsEnabled(e.target.checked)}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
+                      <span>Particles</span>
+                      <input
+                        type="checkbox"
+                        checked={enableParticles}
+                        onChange={(e) => setEnableParticles(e.target.checked)}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
+                      <span>Screenshake</span>
+                      <input
+                        type="checkbox"
+                        checked={enableScreenshake}
+                        onChange={(e) => setEnableScreenshake(e.target.checked)}
                       />
                     </label>
                   </div>
