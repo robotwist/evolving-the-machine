@@ -255,6 +255,31 @@ export class PongGame extends BaseGame {
       this.shakeTimer = 8;
     }
 
+    // Special effect when piercing AI paddle
+    if (penetrateAI && this.checkPaddleCollision(this.player2)) {
+      // Sizzle/spark: draw a brief spark and add micro explosion
+      const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+      const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+      if (!reduce && allowShake) this.shakeTimer = 10;
+      // Spark effect drawn immediately at paddle collision position
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'lighter';
+      this.ctx.strokeStyle = this.ball.type === 'fire' ? '#FF4500' : '#FF0000';
+      this.ctx.lineWidth = 3;
+      const cx = this.player2.x;
+      const cy = Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y));
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx + Math.cos(angle) * 14, cy + Math.sin(angle) * 14);
+        this.ctx.stroke();
+      }
+      this.ctx.restore();
+      // Slight defocus trail
+      this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
+    }
+
     // Scoring - Player must win to progress
     if (this.ball.x < 0) {
       this.player2.score++;
