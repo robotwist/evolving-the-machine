@@ -41,6 +41,7 @@ export function GameUI() {
 
   const handleRestart = () => {
     setGameState('playing');
+    useAudio.getState().playStinger('start');
   };
 
   const handleMainMenu = () => {
@@ -49,6 +50,7 @@ export function GameUI() {
 
   const handleNextStage = () => {
     goToNextStage();
+    useAudio.getState().playStinger('start');
   };
 
   return (

@@ -44,6 +44,13 @@ export default function App() {
 
   // Intro VO sequencer when landing on menu initially
   useEffect(() => {
+    // stinger for state transitions
+    if (currentScreen === 'game') {
+      useAudio.getState().playStinger('start');
+    }
+  }, [currentScreen]);
+
+  useEffect(() => {
     const run = async () => {
       if (currentScreen === 'menu') {
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);

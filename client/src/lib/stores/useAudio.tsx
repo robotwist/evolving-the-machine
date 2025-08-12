@@ -20,6 +20,7 @@ interface AudioState {
   playHit: () => void;
   playSuccess: () => void;
   playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number }) => Promise<void>;
+  playStinger: (kind: 'start' | 'fail' | 'clear') => void;
 }
 
 export const useAudio = create<AudioState>((set, get) => ({
@@ -120,5 +121,42 @@ export const useAudio = create<AudioState>((set, get) => ({
     } catch (e) {
       console.log('VO failed', e);
     }
+  }
+  ,
+  playStinger: (kind: 'start' | 'fail' | 'clear') => {
+    const { isMuted } = get();
+    if (isMuted) return;
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = kind === 'fail' ? 'sawtooth' : 'triangle';
+      const now = ctx.currentTime;
+      if (kind === 'start') {
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.linearRampToValueAtTime(520, now + 0.18);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.08, now + 0.04);
+        gain.gain.linearRampToValueAtTime(0, now + 0.22);
+      } else if (kind === 'clear') {
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.linearRampToValueAtTime(660, now + 0.2);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.09, now + 0.03);
+        gain.gain.linearRampToValueAtTime(0, now + 0.25);
+      } else {
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(160, now + 0.15);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
+        gain.gain.linearRampToValueAtTime(0, now + 0.18);
+      }
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(now + 0.3);
+      setTimeout(() => ctx.close(), 350);
+    } catch {}
   }
 }));

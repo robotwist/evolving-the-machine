@@ -10,6 +10,9 @@ export function MainMenu() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-black p-4">
+      <div className="fixed top-6 w-full flex justify-center pointer-events-none">
+        <GlitchTitle text="CULTURAL ARCADE EVOLUTION" />
+      </div>
       <Card className="bg-black/80 border-purple-500/30 mb-8 max-w-4xl">
         <CardHeader className="text-center">
           <CardTitle className="text-4xl font-bold text-white mb-2">
@@ -112,6 +115,32 @@ export function MainMenu() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function GlitchTitle({ text }: { text: string }) {
+  const [step, setStep] = React.useState(0);
+  React.useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setStep(i);
+      if (i > text.length + 8) clearInterval(id);
+    }, 40);
+    return () => clearInterval(id);
+  }, [text]);
+  const shown = Math.min(step, text.length);
+  const visible = text.slice(0, shown);
+  const noise = '!@#$%^&*()_+=-{}[]<>/\\'.charAt(step % 24);
+  const tail = step < text.length ? noise : '';
+  return (
+    <div className="text-center select-none">
+      <div className="text-sm tracking-widest text-white/40 mb-1">SYSTEM ONLINE</div>
+      <div className="text-2xl md:text-4xl font-bold text-white">
+        <span className="[text-shadow:_0_0_8px_#6bf,_0_0_16px_#6bf]">{visible}</span>
+        <span className="text-white/30">{tail}</span>
+      </div>
     </div>
   );
 }
