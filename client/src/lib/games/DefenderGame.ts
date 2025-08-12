@@ -67,9 +67,15 @@ export class DefenderGame extends BaseGame {
       this.ps = new ParticleSystem(ctx);
     };
     addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
+    addTrail = (x: number, y: number, vx: number, vy: number, color?: string) => this.ps?.addTrail(x, y, vx, vy, color);
     update = () => this.ps?.update();
     render = () => this.ps?.render();
   })();
+  // Ambient whispers (WebAudio)
+  private audioCtx: AudioContext | null = null;
+  private whisperGain: GainNode | null = null;
+  private lfoOsc: OscillatorNode | null = null;
+  private lfoGain: GainNode | null = null;
 
   init() {
     // Initialize player (Samurai defender)
@@ -86,6 +92,8 @@ export class DefenderGame extends BaseGame {
     this.spawnCivilians();
     // init particles
     this.particles.init(this.ctx);
+    // start ambient whispers if allowed
+    this.startWhispers();
   }
 
   private spawnWave() {
@@ -337,6 +345,11 @@ export class DefenderGame extends BaseGame {
         if (!reduce && allowShake) this.shakeTimer = 14;
         if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700');
       }
+      // Trails for enemy bullets
+      const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+      if (allowParticles && bullet.owner === 'enemy') {
+        this.particles.addTrail(bullet.position.x, bullet.position.y, bullet.velocity.x, bullet.velocity.y, '#FF4500');
+      }
     });
 
     // Player vs civilians (rescue)
@@ -453,8 +466,123 @@ export class DefenderGame extends BaseGame {
       this.particles.render();
     }
 
+    // Spooky vignette and fear aura overlays (Sinistar vibes)
+    this.drawSpookyOverlays();
+
     // Draw UI (not affected by camera)
     this.drawUI();
+  }
+
+  private drawSpookyOverlays() {
+    const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    // Pulsating vignette
+    const t = Date.now() * 0.001;
+    const pulse = reduce ? 0.08 : 0.12 + 0.06 * (Math.sin(t * 0.7) * 0.5 + 0.5);
+    const g = this.ctx.createRadialGradient(
+      this.width / 2,
+      this.height / 2,
+      Math.min(this.width, this.height) * 0.2,
+      this.width / 2,
+      this.height / 2,
+      Math.max(this.width, this.height) * 0.75
+    );
+    g.addColorStop(0.0, `rgba(0,0,0,0)`);
+    g.addColorStop(1.0, `rgba(0,0,0,${pulse.toFixed(3)})`);
+    this.ctx.save();
+    this.ctx.fillStyle = g;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.restore();
+
+    // Fear aura: highlight enemies near the player
+    const auraRadius = 90;
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = 'lighter';
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      const dx = enemy.position.x - this.player.position.x;
+      const dy = enemy.position.y - this.player.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < auraRadius * 1.5) {
+        const intensity = Math.max(0, 1 - dist / (auraRadius * 1.5));
+        const rg = this.ctx.createRadialGradient(
+          enemy.position.x - this.camera.x,
+          enemy.position.y,
+          5,
+          enemy.position.x - this.camera.x,
+          enemy.position.y,
+          auraRadius
+        );
+        const hue = 280; // eerie purple
+        rg.addColorStop(0, `rgba(255, 0, 50, ${0.12 * intensity})`);
+        rg.addColorStop(1, `rgba(120, 0, 160, 0)`);
+        this.ctx.fillStyle = rg;
+        this.ctx.beginPath();
+        this.ctx.arc(enemy.position.x - this.camera.x, enemy.position.y, auraRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
+    this.ctx.restore();
+  }
+
+  private startWhispers() {
+    try {
+      if (this.audioCtx) return;
+      if (useAudio.getState().isMuted) return;
+      // Create audio context and noise source
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const bufferSize = 2 * ctx.sampleRate;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        // pink-ish noise approximation
+        output[i] = (Math.random() * 2 - 1) * 0.3;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      noise.loop = true;
+
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.value = 1200;
+      bandpass.Q.value = 0.6;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.003; // very subtle
+
+      // LFO to modulate whisper volume
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.07; // slow
+      const lfoDepth = ctx.createGain();
+      lfoDepth.gain.value = 0.002;
+      lfo.connect(lfoDepth).connect(gain.gain);
+
+      noise.connect(bandpass).connect(gain).connect(ctx.destination);
+      noise.start(0);
+      lfo.start(0);
+
+      this.audioCtx = ctx;
+      this.whisperGain = gain;
+      this.lfoOsc = lfo;
+      this.lfoGain = lfoDepth;
+    } catch {
+      // ignore
+    }
+  }
+
+  private stopWhispers() {
+    try {
+      this.lfoOsc?.stop();
+      this.audioCtx?.close();
+    } catch {
+      // ignore
+    }
+    this.lfoOsc = null;
+    this.lfoGain = null;
+    this.whisperGain = null;
+    this.audioCtx = null;
   }
 
   private drawJapaneseBackground() {
@@ -584,6 +712,7 @@ export class DefenderGame extends BaseGame {
     this.cleanup = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+      this.stopWhispers();
     };
   }
 }
