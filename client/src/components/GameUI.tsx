@@ -17,7 +17,7 @@ export function GameUI() {
   } = useGameStore();
   const { scores, highScores } = useScoreStore();
   const { isMuted, toggleMute } = useAudio();
-  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion, enableParticles, setEnableParticles, enableScreenshake, setEnableScreenshake } = useSettingsStore();
+  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion, enableParticles, setEnableParticles, enableScreenshake, setEnableScreenshake, voiceStyle, setVoiceStyle } = useSettingsStore();
   const { show, maybeShow, markSeen, hide } = useTutorialStore();
   const stageKey = currentStage as 1 | 2 | 3 | 4 | 5;
 
@@ -112,6 +112,18 @@ export function GameUI() {
                         <option value="battery">Battery Saver</option>
                         <option value="balanced">Balanced</option>
                         <option value="performance">Performance</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center justify-between gap-2">
+                      <span>Voice Style</span>
+                      <select
+                        value={voiceStyle}
+                        onChange={(e) => setVoiceStyle(e.target.value as any)}
+                        className="bg-black/50 border border-white/20 rounded px-2 py-1"
+                      >
+                        <option value="neutral">Neutral</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="robotic">Robotic</option>
                       </select>
                     </label>
                     <label className="flex items-center justify-between gap-2">

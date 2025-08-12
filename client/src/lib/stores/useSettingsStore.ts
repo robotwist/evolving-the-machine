@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high';
 export type PerformancePreset = 'battery' | 'balanced' | 'performance';
+export type VoiceStyle = 'neutral' | 'friendly' | 'robotic';
 
 interface SettingsState {
   graphicsQuality: GraphicsQuality;
@@ -13,6 +14,7 @@ interface SettingsState {
   reduceMotion: boolean;
   enableParticles: boolean;
   enableScreenshake: boolean;
+  voiceStyle: VoiceStyle;
   isMobileDefaulted: boolean;
   setGraphicsQuality: (q: GraphicsQuality) => void;
   setFpsCap: (fps: 30 | 45 | 60) => void;
@@ -22,6 +24,7 @@ interface SettingsState {
   setReduceMotion: (enable: boolean) => void;
   setEnableParticles: (enable: boolean) => void;
   setEnableScreenshake: (enable: boolean) => void;
+  setVoiceStyle: (style: VoiceStyle) => void;
   applyMobileDefaultsOnce: () => void;
 }
 
@@ -36,6 +39,7 @@ export const useSettingsStore = create<SettingsState>()(
       reduceMotion: false,
       enableParticles: true,
       enableScreenshake: true,
+      voiceStyle: 'neutral',
       isMobileDefaulted: false,
       setGraphicsQuality: (graphicsQuality) => set({ graphicsQuality }),
       setFpsCap: (fpsCap) => set({ fpsCap }),
@@ -44,6 +48,7 @@ export const useSettingsStore = create<SettingsState>()(
       setReduceMotion: (reduceMotion) => set({ reduceMotion }),
       setEnableParticles: (enableParticles) => set({ enableParticles }),
       setEnableScreenshake: (enableScreenshake) => set({ enableScreenshake }),
+      setVoiceStyle: (voiceStyle) => set({ voiceStyle }),
       setPreset: (preset) => {
         // Map presets to settings
         if (preset === 'battery') {
