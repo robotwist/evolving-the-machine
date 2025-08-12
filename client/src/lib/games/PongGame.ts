@@ -44,6 +44,7 @@ export class PongGame extends BaseGame {
   private powerupSpawnTimer = 0;
   private activePowerupType = 'normal';
   private powerupDuration = 0;
+  private shakeTimer = 0;
   private aiTaunts = [
     'ANALYZING... ADAPTING... EVOLVING RAPIDLY!',
     'YOUR PATTERNS ARE MINE NOW!',
@@ -239,13 +240,19 @@ export class PongGame extends BaseGame {
     }
 
     // Ball collision with paddles
-    if (this.checkPaddleCollision(this.player1) || this.checkPaddleCollision(this.player2)) {
+    const collideP1 = this.checkPaddleCollision(this.player1);
+    // Penetrate AI paddle when ball has missile or fire powerups
+    const penetrateAI = this.ball.type === 'missile' || this.ball.type === 'fire';
+    const collideP2 = penetrateAI ? false : this.checkPaddleCollision(this.player2);
+    if (collideP1 || collideP2) {
       this.ball.dx = -this.ball.dx * 1.05; // Increase speed slightly
       this.playHitSound();
       const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
       if (hapticsOn && 'vibrate' in navigator) {
         navigator.vibrate?.(10);
       }
+      // Tiny screenshake on impact
+      this.shakeTimer = 8;
     }
 
     // Scoring - Player must win to progress
@@ -286,6 +293,15 @@ export class PongGame extends BaseGame {
   }
 
   render() {
+    // Optional small screenshake if enabled
+    const reduceMotion = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    if (this.shakeTimer == null) (this as any).shakeTimer = 0;
+    const shake = !reduceMotion && this.shakeTimer > 0 ? this.shakeTimer : 0;
+    if (shake > 0) this.shakeTimer--;
+    const offsetX = shake > 0 ? (Math.random() - 0.5) * 4 : 0;
+    const offsetY = shake > 0 ? (Math.random() - 0.5) * 4 : 0;
+    this.ctx.save();
+    this.ctx.translate(offsetX, offsetY);
     this.clearCanvas();
 
     // Draw Greek-inspired background
@@ -404,6 +420,7 @@ export class PongGame extends BaseGame {
 
     // Draw powerups (now that all functions are defined)
     this.drawPowerups();
+    this.ctx.restore();
   }
 
   // Touch/pointer: move human paddle based on vertical touch on left 60% of screen
