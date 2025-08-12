@@ -75,6 +75,9 @@ export class PongGame extends BaseGame {
 
   init() {
     // Initialize paddles with Greek column design
+    const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ as 'low' | 'medium' | 'high' | undefined;
+    const shadowBlur = quality === 'low' ? 0 : quality === 'medium' ? 5 : 15;
+
     this.player1 = {
       x: 50,
       y: this.height / 2 - 50,
@@ -95,6 +98,8 @@ export class PongGame extends BaseGame {
 
     // Initialize ball
     this.resetBall();
+    // store visual quality for render usage
+    (this as any)._shadowBlur = shadowBlur;
   }
 
   private resetBall() {
@@ -342,14 +347,14 @@ export class PongGame extends BaseGame {
     // Draw scores with humanity emphasis
     this.ctx.save();
     this.ctx.shadowColor = '#FFD700';
-    this.ctx.shadowBlur = 5;
+    this.ctx.shadowBlur = (this as any)._shadowBlur ?? 5;
     this.drawText(`${this.player1.score}`, this.width / 4, 50, 48, '#FFD700', 'center');
     this.ctx.shadowBlur = 0;
     this.ctx.restore();
     
     this.ctx.save();
     this.ctx.shadowColor = '#FF0000';
-    this.ctx.shadowBlur = 5;
+    this.ctx.shadowBlur = (this as any)._shadowBlur ?? 5;
     this.drawText(`${this.player2.score}`, (3 * this.width) / 4, 50, 48, '#FF0000', 'center');
     this.ctx.shadowBlur = 0;
     this.ctx.restore();

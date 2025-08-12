@@ -7,12 +7,13 @@ createRoot(document.getElementById("root")!).render(<App />);
 
 // Expose FPS cap to non-React classes
 (() => {
-  const setGlobalFps = () => {
-    const fps = useSettingsStore.getState().fpsCap;
-    (window as any).__CULTURAL_ARCADE_FPS_CAP__ = fps;
+  const applySettingsToGlobals = () => {
+    const { fpsCap, graphicsQuality } = useSettingsStore.getState();
+    (window as any).__CULTURAL_ARCADE_FPS_CAP__ = fpsCap;
+    (window as any).__CULTURAL_ARCADE_QUALITY__ = graphicsQuality;
   };
-  setGlobalFps();
-  useSettingsStore.subscribe(setGlobalFps);
+  applySettingsToGlobals();
+  useSettingsStore.subscribe(applySettingsToGlobals);
 })();
 
 // Register service worker for PWA
