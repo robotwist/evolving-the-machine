@@ -21,6 +21,7 @@ interface AudioState {
   playSuccess: () => void;
   playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number }) => Promise<void>;
   playStinger: (kind: 'start' | 'fail' | 'clear') => void;
+  playSizzle: () => void;
 }
 
 export const useAudio = create<AudioState>((set, get) => ({
@@ -157,6 +158,34 @@ export const useAudio = create<AudioState>((set, get) => ({
       osc.start();
       osc.stop(now + 0.3);
       setTimeout(() => ctx.close(), 350);
+    } catch {}
+  }
+  ,
+  playSizzle: () => {
+    const { isMuted } = get();
+    if (isMuted) return;
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const bufferSize = Math.floor(0.18 * ctx.sampleRate);
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 3200;
+      bp.Q.value = 1.0;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.06;
+      noise.connect(bp).connect(gain).connect(ctx.destination);
+      noise.start();
+      noise.stop(ctx.currentTime + 0.18);
+      setTimeout(() => ctx.close(), 280);
     } catch {}
   }
 }));

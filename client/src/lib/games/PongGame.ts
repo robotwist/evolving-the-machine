@@ -278,6 +278,8 @@ export class PongGame extends BaseGame {
       this.ctx.restore();
       // Slight defocus trail
       this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
+      // Audio sizzle
+      useAudio.getState().playSizzle();
     }
 
     // Scoring - Player must win to progress
