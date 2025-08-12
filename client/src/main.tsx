@@ -12,6 +12,8 @@ createRoot(document.getElementById("root")!).render(<App />);
     (window as any).__CULTURAL_ARCADE_FPS_CAP__ = fpsCap;
     (window as any).__CULTURAL_ARCADE_QUALITY__ = graphicsQuality;
   };
+  // Apply mobile defaults on first load
+  useSettingsStore.getState().applyMobileDefaultsOnce();
   applySettingsToGlobals();
   useSettingsStore.subscribe(applySettingsToGlobals);
 })();

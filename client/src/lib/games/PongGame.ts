@@ -37,7 +37,7 @@ export class PongGame extends BaseGame {
   private ball!: Ball;
   private keys: Set<string> = new Set();
   private winScore = 5; // Faster games for testing later stages
-  private aiAggression = 0.8;
+  private aiAggression = 0.6;
   private aiTauntTimer = 0;
   private currentTaunt = '';
   private powerups: Powerup[] = [];
@@ -148,8 +148,8 @@ export class PongGame extends BaseGame {
     
     // Increase aggression if AI is losing
     if (this.player1.score > this.player2.score) {
-      this.aiAggression = Math.min(1.2, this.aiAggression + 0.01);
-      aiSpeed *= 1.3;
+      this.aiAggression = Math.min(1.0, this.aiAggression + 0.008);
+      aiSpeed *= 1.2;
     }
     
     // Predict where ball will be
@@ -163,7 +163,7 @@ export class PongGame extends BaseGame {
     }
     
     // Occasionally make erratic movements to show machine behavior
-    if (Math.random() < 0.02) {
+    if (Math.random() < 0.01) {
       this.player2.y += (Math.random() - 0.5) * 20;
       this.player2.y = Math.max(0, Math.min(this.height - this.player2.height, this.player2.y));
     }
@@ -171,7 +171,7 @@ export class PongGame extends BaseGame {
     // Dynamic AI messages based on game state
     // AI becomes more aggressive and competitive as it scores points
     if (this.player2.score >= 4) {
-      this.aiAggression = Math.min(1.5, this.aiAggression + 0.02);
+      this.aiAggression = Math.min(1.0, this.aiAggression + 0.01);
     }
     
     // Add score-based prompts with fast synthwave evolution
@@ -218,9 +218,9 @@ export class PongGame extends BaseGame {
 
     // Apply powerup effects to ball movement
     let speedMultiplier = 1;
-    if (this.ball.type === 'speed') speedMultiplier = 2.5;
-    else if (this.ball.type === 'fire') speedMultiplier = 1.8;
-    else if (this.ball.type === 'missile') speedMultiplier = 3;
+    if (this.ball.type === 'speed') speedMultiplier = 1.8;
+    else if (this.ball.type === 'fire') speedMultiplier = 1.4;
+    else if (this.ball.type === 'missile') speedMultiplier = 2.2;
     
     // Update ball position with powerup effects
     this.ball.x += this.ball.dx * speedMultiplier;
@@ -242,6 +242,9 @@ export class PongGame extends BaseGame {
     if (this.checkPaddleCollision(this.player1) || this.checkPaddleCollision(this.player2)) {
       this.ball.dx = -this.ball.dx * 1.05; // Increase speed slightly
       this.playHitSound();
+      if ('vibrate' in navigator) {
+        navigator.vibrate?.(10);
+      }
     }
 
     // Scoring - Player must win to progress
@@ -249,11 +252,17 @@ export class PongGame extends BaseGame {
       this.player2.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
+      if ('vibrate' in navigator) {
+        navigator.vibrate?.([20, 30, 20]);
+      }
       // Game continues until player wins
     } else if (this.ball.x > this.width) {
       this.player1.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
+      if ('vibrate' in navigator) {
+        navigator.vibrate?.(20);
+      }
       if (this.player1.score >= this.winScore) {
         this.onStageComplete?.(); // Only player win progresses
       }
@@ -557,7 +566,7 @@ export class PongGame extends BaseGame {
     this.powerupSpawnTimer++;
     
     // Spawn powerups very frequently to speed up the game dramatically
-    if (this.powerupSpawnTimer > 120 && this.powerups.length < 3) { // Every 2 seconds, up to 3 at once
+    if (this.powerupSpawnTimer > 240 && this.powerups.length < 2) { // Every ~4 seconds, up to 2 at once
       const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky')[] = ['speed', 'fire', 'missile', 'wacky'];
       const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
       
@@ -624,13 +633,13 @@ export class PongGame extends BaseGame {
     // Apply immediate effects
     switch (type) {
       case 'speed':
-        this.ball.speed *= 1.5;
+        this.ball.speed *= 1.2;
         break;
       case 'fire':
         this.ball.radius = 12; // Bigger fire ball
         break;
       case 'missile':
-        this.ball.speed *= 2;
+        this.ball.speed *= 1.6;
         break;
       case 'wacky':
         // Unpredictable movement handled in update
