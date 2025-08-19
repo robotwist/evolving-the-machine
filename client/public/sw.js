@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arcade-cache-v4';
+const CACHE_NAME = (self && self.location && new URL(self.location).searchParams.get('cv')) ? 'arcade-cache-' + new URL(self.location).searchParams.get('cv') : 'arcade-cache-v4';
 const ASSETS = [
   '/',
   '/index.html'

@@ -161,9 +161,9 @@ export function StageSelect() {
         {/* Local Multiplayer Info */}
         <Card className="mt-8 bg-gradient-to-r from-green-900/50 to-teal-900/50 border-green-500/30">
           <CardContent className="p-6 text-center">
-            <h3 className="text-white font-semibold mb-2">🎮 Local Multiplayer</h3>
+            <h3 className="text-white font-semibold mb-2">Local Multiplayer</h3>
             <p className="text-gray-300">
-              Share the couch and learn together! Most stages support two players on the same device.
+              Share the couch and learn together. Most stages support two players on the same device.
             </p>
           </CardContent>
         </Card>

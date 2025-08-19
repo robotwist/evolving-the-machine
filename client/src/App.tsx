@@ -66,6 +66,23 @@ export default function App() {
     run();
   }, [currentScreen]);
 
+  // Dev helpers via query params: ?unlock=all, ?stage=3
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const unlock = params.get('unlock');
+    if (unlock === 'all') {
+      useGameStore.setState({ unlockedStages: 8 });
+    }
+    const stageParam = params.get('stage');
+    if (stageParam) {
+      const stageNum = Number(stageParam);
+      if (!Number.isNaN(stageNum) && stageNum >= 1 && stageNum <= 8) {
+        useGameStore.getState().setCurrentStage(stageNum);
+        useGameStore.getState().setCurrentScreen('game');
+      }
+    }
+  }, []);
+
   // Per-stage VO that becomes friendlier with attempts, until betrayal stages
   useEffect(() => {
     if (currentScreen !== 'game') return;

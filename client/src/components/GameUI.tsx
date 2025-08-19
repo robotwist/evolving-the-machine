@@ -71,17 +71,19 @@ export function GameUI() {
             variant="outline" 
             size="sm" 
             onClick={toggleMute}
+            aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
             className="bg-black/50 text-white border-white/20"
           >
-            {isMuted ? '🔇' : '🔊'}
+            {isMuted ? 'Mute' : 'Sound On'}
           </Button>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handlePause}
+            aria-label={gameState === 'paused' ? 'Resume game' : 'Pause game'}
             className="bg-black/50 text-white border-white/20"
           >
-            {gameState === 'paused' ? '▶️' : '⏸️'}
+            {gameState === 'paused' ? 'Resume' : 'Pause'}
           </Button>
         </div>
       </div>
@@ -226,10 +228,10 @@ export function GameUI() {
 
       {/* Stage Complete Menu */}
       {gameState === 'stage-complete' && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="stage-complete-title">
           <Card className="bg-green-900/90 border-green-500/20">
             <CardContent className="p-6 text-center">
-              <h2 className="text-2xl font-bold text-white mb-4">Stage Complete!</h2>
+              <h2 id="stage-complete-title" className="text-2xl font-bold text-white mb-4" aria-live="assertive">Stage Complete!</h2>
               <div className="text-white mb-4">
                 <div>Score: {scores[currentStage] || 0}</div>
                 <div>High Score: {highScores[currentStage] || 0}</div>
@@ -244,6 +246,11 @@ export function GameUI() {
                   </Button>
                 ) : (
                   <div className="text-gold-400 mb-2">Congratulations! You've mastered all cultures!</div>
+                )}
+                {new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('dev') === '1' && (
+                  <Button onClick={handleNextStage} variant="outline" className="border-white/20 text-white">
+                    Next Stage (dev)
+                  </Button>
                 )}
                 <Button onClick={handleRestart} variant="outline" className="border-white/20 text-white">
                   Play Again

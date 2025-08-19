@@ -147,7 +147,7 @@ export class BreakoutGame extends BaseGame {
           height: brickHeight,
           destroyed: false,
           color: colors[row % colors.length],
-          health: Math.floor(row / 2) + 1
+          health: row < 2 ? 1 : Math.floor(row / 2) + 1
         });
       }
     }
@@ -286,7 +286,7 @@ export class BreakoutGame extends BaseGame {
             const len = Math.hypot(ball.dx, ball.dy) || 1;
             ball.dx /= len;
             ball.dy /= len;
-            ball.speed = Math.min(ball.speed + 0.15, 7.5);
+            ball.speed = Math.min(ball.speed + 0.15, 6.5);
             this.playHitSound();
           }
 
@@ -537,7 +537,7 @@ export class BreakoutGame extends BaseGame {
   }
 
   private updateTransition() {
-    this.transitionProgress += 0.02;
+    this.transitionProgress += 0.028;
 
     if (this.transitionProgress >= 1) {
       // Transition complete - trigger stage completion
