@@ -19,7 +19,7 @@ export function GameUI() {
   const { isMuted, toggleMute } = useAudio();
   const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion, enableParticles, setEnableParticles, enableScreenshake, setEnableScreenshake, voiceStyle, setVoiceStyle } = useSettingsStore();
   const { show, maybeShow, markSeen, hide } = useTutorialStore();
-  const stageKey = currentStage as 1 | 2 | 3 | 4 | 5;
+  const stageKey = (Math.min(Math.max(currentStage, 1), 5)) as 1 | 2 | 3 | 4 | 5;
 
   React.useEffect(() => {
     if (gameState === 'playing') {
@@ -32,8 +32,11 @@ export function GameUI() {
     2: 'Temple Breaker', 
     3: 'Asteroid Hunter',
     4: 'Defender',
-    5: 'Lasat Starfighter'
-  }[currentStage] || 'Unknown';
+    5: 'Lasat Starfighter',
+    6: 'Dance Interlude',
+    7: 'Star Wars Battle',
+    8: 'The Betrayal'
+  }[currentStage as 1|2|3|4|5|6|7|8] || 'Unknown';
 
   const handlePause = () => {
     setGameState(gameState === 'paused' ? 'playing' : 'paused');
@@ -230,12 +233,12 @@ export function GameUI() {
               <div className="text-white mb-4">
                 <div>Score: {scores[currentStage] || 0}</div>
                 <div>High Score: {highScores[currentStage] || 0}</div>
-                {currentStage < 5 && (
+                {currentStage < 8 && (
                   <div className="text-green-300 mt-2">Next stage unlocked!</div>
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                {currentStage < 5 ? (
+                {currentStage < 8 ? (
                   <Button onClick={handleNextStage} className="bg-green-600 hover:bg-green-700">
                     Next Stage
                   </Button>
