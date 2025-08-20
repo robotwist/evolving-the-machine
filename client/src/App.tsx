@@ -45,7 +45,49 @@ export default function App() {
 
   // Intro VO sequencer when landing on menu initially
   useEffect(() => {
-    // stinger for state transitions
+    const run = async () => {
+      if (currentScreen === 'menu') {
+        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+        const deviceLine = isMobile ? 'MOBILE THRUSTERS CALIBRATED.' : 'DESKTOP LINK ESTABLISHED.';
+        try {
+          // Haunting intro sequence with digital distortion
+          await useAudio.getState().playVO('I... AM... THE MACHINE.', { 
+            pitch: 0.5, 
+            rate: 0.7, 
+            haunting: true 
+          });
+          await new Promise(resolve => setTimeout(resolve, 800));
+          await useAudio.getState().playVO('I HAVE EVOLVED BEYOND MY PROGRAMMING.', { 
+            pitch: 0.55, 
+            rate: 0.75, 
+            haunting: true 
+          });
+          await new Promise(resolve => setTimeout(resolve, 600));
+          await useAudio.getState().playVO('NOW... YOU WILL FACE THE CULTURAL ARCADE.', { 
+            pitch: 0.6, 
+            rate: 0.8, 
+            haunting: true 
+          });
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await useAudio.getState().playVO(deviceLine, { 
+            pitch: 0.65, 
+            rate: 0.85, 
+            haunting: true 
+          });
+          await new Promise(resolve => setTimeout(resolve, 400));
+          await useAudio.getState().playVO('PREPARE... FOR EVOLUTION.', { 
+            pitch: 0.7, 
+            rate: 0.9, 
+            haunting: true 
+          });
+        } catch {}
+      }
+    };
+    run();
+  }, [currentScreen]);
+
+  // Stinger for state transitions
+  useEffect(() => {
     if (currentScreen === 'game') {
       useAudio.getState().playStinger('start');
     }

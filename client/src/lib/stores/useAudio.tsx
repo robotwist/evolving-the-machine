@@ -19,7 +19,7 @@ interface AudioState {
   toggleMute: () => void;
   playHit: () => void;
   playSuccess: () => void;
-  playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number }) => Promise<void>;
+  playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number; distortion?: boolean; haunting?: boolean }) => Promise<void>;
   playStinger: (kind: 'start' | 'fail' | 'clear') => void;
   playSizzle: () => void;
 }
@@ -79,8 +79,8 @@ export const useAudio = create<AudioState>((set, get) => ({
     }
   }
   ,
-  // Simple VO using SpeechSynthesis with gentle ducking
-  playVO: async (text: string, opts?: { rate?: number; pitch?: number; volume?: number }) => {
+  // Enhanced VO with digital distortion and Sinistar-like effects
+  playVO: async (text: string, opts?: { rate?: number; pitch?: number; volume?: number; distortion?: boolean; haunting?: boolean }) => {
     const { isMuted, backgroundMusic } = get();
     if (isMuted) return;
     try {
@@ -88,8 +88,8 @@ export const useAudio = create<AudioState>((set, get) => ({
       if (backgroundMusic) backgroundMusic.volume = Math.max(0, originalVolume * 0.35);
       await new Promise<void>((resolve) => {
         const utt = new SpeechSynthesisUtterance(text);
-        utt.rate = opts?.rate ?? 0.92;
-        utt.pitch = opts?.pitch ?? 0.8;
+        utt.rate = opts?.rate ?? (opts?.haunting ? 0.75 : 0.92);
+        utt.pitch = opts?.pitch ?? (opts?.haunting ? 0.6 : 0.8);
         utt.volume = opts?.volume ?? 1.0;
         utt.onend = () => {
           if (backgroundMusic) backgroundMusic.volume = originalVolume;
@@ -97,24 +97,77 @@ export const useAudio = create<AudioState>((set, get) => ({
         };
         const voices = window.speechSynthesis.getVoices();
         if (voices && voices.length) {
-          utt.voice = voices[0];
+          // Prefer deeper, more masculine voices for haunting effect
+          const deepVoice = voices.find(v => v.name.includes('Deep') || v.name.includes('Male') || v.name.includes('David') || v.name.includes('James')) || voices[0];
+          utt.voice = deepVoice;
         }
-        // tiny glitch beep
+        // Enhanced digital distortion effects
         try {
           const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
           if (AudioCtx) {
             const ctx = new AudioCtx();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'square';
-            osc.frequency.value = 520;
-            gain.gain.setValueAtTime(0, ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.02);
-            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.08);
-            osc.connect(gain).connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.09);
-            setTimeout(() => ctx.close(), 200);
+            if (opts?.haunting) {
+              // Sinistar-like haunting effects
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              const filter = ctx.createBiquadFilter();
+              const distortion = ctx.createWaveShaper();
+              
+              // Create distortion curve for digital garbling
+              const curve = new Float32Array(44100);
+              for (let i = 0; i < 44100; i++) {
+                const x = (i * 2) / 44100 - 1;
+                curve[i] = (Math.PI + x) * Math.tan(Math.PI * x) / (Math.PI + x * x);
+              }
+              distortion.curve = curve;
+              
+              osc.type = 'sawtooth';
+              osc.frequency.value = 180;
+              filter.type = 'lowpass';
+              filter.frequency.value = 400;
+              filter.Q.value = 8;
+              
+              gain.gain.setValueAtTime(0, ctx.currentTime);
+              gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.1);
+              gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
+              
+              osc.connect(filter).connect(distortion).connect(gain).connect(ctx.destination);
+              osc.start();
+              osc.stop(ctx.currentTime + 0.8);
+              
+              // Add intermittent digital glitches
+              const glitchOsc = ctx.createOscillator();
+              const glitchGain = ctx.createGain();
+              glitchOsc.type = 'square';
+              glitchOsc.frequency.value = 800;
+              glitchGain.gain.setValueAtTime(0, ctx.currentTime);
+              
+              // Random glitch bursts
+              for (let i = 0; i < 3; i++) {
+                const glitchTime = ctx.currentTime + 0.2 + (i * 0.15);
+                glitchGain.gain.setValueAtTime(0.03, glitchTime);
+                glitchGain.gain.setValueAtTime(0, glitchTime + 0.05);
+              }
+              
+              glitchOsc.connect(glitchGain).connect(ctx.destination);
+              glitchOsc.start();
+              glitchOsc.stop(ctx.currentTime + 0.8);
+              
+              setTimeout(() => ctx.close(), 1000);
+            } else {
+              // Standard glitch beep for non-haunting VO
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'square';
+              osc.frequency.value = 520;
+              gain.gain.setValueAtTime(0, ctx.currentTime);
+              gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.02);
+              gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.08);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start();
+              osc.stop(ctx.currentTime + 0.09);
+              setTimeout(() => ctx.close(), 200);
+            }
           }
         } catch {}
         window.speechSynthesis.speak(utt);
