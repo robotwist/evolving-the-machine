@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type GameScreen = 'menu' | 'stage-select' | 'game';
+export type GameScreen = 'menu' | 'stage-select' | 'game' | 'transition';
 export type GameState = 'playing' | 'paused' | 'ended' | 'stage-complete';
 
 interface GameStore {

@@ -5,6 +5,7 @@ import { MainMenu } from './components/MainMenu';
 import { StageSelect } from './components/StageSelect';
 import { GameCanvas } from './components/GameCanvas';
 import { GameUI } from './components/GameUI';
+import { ScreenTransition } from './components/ScreenTransition';
 import { useGameStore } from './lib/stores/useGameStore';
 import { useAudio } from './lib/stores/useAudio';
 import { useSettingsStore } from './lib/stores/useSettingsStore';
@@ -17,6 +18,10 @@ export default function App() {
   const { setBackgroundMusic, setHitSound, setSuccessSound } = useAudio();
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [showDemo, setShowDemo] = useState(true);
+  const [showTransition, setShowTransition] = useState(false);
+  const [transitionMessage, setTransitionMessage] = useState('');
+  const [previousScreen, setPreviousScreen] = useState<string | null>(null);
+  const [previousStage, setPreviousStage] = useState<number | null>(null);
 
   useEffect(() => {
     // Load audio assets
@@ -98,6 +103,40 @@ export default function App() {
       useAudio.getState().playStinger('start');
     }
   }, [currentScreen]);
+
+  // Screen transition logic
+  useEffect(() => {
+    // Skip transition on initial load
+    if (previousScreen === null) {
+      setPreviousScreen(currentScreen);
+      setPreviousStage(currentStage);
+      return;
+    }
+
+    // Check if screen changed
+    if (previousScreen !== currentScreen) {
+      const messages = {
+        'menu': 'RETURNING TO MAIN INTERFACE...',
+        'stage-select': 'ACCESSING STAGE SELECTION...',
+        'game': 'INITIALIZING GAME ENVIRONMENT...'
+      };
+      
+      setTransitionMessage(messages[currentScreen as keyof typeof messages] || 'SYSTEM TRANSITIONING...');
+      setShowTransition(true);
+      setPreviousScreen(currentScreen);
+    }
+
+    // Check if stage changed
+    if (previousStage !== null && previousStage !== currentStage) {
+      setTransitionMessage(`EVOLVING TO STAGE ${currentStage}...`);
+      setShowTransition(true);
+      setPreviousStage(currentStage);
+    }
+  }, [currentScreen, currentStage, previousScreen, previousStage]);
+
+  const handleTransitionComplete = () => {
+    setShowTransition(false);
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -207,6 +246,14 @@ export default function App() {
               <GameUI />
             </div>
           </>
+        )}
+        {showTransition && (
+          <ScreenTransition 
+            isActive={showTransition} 
+            message={transitionMessage} 
+            onComplete={handleTransitionComplete}
+            duration={2500}
+          />
         )}
       </div>
     </QueryClientProvider>
