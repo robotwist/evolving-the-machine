@@ -1,5 +1,7 @@
 import { BaseGame } from './BaseGame';
 import { useAudio } from '../stores/useAudio';
+import { useHaptics } from '../stores/useHaptics';
+import { useSettingsStore } from '../stores/useSettingsStore';
 
 interface Paddle {
   x: number;
@@ -138,6 +140,17 @@ export class PongGame extends BaseGame {
     
     // Initialize particle system
     await this.particles.init(this.ctx);
+    
+    // Initialize visual feedback and haptics
+    try {
+      const { VisualFeedback } = await import('../utils/VisualFeedback');
+      this.visualFeedback = new VisualFeedback(this.ctx);
+    } catch (e) {
+      console.warn('VisualFeedback not available:', e);
+    }
+    
+    this.haptics = useHaptics.getState();
+    this.settings = useSettingsStore.getState();
   }
 
   private resetBall() {
@@ -156,6 +169,14 @@ export class PongGame extends BaseGame {
   }
 
   update(deltaTime: number) {
+    super.update(deltaTime);
+    
+    // Update visual feedback
+    this.visualFeedback?.update(deltaTime);
+    
+    // Update particles
+    this.particles.update();
+
     // Update AI taunt timer
     if (this.aiTauntTimer > 0) {
       this.aiTauntTimer--;
@@ -319,6 +340,8 @@ export class PongGame extends BaseGame {
     if (this.ball.y <= this.ball.radius || this.ball.y >= this.height - this.ball.radius) {
       this.ball.dy = -this.ball.dy;
       this.playHitSound();
+      if (this.settings?.hapticsEnabled) this.haptics?.hit();
+      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, undefined, 'hit');
     }
 
     // Ball collision with paddles
@@ -329,12 +352,13 @@ export class PongGame extends BaseGame {
     if (collideP1 || collideP2) {
       this.ball.dx = -this.ball.dx * 1.05; // Increase speed slightly
       this.playHitSound();
-      const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
-      if (hapticsOn && 'vibrate' in navigator) {
-        navigator.vibrate?.(10);
-      }
+      
+      // Enhanced haptics and visual feedback
+      if (this.settings?.hapticsEnabled) this.haptics?.hit();
+      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, undefined, 'hit');
+      
       // Tiny screenshake on impact
-      this.shakeTimer = 8;
+      if (this.settings?.screenShake) this.shakeTimer = 8;
       
       // Apply damage to paddles
       if (collideP1) {
@@ -351,16 +375,27 @@ export class PongGame extends BaseGame {
 
     // Special effect when piercing AI paddle
     if (penetrateAI && this.checkPaddleCollision(this.player2)) {
-      // Sizzle/spark: draw a brief spark and add micro explosion
-      const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-      const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-      if (!reduce && allowShake) this.shakeTimer = 10;
+      // Enhanced piercing effects
+      if (this.settings?.hapticsEnabled) this.haptics?.explosion();
+      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, 1, 'critical');
+      
+      if (this.settings?.screenShake) this.shakeTimer = 10;
+      
       // Spark effect drawn immediately at paddle collision position
       this.particles.addSizzle(this.player2.x, Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y)));
+      
       // Slight defocus trail
       this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
+      
       // Audio sizzle
-      useAudio.getState().playSizzle();
+      try {
+        const audioState = useAudio.getState();
+        if (!audioState.isMuted) {
+          audioState.playStinger('arcade_hit');
+        }
+      } catch (e) {
+        console.warn('Sizzle sound failed:', e);
+      }
     }
 
     // Scoring - Player must win to progress
@@ -368,10 +403,10 @@ export class PongGame extends BaseGame {
       this.player2.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
-      const hapticsOn2 = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
-      if (hapticsOn2 && 'vibrate' in navigator) {
-        navigator.vibrate?.([20, 30, 20]);
-      }
+      
+      // Enhanced haptics for AI scoring
+      if (this.settings?.hapticsEnabled) this.haptics?.failure();
+      
       // AI gets stronger with each score
       this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.15);
       this.aiAggression = Math.min(1.0, this.aiAggression + 0.05);
@@ -380,10 +415,10 @@ export class PongGame extends BaseGame {
       this.player1.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
-      const hapticsOn3 = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
-      if (hapticsOn3 && 'vibrate' in navigator) {
-        navigator.vibrate?.(20);
-      }
+      
+      // Enhanced haptics for player scoring
+      if (this.settings?.hapticsEnabled) this.haptics?.success();
+      
       if (this.player1.score >= this.winScore) {
         this.onStageComplete?.(); // Only player win progresses
       }
@@ -428,157 +463,13 @@ export class PongGame extends BaseGame {
   }
 
   render() {
-    // Optional small screenshake if enabled
-    const reduceMotion = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-    if (this.shakeTimer == null) (this as any).shakeTimer = 0;
-    const shake = !reduceMotion && this.shakeTimer > 0 ? this.shakeTimer : 0;
-    if (shake > 0) this.shakeTimer--;
-    const offsetX = shake > 0 ? (Math.random() - 0.5) * 4 : 0;
-    const offsetY = shake > 0 ? (Math.random() - 0.5) * 4 : 0;
-    this.ctx.save();
-    this.ctx.translate(offsetX, offsetY);
-    this.clearCanvas();
-
-    // Draw Greek-inspired background
-    this.drawGreekBackground();
-
-    // Draw paddles as Greek columns
-    this.drawGreekPaddle(this.player1);
-    this.drawGreekPaddle(this.player2);
-
-    // Draw ball trail for powerups
-    if (this.ball.type !== 'normal' && !(window as any).__CULTURAL_ARCADE_REDUCE_MOTION__) {
-      this.ctx.save();
-      for (let i = 0; i < this.ball.trail.length; i++) {
-        const alpha = i / this.ball.trail.length * 0.5;
-        const point = this.ball.trail[i];
-        this.ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
-        this.ctx.beginPath();
-        this.ctx.arc(point.x, point.y, this.ball.radius * 0.5, 0, Math.PI * 2);
-        this.ctx.fill();
-      }
-      this.ctx.restore();
-    }
-
-    // Draw ball with powerup effects
-    this.ctx.save();
-    
-    // Different colors and effects for different powerups
-    switch (this.ball.type) {
-      case 'speed':
-        this.ctx.fillStyle = '#00FFFF';
-        this.ctx.strokeStyle = '#0080FF';
-        this.ctx.shadowColor = '#00FFFF';
-        this.ctx.shadowBlur = 15;
-        break;
-      case 'fire':
-        this.ctx.fillStyle = '#FF4500';
-        this.ctx.strokeStyle = '#FF0000';
-        this.ctx.shadowColor = '#FF4500';
-        this.ctx.shadowBlur = 20;
-        break;
-      case 'missile':
-        this.ctx.fillStyle = '#FF0000';
-        this.ctx.strokeStyle = '#800000';
-        this.ctx.shadowColor = '#FF0000';
-        this.ctx.shadowBlur = 25;
-        break;
-      case 'wacky':
-        const time = Date.now() * 0.01;
-        const r = Math.sin(time) * 127 + 128;
-        const g = Math.sin(time + 2) * 127 + 128;
-        const b = Math.sin(time + 4) * 127 + 128;
-        this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.shadowColor = this.ctx.fillStyle;
-        this.ctx.shadowBlur = 10;
-        break;
-      default:
-        this.ctx.fillStyle = '#FFD700';
-        this.ctx.strokeStyle = '#B8860B';
-        break;
-    }
-    
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.stroke();
-    this.ctx.shadowBlur = 0;
-    this.ctx.restore();
-
-    // Extra rotating spokes when ball is wacky
-    if (this.ball.type === 'wacky') {
-      this.ctx.save();
-      this.ctx.translate(this.ball.x, this.ball.y);
-      this.ctx.rotate(this.ball.angle ?? 0);
-      this.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-      this.ctx.lineWidth = 2;
-      for (let i = 0; i < 6; i++) {
-        const ang = (i / 6) * Math.PI * 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(Math.cos(ang) * (this.ball.radius + 2), Math.sin(ang) * (this.ball.radius + 2));
-        this.ctx.lineTo(Math.cos(ang) * (this.ball.radius + 10), Math.sin(ang) * (this.ball.radius + 10));
-        this.ctx.stroke();
-      }
-      this.ctx.restore();
-    }
-
-    // Draw scores with humanity emphasis
-    this.ctx.save();
-    this.ctx.shadowColor = '#FFD700';
-    this.ctx.shadowBlur = (this as any)._shadowBlur ?? 5;
-    this.drawText(`${this.player1.score}`, this.width / 4, 50, 48, '#FFD700', 'center');
-    this.ctx.shadowBlur = 0;
-    this.ctx.restore();
-    
-    this.ctx.save();
-    this.ctx.shadowColor = '#FF0000';
-    this.ctx.shadowBlur = (this as any)._shadowBlur ?? 5;
-    this.drawText(`${this.player2.score}`, (3 * this.width) / 4, 50, 48, '#FF0000', 'center');
-    this.ctx.shadowBlur = 0;
-    this.ctx.restore();
-
-    // Draw AI taunt if active
-    if (this.aiTauntTimer > 0) {
-      this.ctx.save();
-      this.ctx.shadowColor = '#FF0000';
-      this.ctx.shadowBlur = 8;
-      this.drawText(this.currentTaunt, this.width / 2, 80, 14, '#FF0000', 'center');
-      this.ctx.shadowBlur = 0;
-      this.ctx.restore();
-    }
-
-    // Draw center line
-    this.ctx.save();
-    this.ctx.strokeStyle = '#DDD';
-    this.ctx.lineWidth = 2;
-    this.ctx.setLineDash([10, 10]);
-    this.ctx.beginPath();
-    this.ctx.moveTo(this.width / 2, 0);
-    this.ctx.lineTo(this.width / 2, this.height);
-    this.ctx.stroke();
-    this.ctx.restore();
-
-    // Synthwave-style messaging with energy
-    this.ctx.save();
-    this.ctx.shadowColor = '#FF00FF';
-    this.ctx.shadowBlur = 8;
-    this.drawText('HUMAN RESISTANCE: WASD = FULL CONTROL! COLLECT POWERUPS!', this.width / 2, this.height - 40, 12, '#00FFFF', 'center');
-    this.ctx.shadowColor = '#00FFFF';
-    this.drawText('ANCIENT OLYMPIC SPIRIT VS EVOLVING AI CONSCIOUSNESS', this.width / 2, this.height - 20, 14, '#FF00FF', 'center');
-    this.ctx.shadowBlur = 0;
-    this.ctx.restore();
-
-    // Draw powerups (now that all functions are defined)
-    this.drawPowerups();
+    super.render();
     
     // Render particles
-    const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-    if (allowParticles) {
-      this.particles.update();
-      this.particles.render();
-    }
+    this.particles.render();
+    
+    // Render visual feedback
+    this.visualFeedback?.render();
     
     this.ctx.restore();
   }
@@ -860,8 +751,21 @@ export class PongGame extends BaseGame {
           powerup.y + powerup.height > this.ball.y - this.ball.radius;
       
       if (paddleCollision || ballCollision) {
+        powerup.collected = true;
         this.activatePowerup(powerup.type);
-        this.powerups.splice(i, 1);
+        
+        // Enhanced haptics and visual feedback for powerup collection
+        if (this.settings?.hapticsEnabled) this.haptics?.powerup();
+        if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y, undefined, 'hit');
+        
+        try {
+          const audioState = useAudio.getState();
+          if (!audioState.isMuted) {
+            audioState.playStinger('arcade_powerup');
+          }
+        } catch (e) {
+          console.warn('Powerup sound failed:', e);
+        }
       }
     }
 

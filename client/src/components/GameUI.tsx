@@ -3,7 +3,11 @@ import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
 import { useAudio } from '../lib/stores/useAudio';
 import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Switch } from './ui/switch';
+import { Slider } from './ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Label } from './ui/label';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
 import { useTutorialStore } from '../lib/stores/useTutorialStore';
 
@@ -17,7 +21,41 @@ export function GameUI() {
   } = useGameStore();
   const { scores, highScores } = useScoreStore();
   const { isMuted, toggleMute } = useAudio();
-  const { graphicsQuality, fpsCap, setGraphicsQuality, setFpsCap, enableDprScaling, setEnableDprScaling, hapticsEnabled, setHapticsEnabled, preset, setPreset, reduceMotion, setReduceMotion, enableParticles, setEnableParticles, enableScreenshake, setEnableScreenshake, voiceStyle, setVoiceStyle } = useSettingsStore();
+  const {
+    graphicsQuality,
+    fpsCap,
+    dprScaling,
+    masterVolume,
+    musicVolume,
+    sfxVolume,
+    voiceVolume,
+    reduceMotion,
+    hapticsEnabled,
+    hapticsIntensity,
+    hitMarkers,
+    damageNumbers,
+    comboCounters,
+    screenShake,
+    particles,
+    voiceStyle,
+    setGraphicsQuality,
+    setFpsCap,
+    setDprScaling,
+    setMasterVolume,
+    setMusicVolume,
+    setSfxVolume,
+    setVoiceVolume,
+    setReduceMotion,
+    setHapticsEnabled,
+    setHapticsIntensity,
+    setHitMarkers,
+    setDamageNumbers,
+    setComboCounters,
+    setScreenShake,
+    setParticles,
+    setVoiceStyle,
+    presets
+  } = useSettingsStore();
   const { show, maybeShow, markSeen, hide } = useTutorialStore();
   const stageKey = (Math.min(Math.max(currentStage, 1), 5)) as 1 | 2 | 3 | 4 | 5;
 
@@ -170,13 +208,13 @@ export function GameUI() {
                     <label className="flex items-center justify-between gap-2">
                       <span>Preset</span>
                       <select
-                        value={preset}
+                        value={presets.find(p => p.value === preset)?.label || 'Default'}
                         onChange={(e) => setPreset(e.target.value as any)}
                         className="bg-black/50 border border-white/20 rounded px-2 py-1"
                       >
-                        <option value="battery">Battery Saver</option>
-                        <option value="balanced">Balanced</option>
-                        <option value="performance">Performance</option>
+                        {presets.map(p => (
+                          <option key={p.value} value={p.value}>{p.label}</option>
+                        ))}
                       </select>
                     </label>
                     <label className="flex items-center justify-between gap-2">
@@ -219,8 +257,8 @@ export function GameUI() {
                       <span>High-DPI Scaling</span>
                       <input
                         type="checkbox"
-                        checked={enableDprScaling}
-                        onChange={(e) => setEnableDprScaling(e.target.checked)}
+                        checked={dprScaling}
+                        onChange={(e) => setDprScaling(e.target.checked)}
                       />
                     </label>
                     <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
@@ -243,16 +281,16 @@ export function GameUI() {
                       <span>Particles</span>
                       <input
                         type="checkbox"
-                        checked={enableParticles}
-                        onChange={(e) => setEnableParticles(e.target.checked)}
+                        checked={particles}
+                        onChange={(e) => setParticles(e.target.checked)}
                       />
                     </label>
                     <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
                       <span>Screenshake</span>
                       <input
                         type="checkbox"
-                        checked={enableScreenshake}
-                        onChange={(e) => setEnableScreenshake(e.target.checked)}
+                        checked={screenShake}
+                        onChange={(e) => setScreenShake(e.target.checked)}
                       />
                     </label>
                   </div>
