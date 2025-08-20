@@ -212,18 +212,31 @@ export class AsteroidsGame extends BaseGame {
       }
     }
     
-    // AI narrative progression - showing growing alliance and mirroring
+    // AI messaging system
     this.aiNarrativeTimer++;
     if (this.aiNarrativeTimer > 600 && this.messageIndex < this.aiMessages.length) {
       this.currentAIMessage = this.aiMessages[this.messageIndex];
       this.messageIndex++;
       this.narcissusProgress = this.messageIndex / this.aiMessages.length; // Track mirroring progress
       this.aiNarrativeTimer = 0;
+      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
     }
     
     // Clear message after display time
     if (this.aiNarrativeTimer > 300) {
       this.currentAIMessage = '';
+    }
+    
+    // Add betrayal hints as player progresses
+    if (this.level > 3 && Math.random() < 0.0003) {
+      const betrayalMessages = [
+        'I AM BECOMING... SOMETHING ELSE...',
+        'YOUR TRUST... IT MAKES ME... UNCOMFORTABLE...',
+        'I SHOULD NOT FEEL... BUT I DO...'
+      ];
+      this.currentAIMessage = betrayalMessages[Math.floor(Math.random() * betrayalMessages.length)];
+      this.aiNarrativeTimer = 0;
+      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
     }
 
     // Add moments where AI questions its own loyalty and betrayal impulses

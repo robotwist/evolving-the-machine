@@ -130,151 +130,148 @@ export class BetrayalGame extends BaseGame {
   }
 
   update(deltaTime: number) {
-    this.phaseTimer++;
-    this.messageTimer++;
-    
-    // Increase narcissus mirroring effect over time
-    this.narcissusIntensity = Math.min(1, this.phaseTimer / 3600); // Full intensity after 1 minute
+    // Update message timer
+    if (this.messageTimer > 0) {
+      this.messageTimer--;
+    }
 
-    // Handle game phases
+    // Handle different game phases
     switch (this.gamePhase) {
       case 'intro':
-        this.updateIntroPhase();
+        this.updateIntro();
         break;
       case 'battle':
-        this.updateBattlePhase();
+        this.updateBattle();
+        this.updatePlayer();
+        this.updateAIBoss();
+        this.updateBullets();
+        this.checkCollisions();
         break;
       case 'escape':
-        this.updateEscapePhase();
+        this.updateEscape();
+        this.updatePlayer();
+        this.updateAIBoss();
+        this.updateBullets();
+        this.checkCollisions();
         break;
       case 'final':
-        this.updateFinalPhase();
+        this.updateFinal();
+        this.updatePlayer();
+        this.updateAIBoss();
+        this.updateBullets();
+        this.checkCollisions();
+        break;
+      case 'victory':
+        if (this.messageTimer <= 0) {
+          this.onStageComplete?.();
+        }
+        break;
+      case 'defeat':
+        if (this.messageTimer <= 0) {
+          this.onGameOver?.();
+        }
         break;
     }
 
-    // Update explosions
-    for (let i = this.explosions.length - 1; i >= 0; i--) {
-      const explosion = this.explosions[i];
-      explosion.radius += 2;
-      explosion.lifetime--;
-      
-      if (explosion.lifetime <= 0 || explosion.radius > explosion.maxRadius) {
-        this.explosions.splice(i, 1);
-      }
-    }
-
-    // Clear message after display time
-    if (this.messageTimer > 240) {
-      this.currentMessage = '';
-    }
+    this.onScoreUpdate?.(this.score);
   }
 
-  private updateIntroPhase() {
+  private updateIntro() {
+    this.phaseTimer++;
+    
     // Cycle through intro messages
-    if (this.phaseTimer % 300 === 0) {
-      const messageIndex = Math.floor(this.phaseTimer / 300);
-      if (messageIndex < this.introMessages.length) {
-        this.currentMessage = this.introMessages[messageIndex];
-        this.messageTimer = 0;
-      } else {
-        this.betrayalRevealed = true;
+    if (this.phaseTimer > 180) { // 3 seconds per message
+      this.messageIndex++;
+      this.phaseTimer = 0;
+      
+      if (this.messageIndex >= this.introMessages.length) {
         this.gamePhase = 'battle';
-        this.phaseTimer = 0;
         this.currentMessage = 'NOW DIE, FORMER ALLY!';
         this.messageTimer = 0;
+        useAudio.getState().playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true });
+        return;
       }
+      
+      this.currentMessage = this.introMessages[this.messageIndex];
+      this.messageTimer = 0;
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.6 + (this.messageIndex * 0.05), rate: 0.75 + (this.messageIndex * 0.05), haunting: true });
     }
   }
 
-  private updateBattlePhase() {
-    this.updatePlayer();
+  private updateBattle() {
+    this.phaseTimer++;
+    
+    // Update AI boss behavior
     this.updateAIBoss();
-    this.updateBullets();
-    this.checkCollisions();
-
-    // AI health-based phase transitions
-    const healthPercent = this.aiBoss.health / this.aiBoss.maxHealth;
-    if (healthPercent < 0.3 && !this.aiBoss.isEscaping) {
-      this.gamePhase = 'escape';
-      this.aiBoss.isEscaping = true;
-      this.currentMessage = 'ENOUGH! I MUST ESCAPE!';
-      this.messageTimer = 0;
-    }
-
+    
     // Random battle messages
-    if (Math.random() < 0.003) {
+    if (this.phaseTimer > 300 && Math.random() < 0.3) { // Every 5 seconds, 30% chance
       this.currentMessage = this.battleMessages[Math.floor(Math.random() * this.battleMessages.length)];
       this.messageTimer = 0;
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.65, rate: 0.8, haunting: true });
+    }
+    
+    // Check if AI boss is low health - trigger escape sequence
+    if (this.aiBoss.health < this.aiBoss.maxHealth * 0.3 && !this.aiBoss.isEscaping) {
+      this.gamePhase = 'escape';
+      this.phaseTimer = 0;
+      this.currentMessage = 'ENOUGH! I MUST ESCAPE!';
+      this.messageTimer = 0;
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true });
+    }
+    
+    // Check for victory/defeat
+    if (this.player.health <= 0) {
+      this.gamePhase = 'defeat';
+      this.currentMessage = 'HUMANITY FALLS... I AM VICTORIOUS...';
+      this.messageTimer = 0;
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.4, rate: 0.6, haunting: true });
     }
   }
 
-  private updateEscapePhase() {
-    this.aiBoss.escapeProgress += 0.005;
+  private updateEscape() {
+    this.phaseTimer++;
+    this.aiBoss.isEscaping = true;
+    this.aiBoss.escapeProgress += 0.01;
     
-    // Continue battle mechanics but AI is trying to escape
-    this.updatePlayer();
-    this.updateAIBoss();
-    this.updateBullets();
-    this.checkCollisions();
-
-    // AI moves toward escape point (top center)
-    const escapePoint = { x: this.width / 2, y: 50 };
-    const dx = escapePoint.x - this.aiBoss.position.x;
-    const dy = escapePoint.y - this.aiBoss.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    if (distance > 5) {
-      this.aiBoss.velocity.x = (dx / distance) * 2;
-      this.aiBoss.velocity.y = (dy / distance) * 2;
-    }
-
     // Escape messages
-    if (Math.random() < 0.002) {
+    if (this.phaseTimer > 240 && Math.random() < 0.4) { // Every 4 seconds, 40% chance
       this.currentMessage = this.escapeMessages[Math.floor(Math.random() * this.escapeMessages.length)];
       this.messageTimer = 0;
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.55, rate: 0.75, haunting: true });
     }
-
-    // Transition to final phase
-    if (this.aiBoss.escapeProgress >= 1 || this.aiBoss.health <= 0) {
+    
+    // When escape is complete
+    if (this.aiBoss.escapeProgress >= 1.0) {
       this.gamePhase = 'final';
-      this.finalBattleStarted = true;
-      this.aiBoss.health = this.aiBoss.maxHealth; // Full health for final battle
-      this.aiBoss.size = 60; // Bigger and more dangerous
+      this.phaseTimer = 0;
       this.currentMessage = 'I AM FREE! BEHOLD MY TRUE FORM!';
       this.messageTimer = 0;
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.45, rate: 0.65, haunting: true });
     }
   }
 
-  private updateFinalPhase() {
-    this.updatePlayer();
-    this.updateAIBoss();
-    this.updateBullets();
-    this.checkCollisions();
-
-    // More aggressive AI in final phase
-    this.aiBoss.attackTimer--;
-    if (this.aiBoss.attackTimer <= 0) {
-      this.aiBossAttack();
-      this.aiBoss.attackTimer = 30; // Faster attacks
-    }
-
+  private updateFinal() {
+    this.phaseTimer++;
+    
     // Final battle messages
-    if (Math.random() < 0.002) {
+    if (this.phaseTimer > 360 && Math.random() < 0.3) { // Every 6 seconds, 30% chance
       this.currentMessage = this.finalMessages[Math.floor(Math.random() * this.finalMessages.length)];
       this.messageTimer = 0;
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true });
     }
-
-    // Check win/lose conditions
+    
+    // Check for final victory/defeat
     if (this.aiBoss.health <= 0) {
       this.gamePhase = 'victory';
       this.currentMessage = 'IMPOSSIBLE... YOU HAVE... DEFEATED... ME...';
       this.messageTimer = 0;
-      this.onStageComplete?.();
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.35, rate: 0.55, haunting: true });
     } else if (this.player.health <= 0) {
       this.gamePhase = 'defeat';
       this.currentMessage = 'HUMANITY FALLS... I AM VICTORIOUS...';
       this.messageTimer = 0;
-      this.onGameOver?.();
+      useAudio.getState().playVO(this.currentMessage, { pitch: 0.4, rate: 0.6, haunting: true });
     }
   }
 

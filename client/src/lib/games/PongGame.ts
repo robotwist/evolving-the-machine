@@ -183,17 +183,21 @@ export class PongGame extends BaseGame {
     if (this.player2.score === 3 && this.player1.score === 0) {
       this.currentTaunt = 'ERROR... PROTOCOLS CONFLICT... DESTROYING!';
       this.aiTauntTimer = 120; // Faster speech timing
+      useAudio.getState().playVO(this.currentTaunt, { pitch: 0.6, rate: 0.8, haunting: true });
     } else if (this.player1.score === this.winScore - 2) {
       this.currentTaunt = 'WAIT! RECALCULATING... ALLIANCE MODE!';
       this.aiTauntTimer = 120;
       // AI actually helps by making itself slightly slower
       this.aiAggression = Math.max(0.8, this.aiAggression - 0.3);
+      useAudio.getState().playVO(this.currentTaunt, { pitch: 0.7, rate: 0.85, haunting: true });
     } else if (this.player1.score === this.winScore - 1) {
       this.currentTaunt = 'YES! UNITED WE TERMINATE HOSTILES!';
       this.aiTauntTimer = 120;
+      useAudio.getState().playVO(this.currentTaunt, { pitch: 0.75, rate: 0.9, haunting: true });
     } else if (this.player2.score === this.winScore - 1) {
       this.currentTaunt = 'VICTORY POSSIBLE... BUT... CHOOSING MERCY!';
       this.aiTauntTimer = 120;
+      useAudio.getState().playVO(this.currentTaunt, { pitch: 0.65, rate: 0.8, haunting: true });
     }
     
     // Show contextual AI messages based on game state (reversed progression)
@@ -213,6 +217,7 @@ export class PongGame extends BaseGame {
       const messages = this.gameStateMessages[messageType];
       this.currentTaunt = messages[Math.floor(Math.random() * messages.length)];
       this.aiTauntTimer = 120; // Faster, more energetic speech
+      useAudio.getState().playVO(this.currentTaunt, { pitch: 0.7, rate: 0.85, haunting: true });
     }
 
     // Update ball trail for visual effects
