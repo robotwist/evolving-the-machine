@@ -27,6 +27,8 @@ interface Brick {
   destroyed: boolean;
   color: string;
   health: number;
+  explosive?: boolean;
+  explosionRadius?: number;
 }
 
 export class BreakoutGame extends BaseGame {
@@ -139,8 +141,9 @@ export class BreakoutGame extends BaseGame {
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
 
     for (let row = 0; row < rows; row++) {
+      const rowBricks: Brick[] = [];
       for (let col = 0; col < cols; col++) {
-        this.bricks.push({
+        const brick: Brick = {
           x: offsetX + col * (brickWidth + padding),
           y: offsetY + row * (brickHeight + padding),
           width: brickWidth,
@@ -148,8 +151,10 @@ export class BreakoutGame extends BaseGame {
           destroyed: false,
           color: colors[row % colors.length],
           health: row < 2 ? 1 : Math.floor(row / 2) + 1
-        });
+        };
+        rowBricks.push(brick);
       }
+      this.bricks.push(rowBricks);
     }
   }
 
@@ -189,7 +194,7 @@ export class BreakoutGame extends BaseGame {
 
     // Paddle evolution trigger at 50% completion
     const bricksDestroyed = this.bricks.filter(b => b.destroyed).length;
-    const totalBricks = this.bricks.length;
+    const totalBricks = this.bricks.length * this.bricks[0].length;
     const completionPercent = bricksDestroyed / totalBricks;
     
     if (completionPercent >= 0.5 && !this.evolutionStarted && !this.ballEaten) {
@@ -365,60 +370,112 @@ export class BreakoutGame extends BaseGame {
   }
 
   private checkBrickCollisions(ball: Ball) {
-    for (let brick of this.bricks) {
-      if (brick.destroyed) continue;
+    for (let row = 0; row < this.bricks.length; row++) {
+      for (let col = 0; col < this.bricks[row].length; col++) {
+        const brick = this.bricks[row][col];
+        if (!brick || brick.destroyed) continue;
 
-      if (
-        ball.x + ball.radius > brick.x &&
-        ball.x - ball.radius < brick.x + brick.width &&
-        ball.y + ball.radius > brick.y &&
-        ball.y - ball.radius < brick.y + brick.height
-      ) {
-        brick.health--;
-        if (brick.health <= 0) {
-          brick.destroyed = true;
-          this.score += 10;
-          // Effects and powerup drop
-          const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
-          const count = quality === 'high' ? 18 : quality === 'low' ? 8 : 12;
-          this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700', 'subtle');
-          const drop = Math.random();
-          const baseRate = 0.12;
-          const bonus = this.balls.length > 1 ? -0.04 : 0;
-          if (drop < baseRate + bonus) {
-            this.spawnPowerup(brick.x + brick.width / 2, brick.y + brick.height / 2);
+        if (
+          ball.x + ball.radius > brick.x &&
+          ball.x - ball.radius < brick.x + brick.width &&
+          ball.y + ball.radius > brick.y &&
+          ball.y - ball.radius < brick.y + brick.height
+        ) {
+          brick.health--;
+          if (brick.health <= 0) {
+            brick.destroyed = true;
+            this.score += 10;
+            
+            // Check if this is an explosive brick
+            if (brick.explosive) {
+              this.triggerExplosiveBrick(brick, row, col);
+            } else {
+              // Normal brick destruction
+              const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
+              const count = quality === 'high' ? 18 : quality === 'low' ? 8 : 12;
+              this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700', 'subtle');
+            }
+            
+            const drop = Math.random();
+            const baseRate = 0.12;
+            const bonus = this.balls.length > 1 ? -0.04 : 0;
+            if (drop < baseRate + bonus) {
+              this.spawnPowerup(brick.x + brick.width / 2, brick.y + brick.height / 2);
+            }
           }
+
+          // Determine collision side and bounce accordingly
+          const ballCenterX = ball.x;
+          const ballCenterY = ball.y;
+          const brickCenterX = brick.x + brick.width / 2;
+          const brickCenterY = brick.y + brick.height / 2;
+
+          const dx = ballCenterX - brickCenterX;
+          const dy = ballCenterY - brickCenterY;
+
+          if (Math.abs(dx / brick.width) > Math.abs(dy / brick.height)) {
+            ball.dx = -ball.dx;
+          } else {
+            ball.dy = -ball.dy;
+          }
+
+          this.playHitSound();
+          // Shake
+          const reduceMotion = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+          const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+          if (!reduceMotion && allowShake) this.shakeTimer = 6;
+          break;
         }
-
-        // Determine collision side and bounce accordingly
-        const ballCenterX = ball.x;
-        const ballCenterY = ball.y;
-        const brickCenterX = brick.x + brick.width / 2;
-        const brickCenterY = brick.y + brick.height / 2;
-
-        const dx = ballCenterX - brickCenterX;
-        const dy = ballCenterY - brickCenterY;
-
-        if (Math.abs(dx / brick.width) > Math.abs(dy / brick.height)) {
-          ball.dx = -ball.dx;
-        } else {
-          ball.dy = -ball.dy;
-        }
-
-        this.playHitSound();
-        // Shake
-        const reduceMotion = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-        const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-        if (!reduceMotion && allowShake) this.shakeTimer = 6;
-        break;
       }
     }
   }
 
+  private triggerExplosiveBrick(explodedBrick: Brick, row: number, col: number) {
+    const explosionRadius = explodedBrick.explosionRadius || 100;
+    const explosionX = explodedBrick.x + explodedBrick.width / 2;
+    const explosionY = explodedBrick.y + explodedBrick.height / 2;
+    
+    // Create epic explosion
+    this.particles.addExplosion(explosionX, explosionY, 30, '#FF4500', 'epic');
+    
+    // Damage nearby bricks
+    for (let r = 0; r < this.bricks.length; r++) {
+      for (let c = 0; c < this.bricks[r].length; c++) {
+        const brick = this.bricks[r][c];
+        if (!brick || brick.destroyed) continue;
+        
+        const brickCenterX = brick.x + brick.width / 2;
+        const brickCenterY = brick.y + brick.height / 2;
+        const distance = Math.sqrt((explosionX - brickCenterX) ** 2 + (explosionY - brickCenterY) ** 2);
+        
+        if (distance < explosionRadius) {
+          // Damage based on distance
+          const damage = Math.floor((1 - distance / explosionRadius) * 3) + 1;
+          brick.health -= damage;
+          
+          if (brick.health <= 0) {
+            brick.destroyed = true;
+            this.score += 15; // Bonus points for explosion damage
+            
+            // Create smaller explosion for each destroyed brick
+            this.particles.addExplosion(brickCenterX, brickCenterY, 8, '#FFD700', 'subtle');
+          }
+        }
+      }
+    }
+    
+    // Heavy screenshake
+    this.shakeTimer = 15;
+    
+    // Audio
+    useAudio.getState().playStinger('fail');
+  }
+
   // Powerups
   private spawnPowerup(x: number, y: number) {
-    // Two types: triple balls and long paddle
-    const type = Math.random() < 0.5 ? 'triple' : 'long';
+    // Three types: triple balls, long paddle, and explosive brick
+    const type = Math.random() < 0.4 ? 'triple' : Math.random() < 0.7 ? 'long' : 'explosive';
+    
     if (type === 'triple') {
       // Spawn two extra balls from one of current balls
       if (this.balls.length > 0) {
@@ -438,16 +495,46 @@ export class BreakoutGame extends BaseGame {
           });
         }
       }
-    } else {
+    } else if (type === 'long') {
       // Long paddle for a short duration
       this.paddle.width = 140;
       this.activeLongPaddleTimer = 600; // 10s at 60fps
+    } else if (type === 'explosive') {
+      // Create explosive brick that will explode when hit
+      this.createExplosiveBrick(x, y);
     }
     
     // Haptic feedback for powerup collection
     const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
     if (hapticsOn && 'vibrate' in navigator) {
       navigator.vibrate?.([30, 50, 30]);
+    }
+  }
+
+  private createExplosiveBrick(x: number, y: number) {
+    // Find the closest brick and make it explosive
+    let closestBrick = null;
+    let minDistance = Infinity;
+    
+    for (let row = 0; row < this.bricks.length; row++) {
+      for (let col = 0; col < this.bricks[row].length; col++) {
+        const brick = this.bricks[row][col];
+        if (brick && brick.health > 0) {
+          const brickCenterX = brick.x + brick.width / 2;
+          const brickCenterY = brick.y + brick.height / 2;
+          const distance = Math.sqrt((x - brickCenterX) ** 2 + (y - brickCenterY) ** 2);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestBrick = { brick, row, col };
+          }
+        }
+      }
+    }
+    
+    if (closestBrick) {
+      closestBrick.brick.explosive = true;
+      closestBrick.brick.explosionRadius = 100;
     }
   }
 
@@ -530,16 +617,19 @@ export class BreakoutGame extends BaseGame {
     const punchRadius = 30;
 
     // Check collision with remaining bricks
-    for (let brick of this.bricks) {
-      if (brick.destroyed) continue;
+    for (let row = 0; row < this.bricks.length; row++) {
+      for (let col = 0; col < this.bricks[row].length; col++) {
+        const brick = this.bricks[row][col];
+        if (brick.destroyed) continue;
 
-      const brickCenterX = brick.x + brick.width / 2;
-      const brickCenterY = brick.y + brick.height / 2;
-      const distance = Math.sqrt((punchX - brickCenterX) ** 2 + (punchY - brickCenterY) ** 2);
+        const brickCenterX = brick.x + brick.width / 2;
+        const brickCenterY = brick.y + brick.height / 2;
+        const distance = Math.sqrt((punchX - brickCenterX) ** 2 + (punchY - brickCenterY) ** 2);
 
-      if (distance < punchRadius) {
-        brick.destroyed = true;
-        this.score += 20; // Double points for punch destruction
+        if (distance < punchRadius) {
+          brick.destroyed = true;
+          this.score += 20; // Double points for punch destruction
+        }
       }
     }
   }
@@ -617,11 +707,13 @@ export class BreakoutGame extends BaseGame {
 
   private drawGameplay() {
     // Draw bricks
-    this.bricks.forEach(brick => {
-      if (!brick.destroyed) {
-        this.drawBrick(brick);
+    for (const row of this.bricks) {
+      for (const brick of row) {
+        if (!brick.destroyed) {
+          this.drawBrick(brick);
+        }
       }
-    });
+    }
 
     // Draw paddle/evolved creature
     if (this.paddleEvolved) {
@@ -700,40 +792,43 @@ export class BreakoutGame extends BaseGame {
     this.ctx.restore();
 
     // Show bricks morphing into asteroids
-    this.bricks.forEach((brick, index) => {
-      if (brick.destroyed) return;
-      
-      const asteroidProgress = Math.max(0, (progress - 0.3) * 1.4);
-      this.ctx.save();
-      this.ctx.translate(brick.x + brick.width / 2, brick.y + brick.height / 2);
-      
-      if (asteroidProgress < 1) {
-        // Morphing from brick to asteroid
-        const size = Math.max(brick.width, brick.height) * (1 - asteroidProgress * 0.3);
-        this.ctx.fillStyle = brick.color;
+    for (let row = 0; row < this.bricks.length; row++) {
+      for (let col = 0; col < this.bricks[row].length; col++) {
+        const brick = this.bricks[row][col];
+        if (brick.destroyed) return;
         
-        // Create irregular shape
-        this.ctx.beginPath();
-        const sides = 8;
-        for (let i = 0; i < sides; i++) {
-          const angle = (i / sides) * Math.PI * 2;
-          const radius = size * (0.8 + Math.sin(i + asteroidProgress * 10) * 0.2);
-          const x = Math.cos(angle) * radius / 2;
-          const y = Math.sin(angle) * radius / 2;
+        const asteroidProgress = Math.max(0, (progress - 0.3) * 1.4);
+        this.ctx.save();
+        this.ctx.translate(brick.x + brick.width / 2, brick.y + brick.height / 2);
+        
+        if (asteroidProgress < 1) {
+          // Morphing from brick to asteroid
+          const size = Math.max(brick.width, brick.height) * (1 - asteroidProgress * 0.3);
+          this.ctx.fillStyle = brick.color;
           
-          if (i === 0) {
-            this.ctx.moveTo(x, y);
-          } else {
-            this.ctx.lineTo(x, y);
+          // Create irregular shape
+          this.ctx.beginPath();
+          const sides = 8;
+          for (let i = 0; i < sides; i++) {
+            const angle = (i / sides) * Math.PI * 2;
+            const radius = size * (0.8 + Math.sin(i + asteroidProgress * 10) * 0.2);
+            const x = Math.cos(angle) * radius / 2;
+            const y = Math.sin(angle) * radius / 2;
+            
+            if (i === 0) {
+              this.ctx.moveTo(x, y);
+            } else {
+              this.ctx.lineTo(x, y);
+            }
           }
+          this.ctx.closePath();
+          this.ctx.fill();
+          this.ctx.stroke();
         }
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.stroke();
+        
+        this.ctx.restore();
       }
-      
-      this.ctx.restore();
-    });
+    }
 
     // Transition text
     this.drawText(`Ancient Blocks Transform Into Celestial Bodies...`, this.width / 2, this.height / 2, 20, '#FFD700', 'center');
@@ -861,26 +956,73 @@ export class BreakoutGame extends BaseGame {
   private drawBrick(brick: Brick) {
     this.ctx.save();
     
-    // Make bricks look like Greek temple blocks
-    this.ctx.fillStyle = brick.color;
-    this.ctx.strokeStyle = '#DDD';
-    this.ctx.lineWidth = 1;
+    // Special effects for explosive bricks
+    if (brick.explosive) {
+      const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+      this.ctx.shadowColor = '#FF4500';
+      this.ctx.shadowBlur = 10 * pulse;
+      this.ctx.globalAlpha = pulse;
+    }
     
+    // Health-based color intensity
+    const maxHealth = 3;
+    const healthPercent = brick.health / maxHealth;
+    const color = this.interpolateColor(brick.color, '#FF0000', 1 - healthPercent);
+    
+    this.ctx.fillStyle = color;
     this.ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+    
+    // Border
+    this.ctx.strokeStyle = '#FFFFFF';
+    this.ctx.lineWidth = 1;
     this.ctx.strokeRect(brick.x, brick.y, brick.width, brick.height);
     
-    // Add Greek pattern details
-    this.ctx.strokeStyle = '#FFF';
-    this.ctx.lineWidth = 0.5;
-    for (let i = 1; i < brick.health + 1; i++) {
-      const y = brick.y + (brick.height * i) / (brick.health + 1);
+    // Explosive brick indicator
+    if (brick.explosive) {
+      this.ctx.fillStyle = '#FF4500';
       this.ctx.beginPath();
-      this.ctx.moveTo(brick.x + 5, y);
-      this.ctx.lineTo(brick.x + brick.width - 5, y);
-      this.ctx.stroke();
+      this.ctx.arc(brick.x + brick.width / 2, brick.y + brick.height / 2, 3, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Explosion warning lines
+      this.ctx.strokeStyle = '#FF4500';
+      this.ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(brick.x + brick.width / 2, brick.y + brick.height / 2);
+        this.ctx.lineTo(
+          brick.x + brick.width / 2 + Math.cos(angle) * 6,
+          brick.y + brick.height / 2 + Math.sin(angle) * 6
+        );
+        this.ctx.stroke();
+      }
     }
     
     this.ctx.restore();
+  }
+
+  private interpolateColor(from: string, to: string, progress: number): string {
+    // Simple color interpolation
+    const fromRGB = this.hexToRgb(from);
+    const toRGB = this.hexToRgb(to);
+    
+    if (!fromRGB || !toRGB) return from;
+    
+    const r = Math.round(fromRGB.r + (toRGB.r - fromRGB.r) * progress);
+    const g = Math.round(fromRGB.g + (toRGB.g - fromRGB.g) * progress);
+    const b = Math.round(fromRGB.b + (toRGB.b - fromRGB.b) * progress);
+    
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  private hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
   }
 
   private drawEvolvingPaddle() {

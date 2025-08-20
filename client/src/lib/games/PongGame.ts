@@ -51,6 +51,10 @@ export class PongGame extends BaseGame {
   private activePowerupType = 'normal';
   private powerupDuration = 0;
   private shakeTimer = 0;
+  // New explosion-based powerups
+  private chainReactionTimer = 0;
+  private shockwaveTimer = 0;
+  private explosionPowerups: Array<{x: number, y: number, type: 'chain' | 'shockwave', timer: number}> = [];
   // Particle system for effects
   private particles = new (class LocalParticles {
     private ps: any;
@@ -734,7 +738,21 @@ export class PongGame extends BaseGame {
   }
 
   private spawnPowerups() {
+    // Powerup spawning
     this.powerupSpawnTimer++;
+    if (this.powerupSpawnTimer > 600) { // Every 10 seconds
+      this.powerupSpawnTimer = 0;
+      const drop = Math.random();
+      if (drop < 0.15) { // 15% chance
+        const powerupType = Math.random() < 0.5 ? 'chain' : 'shockwave';
+        this.explosionPowerups.push({
+          x: Math.random() * (this.width - 100) + 50,
+          y: Math.random() * (this.height - 100) + 50,
+          type: powerupType,
+          timer: 300 // 5 seconds to collect
+        });
+      }
+    }
     
     // Spawn powerups very frequently to speed up the game dramatically
     if (this.powerupSpawnTimer > 240 && this.powerups.length < 2) { // Every ~4 seconds, up to 2 at once
@@ -794,6 +812,39 @@ export class PongGame extends BaseGame {
         this.powerups.splice(i, 1);
       }
     }
+
+    // Check powerup collisions
+    this.explosionPowerups.forEach((powerup, index) => {
+      powerup.timer--;
+      
+      // Check if ball hits powerup
+      const dx = this.ball.x - powerup.x;
+      const dy = this.ball.y - powerup.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < this.ball.radius + 15) {
+        // Activate powerup
+        if (powerup.type === 'chain') {
+          this.activateChainReaction();
+        } else if (powerup.type === 'shockwave') {
+          this.activateShockwave();
+        }
+        
+        // Remove powerup
+        this.explosionPowerups.splice(index, 1);
+        
+        // Haptic feedback
+        const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
+        if (hapticsOn && 'vibrate' in navigator) {
+          navigator.vibrate?.([50, 100, 50]);
+        }
+      }
+      
+      // Remove expired powerups
+      if (powerup.timer <= 0) {
+        this.explosionPowerups.splice(index, 1);
+      }
+    });
   }
 
   private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky') {
@@ -822,76 +873,154 @@ export class PongGame extends BaseGame {
     }
   }
 
+  private activateChainReaction() {
+    // Create multiple explosions in sequence
+    this.chainReactionTimer = 120; // 2 seconds
+    
+    // Initial explosion at ball position
+    this.particles.addExplosion(this.ball.x, this.ball.y, 20, '#FF4500', 'dramatic');
+    
+    // Chain reaction explosions around AI paddle
+    setTimeout(() => {
+      this.particles.addExplosion(this.player2.x - 20, this.player2.y, 15, '#FF0000', 'dramatic');
+      this.player2.damage += 25; // Chain reaction damages AI
+    }, 200);
+    
+    setTimeout(() => {
+      this.particles.addExplosion(this.player2.x + this.player2.width + 20, this.player2.y + this.player2.height/2, 15, '#FF0000', 'dramatic');
+      this.player2.damage += 25;
+    }, 400);
+    
+    setTimeout(() => {
+      this.particles.addExplosion(this.player2.x + this.player2.width/2, this.player2.y - 20, 15, '#FF0000', 'dramatic');
+      this.player2.damage += 25;
+    }, 600);
+    
+    // Heavy screenshake
+    this.shakeTimer = 25;
+    
+    // Audio
+    useAudio.getState().playStinger('hit');
+  }
+
+  private activateShockwave() {
+    // Create expanding shockwave effect
+    this.shockwaveTimer = 90; // 1.5 seconds
+    
+    // Central explosion
+    this.particles.addExplosion(this.ball.x, this.ball.y, 30, '#00FFFF', 'epic');
+    
+    // Expanding shockwave rings
+    for (let i = 1; i <= 3; i++) {
+      setTimeout(() => {
+        const radius = i * 50;
+        // Create ring of explosions
+        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+          const x = this.ball.x + Math.cos(angle) * radius;
+          const y = this.ball.y + Math.sin(angle) * radius;
+          this.particles.addExplosion(x, y, 5, '#00FFFF', 'subtle');
+        }
+        
+        // Damage AI if in shockwave range
+        const dx = this.player2.x + this.player2.width/2 - this.ball.x;
+        const dy = this.player2.y + this.player2.height/2 - this.ball.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < radius + 50) {
+          this.player2.damage += 20;
+          this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.2);
+        }
+      }, i * 200);
+    }
+    
+    // Massive screenshake
+    this.shakeTimer = 30;
+    
+    // Audio
+    useAudio.getState().playStinger('fail');
+  }
+
   private drawPowerups() {
-    for (const powerup of this.powerups) {
+    // Draw explosion powerups
+    this.explosionPowerups.forEach(powerup => {
+      const alpha = powerup.timer / 300; // Fade out over time
+      const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+      
       this.ctx.save();
+      this.ctx.globalAlpha = alpha * pulse;
       
-      // Pulsing effect
-      const pulse = Math.sin(powerup.timer * 0.1) * 0.1 + 1;
-      const size = powerup.width * pulse;
-      
-      // Different colors for different powerups
-      switch (powerup.type) {
-        case 'speed':
-          this.ctx.fillStyle = '#00FFFF';
-          this.ctx.strokeStyle = '#0080FF';
-          this.ctx.shadowColor = '#00FFFF';
-          break;
-        case 'fire':
-          this.ctx.fillStyle = '#FF4500';
-          this.ctx.strokeStyle = '#FF0000';
-          this.ctx.shadowColor = '#FF4500';
-          break;
-        case 'missile':
-          this.ctx.fillStyle = '#FF0000';
-          this.ctx.strokeStyle = '#800000';
-          this.ctx.shadowColor = '#FF0000';
-          break;
-        case 'wacky':
-          const time = Date.now() * 0.01;
-          const r = Math.sin(time + powerup.timer * 0.1) * 127 + 128;
-          const g = Math.sin(time + powerup.timer * 0.1 + 2) * 127 + 128;
-          const b = Math.sin(time + powerup.timer * 0.1 + 4) * 127 + 128;
-          this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-          this.ctx.strokeStyle = '#FFFFFF';
-          this.ctx.shadowColor = this.ctx.fillStyle;
-          break;
+      if (powerup.type === 'chain') {
+        // Chain reaction powerup - red with explosion icon
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.strokeStyle = '#FFD700';
+        this.ctx.lineWidth = 2;
+        this.ctx.shadowColor = '#FF0000';
+        this.ctx.shadowBlur = 10;
+        
+        // Draw explosion icon
+        this.ctx.beginPath();
+        this.ctx.arc(powerup.x, powerup.y, 12, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Draw chain lines
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
+          this.ctx.beginPath();
+          this.ctx.moveTo(powerup.x, powerup.y);
+          this.ctx.lineTo(
+            powerup.x + Math.cos(angle) * 8,
+            powerup.y + Math.sin(angle) * 8
+          );
+          this.ctx.stroke();
+        }
+      } else if (powerup.type === 'shockwave') {
+        // Shockwave powerup - cyan with expanding rings
+        this.ctx.fillStyle = '#00FFFF';
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.shadowColor = '#00FFFF';
+        this.ctx.shadowBlur = 15;
+        
+        // Draw central orb
+        this.ctx.beginPath();
+        this.ctx.arc(powerup.x, powerup.y, 10, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Draw expanding rings
+        for (let i = 1; i <= 2; i++) {
+          const ringAlpha = alpha * (1 - i * 0.3);
+          this.ctx.globalAlpha = ringAlpha;
+          this.ctx.beginPath();
+          this.ctx.arc(powerup.x, powerup.y, 8 + i * 6, 0, Math.PI * 2);
+          this.ctx.stroke();
+        }
       }
       
-      this.ctx.shadowBlur = 10;
-      this.ctx.lineWidth = 2;
-      
-      // Draw powerup as a glowing rectangle
-      this.ctx.fillRect(
-        powerup.x - size/2 + powerup.width/2,
-        powerup.y - size/2 + powerup.height/2,
-        size,
-        size
-      );
-      this.ctx.strokeRect(
-        powerup.x - size/2 + powerup.width/2,
-        powerup.y - size/2 + powerup.height/2,
-        size,
-        size
-      );
-      
-      // Draw powerup type text
-      this.ctx.shadowBlur = 0;
-      const text = powerup.type.toUpperCase();
-      this.drawText(text, powerup.x + powerup.width/2, powerup.y + powerup.height/2 + 4, 8, '#FFFFFF', 'center');
-      
       this.ctx.restore();
-    }
-
-    // Show active powerup indicator
-    if (this.activePowerupType !== 'normal' && this.powerupDuration > 0) {
+    });
+    
+    // Draw active powerup effects
+    if (this.chainReactionTimer > 0) {
       this.ctx.save();
-      this.ctx.shadowColor = '#FFD700';
-      this.ctx.shadowBlur = 5;
-      const remainingTime = Math.ceil(this.powerupDuration / 60);
-      this.drawText(`${this.activePowerupType.toUpperCase()}: ${remainingTime}s`, 20, this.height - 40, 14, '#FFD700');
-      this.ctx.shadowBlur = 0;
+      this.ctx.globalAlpha = this.chainReactionTimer / 120;
+      this.ctx.fillStyle = '#FF0000';
+      this.ctx.font = '16px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('CHAIN REACTION!', this.width / 2, 50);
       this.ctx.restore();
+      this.chainReactionTimer--;
+    }
+    
+    if (this.shockwaveTimer > 0) {
+      this.ctx.save();
+      this.ctx.globalAlpha = this.shockwaveTimer / 90;
+      this.ctx.fillStyle = '#00FFFF';
+      this.ctx.font = '16px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('SHOCKWAVE!', this.width / 2, 50);
+      this.ctx.restore();
+      this.shockwaveTimer--;
     }
   }
 }
