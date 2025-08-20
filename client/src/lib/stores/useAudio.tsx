@@ -177,7 +177,7 @@ export const useAudio = create<AudioState>((set, get) => ({
     }
   }
   ,
-  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop') => {
+  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup') => {
     const { isMuted } = get();
     if (isMuted) return;
     
@@ -188,47 +188,110 @@ export const useAudio = create<AudioState>((set, get) => ({
       
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
       
-      oscillator.connect(gainNode);
+      oscillator.connect(filter);
+      filter.connect(gainNode);
       gainNode.connect(audioCtx.destination);
       
-      // Different stinger sounds
+      // Classic arcade sound effects
       switch (type) {
         case 'start':
+          // Defender-style start sound
           oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
           oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
           gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
           break;
         case 'clear':
+          // Star Wars arcade victory sound
           oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
           oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
           gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
           break;
         case 'fail':
+          // Classic arcade death sound
           oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
           oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
           gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
           break;
         case 'hit':
+          // Defender-style hit sound
           oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
           oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.15);
           gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
           break;
         case 'pop':
+          // Quick pop sound
           oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime);
           oscillator.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.05);
           gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
           break;
+        case 'defender_shoot':
+          // Authentic Defender shooting sound
+          oscillator.type = 'square';
+          oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.08);
+          gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(2000, audioCtx.currentTime);
+          break;
+        case 'defender_explosion':
+          // Defender explosion with noise
+          oscillator.type = 'sawtooth';
+          oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+          gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+          break;
+        case 'starwars_laser':
+          // Star Wars arcade laser sound
+          oscillator.type = 'triangle';
+          oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.12);
+          gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+          filter.type = 'highpass';
+          filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+          break;
+        case 'starwars_explosion':
+          // Star Wars arcade explosion
+          oscillator.type = 'sawtooth';
+          oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.5);
+          gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(600, audioCtx.currentTime);
+          break;
+        case 'arcade_hit':
+          // Classic arcade hit sound
+          oscillator.type = 'square';
+          oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+          gainNode.gain.setValueAtTime(0.25, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+          break;
+        case 'arcade_powerup':
+          // Classic arcade powerup sound
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+          gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+          break;
       }
       
       oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.3);
-      setTimeout(() => audioCtx.close(), 350);
+      oscillator.stop(audioCtx.currentTime + 0.5);
+      setTimeout(() => audioCtx.close(), 550);
     } catch (e) {
       // Audio system not available
     }

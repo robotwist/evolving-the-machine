@@ -93,13 +93,16 @@ export class ParticleSystem {
     (async () => {
       try {
         const { useAudio } = await import('../stores/useAudio');
+        const audioState = useAudio.getState();
+        if (audioState.isMuted) return;
+        
         if (type === 'epic') {
-          useAudio.getState().playStinger('fail');
+          audioState.playStinger('starwars_explosion');
         } else if (type === 'dramatic') {
-          useAudio.getState().playStinger('hit');
+          audioState.playStinger('defender_explosion');
         } else {
           // Subtle explosion sound
-          useAudio.getState().playStinger('pop');
+          audioState.playStinger('arcade_hit');
         }
       } catch (e) {
         // Audio system not available

@@ -335,6 +335,7 @@ export class DefenderGame extends BaseGame {
           const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
           if (!reduce && allowShake) this.shakeTimer = 10;
           if (allowParticles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444', 'dramatic');
+          this.playExplosionSound();
         }
       });
     });
@@ -348,6 +349,7 @@ export class DefenderGame extends BaseGame {
         const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
         if (!reduce && allowShake) this.shakeTimer = 14;
         if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
+        this.playExplosionSound();
       }
       // Trails for enemy bullets
       const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
@@ -697,6 +699,28 @@ export class DefenderGame extends BaseGame {
   private playHitSound() {
     const audio = useAudio.getState();
     audio.playHit();
+  }
+
+  private playShootSound() {
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('defender_shoot');
+      }
+    } catch (e) {
+      console.warn('Shoot sound failed:', e);
+    }
+  }
+
+  private playExplosionSound() {
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('defender_explosion');
+      }
+    } catch (e) {
+      console.warn('Explosion sound failed:', e);
+    }
   }
 
   protected setupEventListeners() {

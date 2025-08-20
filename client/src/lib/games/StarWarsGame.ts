@@ -431,12 +431,14 @@ export class StarWarsGame extends BaseGame {
           if (enemy.alive && this.checkCollision(bullet.position, bullet.size, enemy.position, enemy.size)) {
             enemy.health -= bullet.damage;
             this.createExplosion(bullet.position.x, bullet.position.y, 20);
+            this.playExplosionSound();
             bullet.size = 0; // Mark for removal
             
             if (enemy.health <= 0) {
               enemy.alive = false;
               this.enemiesDestroyed++;
               this.createExplosion(enemy.position.x, enemy.position.y, 40);
+              this.playExplosionSound();
               this.score += enemy.type === 'bomber' ? 300 : enemy.type === 'interceptor' ? 200 : 100;
             }
           }
@@ -885,5 +887,27 @@ export class StarWarsGame extends BaseGame {
       trail: []
     };
     this.bullets.push(bullet);
+  }
+
+  private playLaserSound() {
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('starwars_laser');
+      }
+    } catch (e) {
+      console.warn('Laser sound failed:', e);
+    }
+  }
+
+  private playExplosionSound() {
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('starwars_explosion');
+      }
+    } catch (e) {
+      console.warn('Explosion sound failed:', e);
+    }
   }
 }

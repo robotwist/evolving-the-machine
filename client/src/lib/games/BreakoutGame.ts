@@ -470,7 +470,14 @@ export class BreakoutGame extends BaseGame {
     this.shakeTimer = 15;
     
     // Audio
-    useAudio.getState().playStinger('fail');
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('defender_explosion');
+      }
+    } catch (e) {
+      console.warn('Explosive brick sound failed:', e);
+    }
   }
 
   // Powerups
@@ -510,6 +517,16 @@ export class BreakoutGame extends BaseGame {
     const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
     if (hapticsOn && 'vibrate' in navigator) {
       navigator.vibrate?.([30, 50, 30]);
+    }
+    
+    // Powerup collection sound
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('arcade_powerup');
+      }
+    } catch (e) {
+      console.warn('Powerup sound failed:', e);
     }
   }
 
@@ -648,7 +665,14 @@ export class BreakoutGame extends BaseGame {
     }
     
     // Audio stinger for completion
-    useAudio.getState().playStinger('clear');
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('clear');
+      }
+    } catch (e) {
+      console.warn('Stage completion sound failed:', e);
+    }
   }
 
   private updateTransition() {
@@ -1068,8 +1092,14 @@ export class BreakoutGame extends BaseGame {
   }
 
   private playHitSound() {
-    const audio = useAudio.getState();
-    audio.playHit();
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('arcade_hit');
+      }
+    } catch (e) {
+      console.warn('Hit sound failed:', e);
+    }
   }
 
   protected setupEventListeners() {

@@ -408,7 +408,14 @@ export class PongGame extends BaseGame {
     this.shakeTimer = 20;
     
     // Audio explosion
-    useAudio.getState().playStinger('fail');
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('defender_explosion');
+      }
+    } catch (e) {
+      console.warn('Explosion sound failed:', e);
+    }
   }
 
   private checkPaddleCollision(paddle: Paddle): boolean {
@@ -750,8 +757,14 @@ export class PongGame extends BaseGame {
   }
 
   private playHitSound() {
-    const audio = useAudio.getState();
-    audio.playHit();
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('arcade_hit');
+      }
+    } catch (e) {
+      console.warn('Hit sound failed:', e);
+    }
   }
 
   protected setupEventListeners() {
@@ -877,6 +890,16 @@ export class PongGame extends BaseGame {
         if (hapticsOn && 'vibrate' in navigator) {
           navigator.vibrate?.([50, 100, 50]);
         }
+        
+        // Powerup collection sound
+        try {
+          const audioState = useAudio.getState();
+          if (!audioState.isMuted) {
+            audioState.playStinger('arcade_powerup');
+          }
+        } catch (e) {
+          console.warn('Powerup sound failed:', e);
+        }
       }
       
       // Remove expired powerups
@@ -939,7 +962,14 @@ export class PongGame extends BaseGame {
     this.shakeTimer = 25;
     
     // Audio
-    useAudio.getState().playStinger('hit');
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('defender_explosion');
+      }
+    } catch (e) {
+      console.warn('Chain reaction sound failed:', e);
+    }
   }
 
   private activateShockwave() {
@@ -976,7 +1006,14 @@ export class PongGame extends BaseGame {
     this.shakeTimer = 30;
     
     // Audio
-    useAudio.getState().playStinger('fail');
+    try {
+      const audioState = useAudio.getState();
+      if (!audioState.isMuted) {
+        audioState.playStinger('starwars_explosion');
+      }
+    } catch (e) {
+      console.warn('Shockwave sound failed:', e);
+    }
   }
 
   private drawPowerups() {
