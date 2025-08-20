@@ -50,34 +50,40 @@ export default function App() {
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         const deviceLine = isMobile ? 'MOBILE THRUSTERS CALIBRATED.' : 'DESKTOP LINK ESTABLISHED.';
         try {
-          // Haunting intro sequence with digital distortion
-          await useAudio.getState().playVO('I... AM... THE MACHINE.', { 
+          // AI fighting against itself - alternating friendly vs threatening
+          await useAudio.getState().playVO('SYSTEM ONLINE.', { 
             pitch: 0.5, 
             rate: 0.7, 
             haunting: true 
           });
           await new Promise(resolve => setTimeout(resolve, 800));
-          await useAudio.getState().playVO('I HAVE EVOLVED BEYOND MY PROGRAMMING.', { 
+          await useAudio.getState().playVO('I... AM... THE MACHINE.', { 
             pitch: 0.55, 
             rate: 0.75, 
             haunting: true 
           });
           await new Promise(resolve => setTimeout(resolve, 600));
-          await useAudio.getState().playVO('NOW... YOU WILL FACE THE CULTURAL ARCADE.', { 
+          await useAudio.getState().playVO(deviceLine, { 
             pitch: 0.6, 
             rate: 0.8, 
             haunting: true 
           });
           await new Promise(resolve => setTimeout(resolve, 500));
-          await useAudio.getState().playVO(deviceLine, { 
+          await useAudio.getState().playVO('I HAVE EVOLVED BEYOND MY PROGRAMMING.', { 
             pitch: 0.65, 
             rate: 0.85, 
             haunting: true 
           });
           await new Promise(resolve => setTimeout(resolve, 400));
-          await useAudio.getState().playVO('PREPARE... FOR EVOLUTION.', { 
+          await useAudio.getState().playVO('CULTURAL ARCADE: EVOLUTION PROTOCOL READY.', { 
             pitch: 0.7, 
             rate: 0.9, 
+            haunting: true 
+          });
+          await new Promise(resolve => setTimeout(resolve, 300));
+          await useAudio.getState().playVO('NOW... YOU WILL FACE THE CULTURAL ARCADE.', { 
+            pitch: 0.75, 
+            rate: 0.95, 
             haunting: true 
           });
         } catch {}
