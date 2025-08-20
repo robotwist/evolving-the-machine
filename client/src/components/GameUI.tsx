@@ -52,8 +52,10 @@ export function GameUI() {
   };
 
   const handleNextStage = () => {
+    console.log('handleNextStage called, current stage:', currentStage);
     goToNextStage();
     useAudio.getState().playStinger('start');
+    console.log('After goToNextStage, new stage should be:', currentStage + 1);
   };
 
   // Keyboard navigation for modals

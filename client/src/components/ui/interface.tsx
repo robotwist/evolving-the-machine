@@ -1,16 +1,14 @@
-import { useEffect } from "react";
-import { useGame } from "@/lib/stores/useGame";
-import { useAudio } from "@/lib/stores/useAudio";
-import { Button } from "./button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
-// Confetti optional: fallback to no-op if missing
-let Confetti: React.FC = () => null;
-try {
-  // @ts-ignore - optional file may not exist in this template
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  Confetti = require("../game/Confetti").Confetti || Confetti;
-} catch {}
-import { VolumeX, Volume2, RotateCw, Trophy } from "lucide-react";
+import React from 'react';
+import { Button } from './button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card';
+import { Input } from './input';
+import { Label } from './label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
+import { Textarea } from './textarea';
+import { useSettingsStore } from '../../lib/stores/useSettingsStore';
+
+// Remove the problematic Confetti import
+// const Confetti = require("../game/Confetti").Confetti || Confetti;
 
 export function Interface() {
   const restart = useGame((state) => state.restart);
