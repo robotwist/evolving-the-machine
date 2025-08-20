@@ -58,11 +58,15 @@ export class PongGame extends BaseGame {
   // Particle system for effects
   private particles = new (class LocalParticles {
     private ps: any;
-    init = (ctx: CanvasRenderingContext2D) => {
-      const { ParticleSystem } = require('../utils/ParticleSystem');
-      this.ps = new ParticleSystem(ctx);
+    init = async (ctx: CanvasRenderingContext2D) => {
+      try {
+        const { ParticleSystem } = await import('../utils/ParticleSystem');
+        this.ps = new ParticleSystem(ctx);
+      } catch (e) {
+        console.warn('ParticleSystem not available:', e);
+      }
     };
-    addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
+    addExplosion = (x: number, y: number, count?: number, color?: string, type?: string) => this.ps?.addExplosion(x, y, count, color, type);
     addSizzle = (x: number, y: number) => this.ps?.addExplosion(x, y, 8, '#FF4500', 'subtle');
     update = () => this.ps?.update();
     render = () => this.ps?.render();
@@ -96,7 +100,7 @@ export class PongGame extends BaseGame {
     ]
   };
 
-  init() {
+  async init() {
     // Initialize paddles with Greek column design
     const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ as 'low' | 'medium' | 'high' | undefined;
     const shadowBlur = quality === 'low' ? 0 : quality === 'medium' ? 5 : 15;
@@ -133,7 +137,7 @@ export class PongGame extends BaseGame {
     (this as any)._shadowBlur = shadowBlur;
     
     // Initialize particle system
-    this.particles.init(this.ctx);
+    await this.particles.init(this.ctx);
   }
 
   private resetBall() {

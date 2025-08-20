@@ -60,13 +60,18 @@ export class DefenderGame extends BaseGame {
     narcissusStage: 0 // 0-5, how much AI mirrors the user
   };
   private shakeTimer = 0;
+  // Particle system for effects
   private particles = new (class LocalParticles {
     private ps: any;
-    init = (ctx: CanvasRenderingContext2D) => {
-      const { ParticleSystem } = require('../utils/ParticleSystem');
-      this.ps = new ParticleSystem(ctx);
+    init = async (ctx: CanvasRenderingContext2D) => {
+      try {
+        const { ParticleSystem } = await import('../utils/ParticleSystem');
+        this.ps = new ParticleSystem(ctx);
+      } catch (e) {
+        console.warn('ParticleSystem not available:', e);
+      }
     };
-    addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
+    addExplosion = (x: number, y: number, count?: number, color?: string, type?: string) => this.ps?.addExplosion(x, y, count, color, type);
     addTrail = (x: number, y: number, vx: number, vy: number, color?: string) => this.ps?.addTrail(x, y, vx, vy, color);
     update = () => this.ps?.update();
     render = () => this.ps?.render();
@@ -77,23 +82,22 @@ export class DefenderGame extends BaseGame {
   private lfoOsc: OscillatorNode | null = null;
   private lfoGain: GainNode | null = null;
 
-  init() {
-    // Initialize player (Samurai defender)
+  async init() {
+    // Initialize player
     this.player = {
-      position: { x: this.width / 2, y: this.height - 100 },
+      position: { x: 100, y: this.height / 2 },
+      size: { x: 30, y: 20 },
       velocity: { x: 0, y: 0 },
-      size: { x: 20, y: 20 },
-      alive: true,
-      direction: 1,
-      onGround: true
+      health: 100,
+      maxHealth: 100,
+      shield: 100
     };
 
-    this.spawnWave();
-    this.spawnCivilians();
-    // init particles
-    this.particles.init(this.ctx);
-    // start ambient whispers if allowed
-    this.startWhispers();
+    // Initialize camera
+    this.camera = { x: 0 };
+
+    // Initialize particle system
+    await this.particles.init(this.ctx);
   }
 
   private spawnWave() {

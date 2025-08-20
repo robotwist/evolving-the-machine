@@ -11,6 +11,7 @@ import { StarWarsGame } from '../lib/games/StarWarsGame';
 import { BetrayalGame } from '../lib/games/BetrayalGame';
 import { BaseGame } from '../lib/games/BaseGame';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
+import { useAudio } from '../lib/stores/useAudio';
 
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,60 +52,73 @@ export function GameCanvas() {
     const size = applyCanvasSize();
 
     // Create game instance based on current stage
-    let game: BaseGame;
+    let gameClass: typeof BaseGame;
     switch (currentStage) {
       case 1:
-        game = new PongGame(ctx, size.width, size.height);
+        gameClass = PongGame;
         break;
       case 2:
-        game = new BreakoutGame(ctx, size.width, size.height);
+        gameClass = BreakoutGame;
         break;
       case 3:
-        game = new AsteroidsGame(ctx, size.width, size.height);
+        gameClass = AsteroidsGame;
         break;
       case 4:
-        game = new DefenderGame(ctx, size.width, size.height);
+        gameClass = DefenderGame;
         break;
       case 5:
-        game = new LasatGame(ctx, size.width, size.height);
+        gameClass = LasatGame;
         break;
       case 6:
-        game = new DanceInterlude(ctx, size.width, size.height);
+        gameClass = DanceInterlude;
         break;
       case 7:
-        game = new StarWarsGame(ctx, size.width, size.height);
+        gameClass = StarWarsGame;
         break;
       case 8:
-        game = new BetrayalGame(ctx, size.width, size.height);
+        gameClass = BetrayalGame;
         break;
       default:
-        game = new PongGame(ctx, size.width, size.height);
+        gameClass = PongGame;
     }
 
-    gameRef.current = game;
+    // Initialize game
+    const initGame = async () => {
+      try {
+        const game = new gameClass(ctx, size.width, size.height);
+        gameRef.current = game;
 
-    // Game event handlers
-    game.onScoreUpdate = (score: number) => {
-      updateScore(currentStage, score);
+        // Game event handlers
+        game.onScoreUpdate = (score: number) => {
+          updateScore(currentStage, score);
+        };
+
+        game.onGameOver = () => {
+          setGameState('ended');
+        };
+
+        game.onStageComplete = () => {
+          setGameState('stage-complete');
+          // Unlock next stage when current stage is completed
+          const { unlockNextStage } = useGameStore.getState();
+          unlockNextStage();
+        };
+
+        // Initialize and start game
+        await game.init();
+        game.start();
+      } catch (error) {
+        console.error('Failed to initialize game:', error);
+      }
     };
 
-    game.onGameOver = () => {
-      setGameState('ended');
-    };
-
-    game.onStageComplete = () => {
-      setGameState('stage-complete');
-      // Unlock next stage when current stage is completed
-      const { unlockNextStage } = useGameStore.getState();
-      unlockNextStage();
-    };
-
-    // Start game
-    game.start();
+    initGame();
 
     const handleResize = () => {
       const { width, height } = applyCanvasSize();
-      game.resize(width, height);
+      if (gameRef.current) {
+        gameRef.current.resize(width, height);
+      }
     };
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
@@ -115,17 +129,17 @@ export function GameCanvas() {
       const point = 'touches' in e ? e.touches[0] : (e as PointerEvent);
       const x = (point.clientX - rect.left);
       const y = (point.clientY - rect.top);
-      game.handlePointerDown?.(x, y);
+      gameRef.current?.handlePointerDown?.(x, y);
     };
     const handlePointerMove = (e: PointerEvent | TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
       const point = 'touches' in e ? e.touches[0] : (e as PointerEvent);
       const x = (point.clientX - rect.left);
       const y = (point.clientY - rect.top);
-      game.handlePointerMove?.(x, y);
+      gameRef.current?.handlePointerMove?.(x, y);
     };
     const handlePointerUp = () => {
-      game.handlePointerUp?.();
+      gameRef.current?.handlePointerUp?.();
     };
     canvas.addEventListener('pointerdown', handlePointerDown as any, { passive: true });
     canvas.addEventListener('pointermove', handlePointerMove as any, { passive: true });
@@ -136,7 +150,7 @@ export function GameCanvas() {
 
     return () => {
       if (gameRef.current) {
-        gameRef.current.destroy();
+        gameRef.current.stop();
       }
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);

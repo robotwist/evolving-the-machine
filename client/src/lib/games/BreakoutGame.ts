@@ -71,14 +71,18 @@ export class BreakoutGame extends BaseGame {
   private targetPaddleX: number | null = null;
   private indicatorPos: { x: number; y: number } | null = null;
   private stick = new VirtualStick({ smoothing: 0.3, deadZone: 0.06, maxRadius: 80 });
-  // Effects
+  // Particle system for effects
   private particles = new (class LocalParticles {
     private ps: any;
-    init = (ctx: CanvasRenderingContext2D) => {
-      const { ParticleSystem } = require('../utils/ParticleSystem');
-      this.ps = new ParticleSystem(ctx);
+    init = async (ctx: CanvasRenderingContext2D) => {
+      try {
+        const { ParticleSystem } = await import('../utils/ParticleSystem');
+        this.ps = new ParticleSystem(ctx);
+      } catch (e) {
+        console.warn('ParticleSystem not available:', e);
+      }
     };
-    addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
+    addExplosion = (x: number, y: number, count?: number, color?: string, type?: string) => this.ps?.addExplosion(x, y, count, color, type);
     update = () => this.ps?.update();
     render = () => this.ps?.render();
   })();
@@ -86,26 +90,24 @@ export class BreakoutGame extends BaseGame {
   // Powerups
   private activeLongPaddleTimer = 0;
   
-  init() {
-    // Initialize paddle (evolved from Pong paddle)
+  async init() {
+    // Initialize paddle
     this.paddle = {
       x: this.width / 2 - 50,
-      y: this.height - 30,
+      y: this.height - 50,
       width: 100,
       height: 15,
       speed: 8
     };
 
-    // Initialize evolved paddle position
-    this.evolvedPaddleX = this.width / 2;
-    this.evolvedPaddleY = this.height / 2;
+    // Initialize ball
+    this.resetBall();
 
-    // Initialize ball(s)
-    this.resetBalls();
-
-    // Create bricks
+    // Initialize bricks
     this.createBricks();
-    this.particles.init(this.ctx);
+
+    // Initialize particle system
+    await this.particles.init(this.ctx);
   }
 
   private resetBalls() {

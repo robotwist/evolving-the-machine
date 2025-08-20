@@ -90,19 +90,21 @@ export class ParticleSystem {
     }
     
     // Audio feedback for explosions
-    try {
-      const { useAudio } = require('../stores/useAudio');
-      if (type === 'epic') {
-        useAudio.getState().playStinger('fail');
-      } else if (type === 'dramatic') {
-        useAudio.getState().playStinger('hit');
-      } else {
-        // Subtle explosion sound
-        useAudio.getState().playStinger('pop');
+    (async () => {
+      try {
+        const { useAudio } = await import('../stores/useAudio');
+        if (type === 'epic') {
+          useAudio.getState().playStinger('fail');
+        } else if (type === 'dramatic') {
+          useAudio.getState().playStinger('hit');
+        } else {
+          // Subtle explosion sound
+          useAudio.getState().playStinger('pop');
+        }
+      } catch (e) {
+        // Audio system not available
       }
-    } catch (e) {
-      // Audio system not available
-    }
+    })();
   }
 
   addScreenFlash(x: number, y: number, intensity: number) {
