@@ -177,43 +177,62 @@ export const useAudio = create<AudioState>((set, get) => ({
     }
   }
   ,
-  playStinger: (kind: 'start' | 'fail' | 'clear') => {
+  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop') => {
     const { isMuted } = get();
     if (isMuted) return;
+    
     try {
       const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = kind === 'fail' ? 'sawtooth' : 'triangle';
-      const now = ctx.currentTime;
-      if (kind === 'start') {
-        osc.frequency.setValueAtTime(320, now);
-        osc.frequency.linearRampToValueAtTime(520, now + 0.18);
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.08, now + 0.04);
-        gain.gain.linearRampToValueAtTime(0, now + 0.22);
-      } else if (kind === 'clear') {
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.linearRampToValueAtTime(660, now + 0.2);
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.09, now + 0.03);
-        gain.gain.linearRampToValueAtTime(0, now + 0.25);
-      } else {
-        osc.frequency.setValueAtTime(220, now);
-        osc.frequency.linearRampToValueAtTime(160, now + 0.15);
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
-        gain.gain.linearRampToValueAtTime(0, now + 0.18);
+      const audioCtx = new AudioCtx();
+      
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      // Different stinger sounds
+      switch (type) {
+        case 'start':
+          oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+          gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+          break;
+        case 'clear':
+          oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+          gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+          break;
+        case 'fail':
+          oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+          gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+          break;
+        case 'hit':
+          oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.15);
+          gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+          break;
+        case 'pop':
+          oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.05);
+          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+          break;
       }
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      osc.stop(now + 0.3);
-      setTimeout(() => ctx.close(), 350);
-    } catch {}
-  }
-  ,
+      
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.3);
+      setTimeout(() => audioCtx.close(), 350);
+    } catch (e) {
+      // Audio system not available
+    }
+  },
   playSizzle: () => {
     const { isMuted } = get();
     if (isMuted) return;

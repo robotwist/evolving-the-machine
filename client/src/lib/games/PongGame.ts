@@ -59,7 +59,7 @@ export class PongGame extends BaseGame {
       this.ps = new ParticleSystem(ctx);
     };
     addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
-    addSizzle = (x: number, y: number) => this.ps?.addExplosion(x, y, 8, '#FF4500');
+    addSizzle = (x: number, y: number) => this.ps?.addExplosion(x, y, 8, '#FF4500', 'subtle');
     update = () => this.ps?.update();
     render = () => this.ps?.render();
   })();
@@ -355,11 +355,11 @@ export class PongGame extends BaseGame {
   }
 
   private explodePaddle(paddle: Paddle) {
-    // Create explosion particles
+    // Create explosion particles with dramatic effect
     const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
     const count = quality === 'high' ? 25 : quality === 'low' ? 12 : 18;
     
-    this.particles.addExplosion(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, count, '#FFD700');
+    this.particles.addExplosion(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, count, '#FFD700', 'dramatic');
     
     // Heavy screenshake
     this.shakeTimer = 20;

@@ -330,7 +330,7 @@ export class DefenderGame extends BaseGame {
           const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
           const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
           if (!reduce && allowShake) this.shakeTimer = 10;
-          if (allowParticles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444');
+          if (allowParticles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444', 'dramatic');
         }
       });
     });
@@ -343,7 +343,7 @@ export class DefenderGame extends BaseGame {
         const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
         const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
         if (!reduce && allowShake) this.shakeTimer = 14;
-        if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700');
+        if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
       }
       // Trails for enemy bullets
       const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;

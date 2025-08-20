@@ -381,7 +381,7 @@ export class BreakoutGame extends BaseGame {
           // Effects and powerup drop
           const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
           const count = quality === 'high' ? 18 : quality === 'low' ? 8 : 12;
-          this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700');
+          this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700', 'subtle');
           const drop = Math.random();
           const baseRate = 0.12;
           const bonus = this.balls.length > 1 ? -0.04 : 0;

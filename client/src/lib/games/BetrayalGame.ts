@@ -478,12 +478,22 @@ export class BetrayalGame extends BaseGame {
   }
 
   private createExplosion(position: Vector2, maxRadius: number) {
-    this.explosions.push({
-      position: { ...position },
-      radius: 5,
-      maxRadius,
-      lifetime: 30
-    });
+    // Use enhanced particle system for better effects
+    try {
+      const { ParticleSystem } = require('../utils/ParticleSystem');
+      const particles = new ParticleSystem(this.ctx);
+      const count = maxRadius > 20 ? 25 : 15;
+      const type = maxRadius > 30 ? 'epic' : maxRadius > 20 ? 'dramatic' : 'subtle';
+      particles.addExplosion(position.x, position.y, count, '#FF4500', type);
+    } catch (e) {
+      // Fallback to original explosion system
+      this.explosions.push({
+        position: { ...position },
+        radius: 5,
+        maxRadius,
+        lifetime: 30
+      });
+    }
   }
 
   render() {
