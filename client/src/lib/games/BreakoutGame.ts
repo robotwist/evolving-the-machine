@@ -443,6 +443,12 @@ export class BreakoutGame extends BaseGame {
       this.paddle.width = 140;
       this.activeLongPaddleTimer = 600; // 10s at 60fps
     }
+    
+    // Haptic feedback for powerup collection
+    const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
+    if (hapticsOn && 'vibrate' in navigator) {
+      navigator.vibrate?.([30, 50, 30]);
+    }
   }
 
   private startPaddleEvolution() {
@@ -542,6 +548,15 @@ export class BreakoutGame extends BaseGame {
     this.transitioning = true;
     this.transitionProgress = 0;
     this.transitionTarget = 'ship';
+    
+    // Haptic feedback for stage completion
+    const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
+    if (hapticsOn && 'vibrate' in navigator) {
+      navigator.vibrate?.([100, 200, 100, 200, 100]);
+    }
+    
+    // Audio stinger for completion
+    useAudio.getState().playStinger('clear');
   }
 
   private updateTransition() {

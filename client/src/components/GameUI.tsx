@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
 import { useAudio } from '../lib/stores/useAudio';
@@ -56,6 +56,56 @@ export function GameUI() {
     useAudio.getState().playStinger('start');
   };
 
+  // Keyboard navigation for modals
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      if (gameState === 'paused') {
+        handlePause();
+      } else if (gameState === 'stage-complete') {
+        handleMainMenu();
+      }
+    }
+  };
+
+  // Focus trap for modals
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (gameState === 'paused' || gameState === 'stage-complete' || gameState === 'ended') {
+      const firstButton = modalRef.current?.querySelector('button');
+      firstButton?.focus();
+    }
+  }, [gameState]);
+
+  // Performance monitor for dev mode
+  const [fps, setFps] = useState(0);
+  const [memory, setMemory] = useState<number | null>(null);
+  const frameCount = useRef(0);
+  const lastTime = useRef(performance.now());
+
+  useEffect(() => {
+    const isDev = new URLSearchParams(window.location.search).get('dev') === '1';
+    if (!isDev) return;
+
+    const updatePerformance = () => {
+      frameCount.current++;
+      const now = performance.now();
+      if (now - lastTime.current >= 1000) {
+        setFps(Math.round((frameCount.current * 1000) / (now - lastTime.current)));
+        frameCount.current = 0;
+        lastTime.current = now;
+        
+        // Memory usage (if available)
+        if ('memory' in performance) {
+          const mem = (performance as any).memory;
+          setMemory(Math.round(mem.usedJSHeapSize / 1024 / 1024));
+        }
+      }
+      requestAnimationFrame(updatePerformance);
+    };
+    
+    requestAnimationFrame(updatePerformance);
+  }, []);
+
   return (
     <>
       {/* Top HUD */}
@@ -88,10 +138,18 @@ export function GameUI() {
         </div>
       </div>
 
+      {/* Performance Monitor (Dev Mode) */}
+      {new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('dev') === '1' && (
+        <div className="absolute top-4 right-4 text-white text-xs bg-black/50 p-2 rounded">
+          <div>FPS: {fps}</div>
+          {memory && <div>Memory: {memory}MB</div>}
+        </div>
+      )}
+
       {/* Pause Menu */}
       {gameState === 'paused' && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-          <Card className="bg-black/90 border-white/20">
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onKeyDown={handleKeyDown}>
+          <Card className="bg-black/90 border-white/20" ref={modalRef}>
             <CardContent className="p-6 text-center">
               <h2 className="text-2xl font-bold text-white mb-4">Game Paused</h2>
               <div className="flex flex-col gap-2">
@@ -205,8 +263,8 @@ export function GameUI() {
 
       {/* Game Over Menu */}
       {gameState === 'ended' && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-          <Card className="bg-red-900/90 border-red-500/20">
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onKeyDown={handleKeyDown}>
+          <Card className="bg-red-900/90 border-red-500/20" ref={modalRef}>
             <CardContent className="p-6 text-center">
               <h2 className="text-2xl font-bold text-white mb-4">Game Over</h2>
               <div className="text-white mb-4">
@@ -228,8 +286,8 @@ export function GameUI() {
 
       {/* Stage Complete Menu */}
       {gameState === 'stage-complete' && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="stage-complete-title">
-          <Card className="bg-green-900/90 border-green-500/20">
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="stage-complete-title" onKeyDown={handleKeyDown}>
+          <Card className="bg-green-900/90 border-green-500/20" ref={modalRef}>
             <CardContent className="p-6 text-center">
               <h2 id="stage-complete-title" className="text-2xl font-bold text-white mb-4" aria-live="assertive">Stage Complete!</h2>
               <div className="text-white mb-4">

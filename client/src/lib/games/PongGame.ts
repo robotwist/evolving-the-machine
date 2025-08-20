@@ -8,6 +8,10 @@ interface Paddle {
   height: number;
   speed: number;
   score: number;
+  damage: number; // New: track damage
+  maxDamage: number; // New: max damage before destruction
+  pulsateIntensity: number; // New: for AI paddle pulsing
+  lastHitTime: number; // New: for damage timing
 }
 
 interface Ball {
@@ -47,6 +51,18 @@ export class PongGame extends BaseGame {
   private activePowerupType = 'normal';
   private powerupDuration = 0;
   private shakeTimer = 0;
+  // Particle system for effects
+  private particles = new (class LocalParticles {
+    private ps: any;
+    init = (ctx: CanvasRenderingContext2D) => {
+      const { ParticleSystem } = require('../utils/ParticleSystem');
+      this.ps = new ParticleSystem(ctx);
+    };
+    addExplosion = (x: number, y: number, count?: number, color?: string) => this.ps?.addExplosion(x, y, count, color);
+    addSizzle = (x: number, y: number) => this.ps?.addExplosion(x, y, 8, '#FF4500');
+    update = () => this.ps?.update();
+    render = () => this.ps?.render();
+  })();
   private aiTaunts = [
     'ANALYZING... ADAPTING... EVOLVING RAPIDLY!',
     'YOUR PATTERNS ARE MINE NOW!',
@@ -87,7 +103,11 @@ export class PongGame extends BaseGame {
       width: 15,
       height: 100,
       speed: 5,
-      score: 0
+      score: 0,
+      damage: 0,
+      maxDamage: 100,
+      pulsateIntensity: 0,
+      lastHitTime: 0
     };
 
     this.player2 = {
@@ -96,13 +116,20 @@ export class PongGame extends BaseGame {
       width: 15,
       height: 100,
       speed: 5,
-      score: 0
+      score: 0,
+      damage: 0,
+      maxDamage: 100,
+      pulsateIntensity: 0,
+      lastHitTime: 0
     };
 
     // Initialize ball
     this.resetBall();
     // store visual quality for render usage
     (this as any)._shadowBlur = shadowBlur;
+    
+    // Initialize particle system
+    this.particles.init(this.ctx);
   }
 
   private resetBall() {
@@ -265,6 +292,18 @@ export class PongGame extends BaseGame {
       }
       // Tiny screenshake on impact
       this.shakeTimer = 8;
+      
+      // Apply damage to paddles
+      if (collideP1) {
+        this.player1.damage += 15;
+        this.player1.lastHitTime = Date.now();
+        // AI gets stronger when it hits
+        this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.1);
+      }
+      if (collideP2) {
+        this.player2.damage += 10;
+        this.player2.lastHitTime = Date.now();
+      }
     }
 
     // Special effect when piercing AI paddle
@@ -274,20 +313,7 @@ export class PongGame extends BaseGame {
       const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
       if (!reduce && allowShake) this.shakeTimer = 10;
       // Spark effect drawn immediately at paddle collision position
-      this.ctx.save();
-      this.ctx.globalCompositeOperation = 'lighter';
-      this.ctx.strokeStyle = this.ball.type === 'fire' ? '#FF4500' : '#FF0000';
-      this.ctx.lineWidth = 3;
-      const cx = this.player2.x;
-      const cy = Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y));
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(cx, cy);
-        this.ctx.lineTo(cx + Math.cos(angle) * 14, cy + Math.sin(angle) * 14);
-        this.ctx.stroke();
-      }
-      this.ctx.restore();
+      this.particles.addSizzle(this.player2.x, Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y)));
       // Slight defocus trail
       this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
       // Audio sizzle
@@ -303,6 +329,9 @@ export class PongGame extends BaseGame {
       if (hapticsOn2 && 'vibrate' in navigator) {
         navigator.vibrate?.([20, 30, 20]);
       }
+      // AI gets stronger with each score
+      this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.15);
+      this.aiAggression = Math.min(1.0, this.aiAggression + 0.05);
       // Game continues until player wins
     } else if (this.ball.x > this.width) {
       this.player1.score++;
@@ -316,11 +345,28 @@ export class PongGame extends BaseGame {
         this.onStageComplete?.(); // Only player win progresses
       }
     }
+    
+    // Check for paddle destruction
+    if (this.player1.damage >= this.player1.maxDamage) {
+      // Human paddle explodes on defeat
+      this.explodePaddle(this.player1);
+      this.onGameOver?.();
+    }
   }
 
-
-
-
+  private explodePaddle(paddle: Paddle) {
+    // Create explosion particles
+    const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
+    const count = quality === 'high' ? 25 : quality === 'low' ? 12 : 18;
+    
+    this.particles.addExplosion(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, count, '#FFD700');
+    
+    // Heavy screenshake
+    this.shakeTimer = 20;
+    
+    // Audio explosion
+    useAudio.getState().playStinger('fail');
+  }
 
   private checkPaddleCollision(paddle: Paddle): boolean {
     return (
@@ -476,6 +522,14 @@ export class PongGame extends BaseGame {
 
     // Draw powerups (now that all functions are defined)
     this.drawPowerups();
+    
+    // Render particles
+    const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+    if (allowParticles) {
+      this.particles.update();
+      this.particles.render();
+    }
+    
     this.ctx.restore();
   }
 
@@ -534,16 +588,48 @@ export class PongGame extends BaseGame {
     // Determine if this is human or AI paddle
     const isHuman = paddle === this.player1;
     
+    // Calculate damage effects
+    const damagePercent = paddle.damage / paddle.maxDamage;
+    const timeSinceHit = Date.now() - paddle.lastHitTime;
+    const hitFlash = timeSinceHit < 200 ? Math.sin(timeSinceHit * 0.1) * 0.3 + 0.7 : 1;
+    
+    // Calculate pulsing for AI paddle
+    const pulseIntensity = isHuman ? 1 : paddle.pulsateIntensity;
+    const pulse = isHuman ? 1 : Math.sin(Date.now() * 0.01) * pulseIntensity * 0.2 + 1;
+    
     if (isHuman) {
-      // Human paddle - warm, organic marble
-      this.ctx.fillStyle = '#F5F5DC';
+      // Human paddle - damaged and beaten up
+      const damageColor = damagePercent > 0.7 ? '#8B0000' : damagePercent > 0.4 ? '#CD5C5C' : '#F5F5DC';
+      const damageGlow = damagePercent > 0.5 ? `rgba(255, 0, 0, ${damagePercent * 0.3})` : 'transparent';
+      
+      // Damage glow effect
+      if (damageGlow !== 'transparent') {
+        this.ctx.shadowColor = damageGlow;
+        this.ctx.shadowBlur = 15;
+      }
+      
+      this.ctx.fillStyle = damageColor;
       this.ctx.fillRect(paddle.x - 5, paddle.y + paddle.height - 10, paddle.width + 10, 10);
       
-      this.ctx.fillStyle = '#FFFACD';
+      this.ctx.fillStyle = damagePercent > 0.6 ? '#FFE4E1' : '#FFFACD';
       this.ctx.fillRect(paddle.x, paddle.y + 10, paddle.width, paddle.height - 20);
       
-      this.ctx.fillStyle = '#F5F5DC';
+      this.ctx.fillStyle = damageColor;
       this.ctx.fillRect(paddle.x - 5, paddle.y, paddle.width + 10, 10);
+      
+      // Damage cracks and dents
+      if (damagePercent > 0.3) {
+        this.ctx.strokeStyle = '#8B0000';
+        this.ctx.lineWidth = 2;
+        for (let i = 0; i < Math.floor(damagePercent * 5); i++) {
+          const x = paddle.x + Math.random() * paddle.width;
+          const y = paddle.y + Math.random() * paddle.height;
+          this.ctx.beginPath();
+          this.ctx.moveTo(x, y);
+          this.ctx.lineTo(x + (Math.random() - 0.5) * 10, y + (Math.random() - 0.5) * 10);
+          this.ctx.stroke();
+        }
+      }
       
       // Warm human decorative lines
       this.ctx.strokeStyle = '#DDD';
@@ -556,14 +642,22 @@ export class PongGame extends BaseGame {
         this.ctx.stroke();
       }
       
-      // Human indicator
-      this.drawText('HUMAN', paddle.x + paddle.width/2, paddle.y - 15, 10, '#FFD700', 'center');
+      // Human indicator with damage
+      const humanText = damagePercent > 0.8 ? 'DAMAGED' : damagePercent > 0.5 ? 'HURT' : 'HUMAN';
+      this.drawText(humanText, paddle.x + paddle.width/2, paddle.y - 15, 10, damagePercent > 0.6 ? '#FF0000' : '#FFD700', 'center');
     } else {
-      // AI paddle - cold, mechanical appearance with glowing effects
-      this.ctx.fillStyle = '#2C3E50';
+      // AI paddle - pulsating and getting stronger
+      const strengthColor = pulseIntensity > 0.7 ? '#FF0000' : pulseIntensity > 0.4 ? '#FF4500' : '#2C3E50';
+      const pulseGlow = `rgba(255, 0, 0, ${pulseIntensity * 0.4})`;
+      
+      // Pulsating glow effect
+      this.ctx.shadowColor = pulseGlow;
+      this.ctx.shadowBlur = 10 + pulseIntensity * 10;
+      
+      this.ctx.fillStyle = strengthColor;
       this.ctx.fillRect(paddle.x - 5, paddle.y + paddle.height - 10, paddle.width + 10, 10);
       
-      // Glowing core
+      // Glowing core with pulse
       this.ctx.fillStyle = '#00FFFF';
       this.ctx.fillRect(paddle.x + 2, paddle.y + 12, paddle.width - 4, paddle.height - 24);
       
@@ -572,12 +666,12 @@ export class PongGame extends BaseGame {
       this.ctx.fillRect(paddle.x, paddle.y + 10, 3, paddle.height - 20);
       this.ctx.fillRect(paddle.x + paddle.width - 3, paddle.y + 10, 3, paddle.height - 20);
       
-      this.ctx.fillStyle = '#2C3E50';
+      this.ctx.fillStyle = strengthColor;
       this.ctx.fillRect(paddle.x - 5, paddle.y, paddle.width + 10, 10);
       
-      // Mechanical grid lines
+      // Mechanical grid lines with pulse
       this.ctx.strokeStyle = '#00FFFF';
-      this.ctx.lineWidth = 1;
+      this.ctx.lineWidth = 1 + pulseIntensity;
       for (let i = 1; i < 8; i++) {
         const y = paddle.y + (paddle.height * i) / 8;
         this.ctx.beginPath();
@@ -586,13 +680,14 @@ export class PongGame extends BaseGame {
         this.ctx.stroke();
       }
       
-      // AI indicator with glow effect
+      // AI indicator with strength
+      const aiText = pulseIntensity > 0.8 ? 'SUPERIOR' : pulseIntensity > 0.5 ? 'ENHANCED' : 'AI';
       this.ctx.shadowColor = '#FF0000';
       this.ctx.shadowBlur = 10;
-      this.drawText('AI', paddle.x + paddle.width/2, paddle.y - 15, 10, '#FF0000', 'center');
+      this.drawText(aiText, paddle.x + paddle.width/2, paddle.y - 15, 10, '#FF0000', 'center');
       this.ctx.shadowBlur = 0;
       
-      // Show aggression level
+      // Show aggression level with pulse
       const aggressionBars = Math.floor(this.aiAggression * 5);
       for (let i = 0; i < 5; i++) {
         this.ctx.fillStyle = i < aggressionBars ? '#FF0000' : '#333';
