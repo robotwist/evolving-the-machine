@@ -103,6 +103,29 @@ export class PongGame extends BaseGame {
   };
 
   async init() {
+    // Initialize particles
+    const { ParticleSystem } = await import('../utils/ParticleSystem');
+    this.particles = new ParticleSystem(this.ctx);
+    
+    // Initialize particle system
+    await this.particles.init(this.ctx);
+    
+    // Initialize visual feedback and haptics
+    try {
+      const { VisualFeedback } = await import('../utils/VisualFeedback');
+      this.visualFeedback = new VisualFeedback(this.ctx);
+    } catch (e) {
+      console.warn('VisualFeedback not available:', e);
+    }
+    
+    // Initialize haptics and settings through window globals
+    this.haptics = (window as any).__CULTURAL_ARCADE_HAPTICS__;
+    this.settings = {
+      hapticsEnabled: (window as any).__CULTURAL_ARCADE_HAPTICS_ENABLED__ ?? true,
+      hitMarkers: (window as any).__CULTURAL_ARCADE_HIT_MARKERS__ ?? true,
+      screenShake: (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true
+    };
+
     // Initialize paddles with Greek column design
     const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ as 'low' | 'medium' | 'high' | undefined;
     const shadowBlur = quality === 'low' ? 0 : quality === 'medium' ? 5 : 15;
@@ -137,20 +160,6 @@ export class PongGame extends BaseGame {
     this.resetBall();
     // store visual quality for render usage
     (this as any)._shadowBlur = shadowBlur;
-    
-    // Initialize particle system
-    await this.particles.init(this.ctx);
-    
-    // Initialize visual feedback and haptics
-    try {
-      const { VisualFeedback } = await import('../utils/VisualFeedback');
-      this.visualFeedback = new VisualFeedback(this.ctx);
-    } catch (e) {
-      console.warn('VisualFeedback not available:', e);
-    }
-    
-    this.haptics = useHaptics.getState();
-    this.settings = useSettingsStore.getState();
   }
 
   private resetBall() {

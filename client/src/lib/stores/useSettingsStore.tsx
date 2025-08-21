@@ -30,6 +30,9 @@ interface SettingsState {
   // Current preset
   preset: 'custom' | 'performance' | 'quality' | 'mobile' | 'accessibility';
   
+  // Internal state
+  _mobileDefaultsApplied?: boolean;
+  
   // Preset functions
   presets: {
     performance: () => void;
@@ -59,6 +62,9 @@ interface SettingsState {
   setParticles: (enabled: boolean) => void;
   setVoiceStyle: (style: 'normal' | 'haunting' | 'glitch') => void;
   setPreset: (preset: 'custom' | 'performance' | 'quality' | 'mobile' | 'accessibility') => void;
+  
+  // Mobile defaults
+  applyMobileDefaultsOnce: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -139,5 +145,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setScreenShake: (enabled) => set({ screenShake: enabled }),
   setParticles: (enabled) => set({ particles: enabled }),
   setVoiceStyle: (style) => set({ voiceStyle: style }),
-  setPreset: (preset) => set({ preset: preset })
+  setPreset: (preset) => set({ preset: preset }),
+  
+  // Mobile defaults
+  applyMobileDefaultsOnce: () => {
+    const state = get();
+    if (!state._mobileDefaultsApplied) {
+      set({
+        dprScaling: true,
+        hapticsEnabled: true,
+        hapticsIntensity: 'medium',
+        _mobileDefaultsApplied: true
+      });
+    }
+  }
 }));
