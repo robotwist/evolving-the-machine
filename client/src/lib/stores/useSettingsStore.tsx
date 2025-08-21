@@ -1,3 +1,5 @@
+import { create } from 'zustand';
+
 interface SettingsState {
   // Graphics settings
   graphicsQuality: 'low' | 'medium' | 'high';
@@ -25,13 +27,19 @@ interface SettingsState {
   // Voice settings
   voiceStyle: 'normal' | 'haunting' | 'glitch';
   
-  // Presets
+  // Current preset
+  preset: 'custom' | 'performance' | 'quality' | 'mobile' | 'accessibility';
+  
+  // Preset functions
   presets: {
     performance: () => void;
     quality: () => void;
     mobile: () => void;
     accessibility: () => void;
   };
+  
+  // Preset options for UI
+  presetOptions: Array<{ value: string; label: string }>;
   
   // Actions
   setGraphicsQuality: (quality: 'low' | 'medium' | 'high') => void;
@@ -50,6 +58,7 @@ interface SettingsState {
   setScreenShake: (enabled: boolean) => void;
   setParticles: (enabled: boolean) => void;
   setVoiceStyle: (style: 'normal' | 'haunting' | 'glitch') => void;
+  setPreset: (preset: 'custom' | 'performance' | 'quality' | 'mobile' | 'accessibility') => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -70,6 +79,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   screenShake: true,
   particles: true,
   voiceStyle: 'haunting',
+  preset: 'custom',
+  presetOptions: [
+    { value: 'custom', label: 'Custom' },
+    { value: 'performance', label: 'Performance' },
+    { value: 'quality', label: 'Quality' },
+    { value: 'mobile', label: 'Mobile' },
+    { value: 'accessibility', label: 'Accessibility' }
+  ],
 
   // Presets
   presets: {
@@ -121,5 +138,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setComboCounters: (enabled) => set({ comboCounters: enabled }),
   setScreenShake: (enabled) => set({ screenShake: enabled }),
   setParticles: (enabled) => set({ particles: enabled }),
-  setVoiceStyle: (style) => set({ voiceStyle: style })
+  setVoiceStyle: (style) => set({ voiceStyle: style }),
+  setPreset: (preset) => set({ preset: preset })
 }));

@@ -38,6 +38,8 @@ export function GameUI() {
     screenShake,
     particles,
     voiceStyle,
+    preset,
+    presetOptions,
     setGraphicsQuality,
     setFpsCap,
     setDprScaling,
@@ -54,7 +56,7 @@ export function GameUI() {
     setScreenShake,
     setParticles,
     setVoiceStyle,
-    presets
+    setPreset
   } = useSettingsStore();
   const { show, maybeShow, markSeen, hide } = useTutorialStore();
   const stageKey = (Math.min(Math.max(currentStage, 1), 5)) as 1 | 2 | 3 | 4 | 5;
@@ -208,11 +210,11 @@ export function GameUI() {
                     <label className="flex items-center justify-between gap-2">
                       <span>Preset</span>
                       <select
-                        value={presets.find(p => p.value === preset)?.label || 'Default'}
+                        value={preset}
                         onChange={(e) => setPreset(e.target.value as any)}
                         className="bg-black/50 border border-white/20 rounded px-2 py-1"
                       >
-                        {presets.map(p => (
+                        {presetOptions.map(p => (
                           <option key={p.value} value={p.value}>{p.label}</option>
                         ))}
                       </select>
