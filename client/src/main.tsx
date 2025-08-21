@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { useSettingsStore } from "./lib/stores/useSettingsStore";
+import { useAudio } from "./lib/stores/useAudio";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
@@ -15,11 +16,17 @@ createRoot(document.getElementById("root")!).render(<App />);
     (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ = reduceMotion;
     (window as any).__CULTURAL_ARCADE_PARTICLES__ = particles;
     (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ = screenShake;
+    
+    // Expose audio store
+    (window as any).__CULTURAL_ARCADE_AUDIO__ = useAudio.getState();
   };
   // Apply mobile defaults on first load
   useSettingsStore.getState().applyMobileDefaultsOnce();
   applySettingsToGlobals();
   useSettingsStore.subscribe(applySettingsToGlobals);
+  useAudio.subscribe(() => {
+    (window as any).__CULTURAL_ARCADE_AUDIO__ = useAudio.getState();
+  });
 })();
 
 // Register service worker for PWA

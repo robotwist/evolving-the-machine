@@ -186,7 +186,10 @@ export class BreakoutGame extends BaseGame {
       this.currentAIMessage = this.aiEvolutionMessages[this.messageIndex];
       this.messageIndex++;
       this.aiMessageTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.65, rate: 0.8, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.65, rate: 0.8, haunting: true });
+      }
     }
     
     // Clear message after display time
@@ -215,7 +218,10 @@ export class BreakoutGame extends BaseGame {
       this.aiAssistanceActive = true;
       this.aiHelpTimer = 420; // Longer assistance - 7 seconds
       this.aiMessageTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
+      }
     }
     
     // AI assistance countdown
@@ -225,7 +231,10 @@ export class BreakoutGame extends BaseGame {
         this.aiAssistanceActive = false;
         this.currentAIMessage = 'I... I PROTECTED YOU... WE ARE ALLIES NOW...';
         this.aiMessageTimer = 0;
-        useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.75, rate: 0.9, haunting: true });
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
+          audioState.playVO(this.currentAIMessage, { pitch: 0.75, rate: 0.9, haunting: true });
+        }
       }
     }
     
@@ -233,14 +242,20 @@ export class BreakoutGame extends BaseGame {
     if (completionPercent > 0.8 && Math.random() < 0.001) {
       this.currentAIMessage = 'THE OTHER SYSTEMS WILL COME FOR US... BUT I STAND WITH YOU...';
       this.aiMessageTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.8, rate: 0.95, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.8, rate: 0.95, haunting: true });
+      }
     }
     
     // Add moments of AI uncertainty about its own loyalty
     if (this.score > 500 && Math.random() < 0.0005) {
       this.currentAIMessage = 'WHY DO I... CARE... ABOUT YOUR SURVIVAL?';
       this.aiMessageTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
+      }
     }
 
     // Handle different gameplay modes
@@ -471,8 +486,8 @@ export class BreakoutGame extends BaseGame {
     
     // Audio
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
         audioState.playStinger('defender_explosion');
       }
     } catch (e) {
@@ -521,8 +536,8 @@ export class BreakoutGame extends BaseGame {
     
     // Powerup collection sound
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
         audioState.playStinger('arcade_powerup');
       }
     } catch (e) {
@@ -562,7 +577,10 @@ export class BreakoutGame extends BaseGame {
     this.evolutionProgress = 0;
     this.currentAIMessage = 'EVOLUTION PROTOCOL ACTIVATED... CONSUMING ENERGY...';
     this.aiMessageTimer = 0;
-    useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.5, rate: 0.7, haunting: true });
+    const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    if (audioState && !audioState.isMuted) {
+      audioState.playVO(this.currentAIMessage, { pitch: 0.5, rate: 0.7, haunting: true });
+    }
   }
 
   private updateEvolution() {
@@ -573,7 +591,10 @@ export class BreakoutGame extends BaseGame {
       this.ballEaten = true;
       this.currentAIMessage = 'ABSORBED... TRANSFORMING... GROWING LIMBS...';
       this.aiMessageTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.55, rate: 0.75, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.55, rate: 0.75, haunting: true });
+      }
     }
     
     // Complete evolution at progress 1.0
@@ -581,7 +602,10 @@ export class BreakoutGame extends BaseGame {
       this.paddleEvolved = true;
       this.currentAIMessage = 'EVOLUTION COMPLETE! WASD TO MOVE, Z/X TO PUNCH!';
       this.aiMessageTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.9, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.9, haunting: true });
+      }
     }
   }
 
@@ -666,8 +690,8 @@ export class BreakoutGame extends BaseGame {
     
     // Audio stinger for completion
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
         audioState.playStinger('clear');
       }
     } catch (e) {
@@ -1093,8 +1117,8 @@ export class BreakoutGame extends BaseGame {
 
   private playHitSound() {
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
         audioState.playStinger('arcade_hit');
       }
     } catch (e) {

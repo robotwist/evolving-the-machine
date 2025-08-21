@@ -177,7 +177,11 @@ export class DefenderGame extends BaseGame {
       this.wave++;
       this.spawnWave();
       if (this.wave > 10) { // Complete after 10 waves
-        this.onStageComplete?.();
+        // Play success sound through window global
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
+          audioState.playSuccess();
+        }
       }
     }
 
@@ -365,7 +369,11 @@ export class DefenderGame extends BaseGame {
         civilian.alive = false;
         this.score += 500;
         this.civiliansRescued++;
-        useAudio.getState().playSuccess();
+        // Play success sound through window global
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
+          audioState.playSuccess();
+        }
       }
     });
   }
@@ -533,7 +541,7 @@ export class DefenderGame extends BaseGame {
   private startWhispers() {
     try {
       if (this.audioCtx) return;
-      if (useAudio.getState().isMuted) return;
+      if ((window as any).__CULTURAL_ARCADE_AUDIO__?.isMuted) return;
       // Create audio context and noise source
       const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
@@ -697,15 +705,17 @@ export class DefenderGame extends BaseGame {
   }
 
   private playHitSound() {
-    const audio = useAudio.getState();
-    audio.playHit();
+    const audio = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    if (audio) {
+      audio.playHit();
+    }
   }
 
   private playShootSound() {
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
-        audioState.playStinger('defender_shoot');
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (!audioState?.isMuted) {
+        audioState?.playStinger('defender_shoot');
       }
     } catch (e) {
       console.warn('Shoot sound failed:', e);
@@ -714,9 +724,9 @@ export class DefenderGame extends BaseGame {
 
   private playExplosionSound() {
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
-        audioState.playStinger('defender_explosion');
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (!audioState?.isMuted) {
+        audioState?.playStinger('defender_explosion');
       }
     } catch (e) {
       console.warn('Explosion sound failed:', e);
