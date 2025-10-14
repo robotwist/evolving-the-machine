@@ -2,6 +2,7 @@ import { BaseGame } from './BaseGame';
 import { useAudio } from '../stores/useAudio';
 import { useHaptics } from '../stores/useHaptics';
 import { useSettingsStore } from '../stores/useSettingsStore';
+import { VisualFeedback } from '../utils/VisualFeedback';
 
 const PONG_CONSTANTS = {
   WIN_SCORE: 5,
@@ -70,6 +71,9 @@ export class PongGame extends BaseGame {
   private chainReactionTimer = 0;
   private shockwaveTimer = 0;
   private explosionPowerups: Array<{x: number, y: number, type: 'chain' | 'shockwave', timer: number}> = [];
+  private visualFeedback!: VisualFeedback;
+  private player1Combo = 0;
+  
   // Particle system for effects
   private particles = new (class LocalParticles {
     private ps: any;
@@ -119,6 +123,7 @@ export class PongGame extends BaseGame {
     // Initialize particles
     const { ParticleSystem } = await import('../utils/ParticleSystem');
     this.particles = new ParticleSystem(this.ctx);
+    this.visualFeedback = new VisualFeedback(this.ctx);
     
     // Initialize particle system
     await this.particles.init(this.ctx);
@@ -202,6 +207,7 @@ export class PongGame extends BaseGame {
     this.updatePowerups(deltaTime);
     this.updateParticles(deltaTime);
     this.updateVisuals(deltaTime);
+    this.visualFeedback.update(deltaTime);
   }
 
   private updatePlayer(deltaTime: number) {
@@ -335,13 +341,25 @@ export class PongGame extends BaseGame {
       if (this.settings?.screenShake) this.shakeTimer = 8;
       
       if (collideP1) {
-        this.player1.damage += 15;
+        const damage = 15;
+        this.player1.damage += damage;
         this.player1.lastHitTime = Date.now();
         this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.1);
+        this.player1Combo++;
+        this.visualFeedback.updateCombo(this.player1.x + 20, this.player1.y, this.player1Combo);
+        if (useSettingsStore.getState().damageNumbers) {
+            this.visualFeedback.addDamageNumber(this.player1.x + 20, this.player1.y, damage);
+        }
+      } else {
+          this.player1Combo = 0;
       }
       if (collideP2) {
-        this.player2.damage += 10;
+        const damage = 10;
+        this.player2.damage += damage;
         this.player2.lastHitTime = Date.now();
+        if (useSettingsStore.getState().damageNumbers) {
+            this.visualFeedback.addDamageNumber(this.player2.x, this.player2.y, damage);
+        }
       }
     }
 
@@ -512,6 +530,7 @@ export class PongGame extends BaseGame {
     
     // Render particles
     this.particles.render();
+    this.visualFeedback.render();
     
     // Render visual feedback
     this.visualFeedback?.render();
