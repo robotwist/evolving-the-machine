@@ -75,6 +75,8 @@ export class PongGame extends BaseGame {
   private explosionPowerups: Array<{x: number, y: number, type: 'chain' | 'shockwave', timer: number}> = [];
   private visualFeedback!: VisualFeedback;
   private player1Combo = 0;
+  private totalDamageTaken = 0;
+  private pointStartTime = 0;
   
   // Particle system for effects
   private particles = new (class LocalParticles {
@@ -392,6 +394,7 @@ export class PongGame extends BaseGame {
     if (this.ball.x < 0) {
       this.player2.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
+      this.updateDirectorMetrics();
       this.resetBall();
       if (this.settings?.hapticsEnabled) this.haptics?.failure();
       this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.15);
@@ -399,12 +402,28 @@ export class PongGame extends BaseGame {
     } else if (this.ball.x > this.width) {
       this.player1.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
+      this.updateDirectorMetrics();
       this.resetBall();
       if (this.settings?.hapticsEnabled) this.haptics?.success();
       if (this.player1.score >= this.winScore) {
         this.onStageComplete?.();
       }
     }
+  }
+
+  private updateDirectorMetrics() {
+    this.director.updateMetrics({
+        damageTaken: this.totalDamageTaken,
+        combos: [this.player1Combo],
+        playerScore: this.player1.score,
+        timePerStage: [Date.now() - this.pointStartTime],
+    });
+
+    const narrativeCue = this.director.getNarrativeCue();
+    if (narrativeCue) {
+        this.playAIVoice(narrativeCue, { haunting: true });
+    }
+    this.pointStartTime = Date.now();
   }
 
   private updatePowerups(deltaTime: number) {
@@ -445,6 +464,7 @@ export class PongGame extends BaseGame {
       if (paddleCollision || ballCollision) {
         powerup.collected = true;
         this.activatePowerup(powerup.type);
+        this.director.updateMetrics({ powerUpsCollected: 1 });
         
         // Enhanced haptics and visual feedback for powerup collection
         if (this.settings?.hapticsEnabled) this.haptics?.powerup();
@@ -771,10 +791,26 @@ export class PongGame extends BaseGame {
     };
   }
 
+  private playAIVoice(message: string, options: any) {
+    this.currentTaunt = message;
+    this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
+    try {
+        const audioState = useAudio.getState();
+        if (!audioState.isMuted) {
+            audioState.playVO(message, options);
+        }
+    } catch (e) {
+        console.warn('AI voice failed:', e);
+    }
+  }
+
   private spawnPowerups() {
     // Powerup spawning
     this.powerupSpawnTimer++;
-    if (this.powerupSpawnTimer > PONG_CONSTANTS.POWERUP_SPAWN_TIME) { // Every 10 seconds
+    const difficultySettings = this.director.getDifficultySettings();
+    const spawnThreshold = PONG_CONSTANTS.POWERUP_SPAWN_TIME / difficultySettings.powerUpDropRateModifier;
+
+    if (this.powerupSpawnTimer > spawnThreshold) { // Every 10 seconds, adjusted by director
       this.powerupSpawnTimer = 0;
       const drop = Math.random();
       if (drop < 0.15) { // 15% chance

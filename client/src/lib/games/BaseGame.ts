@@ -1,3 +1,5 @@
+import { AdaptiveNarrativeDirector } from "../utils/AdaptiveNarrativeDirector";
+
 export abstract class BaseGame {
   protected ctx: CanvasRenderingContext2D;
   protected width: number;
@@ -7,6 +9,7 @@ export abstract class BaseGame {
   protected animationId: number | null = null;
   protected lastFrameTimeMs: number | null = null;
   protected frameAccumulatorMs = 0;
+  protected director: AdaptiveNarrativeDirector;
   
   // Event callbacks
   onScoreUpdate?: (score: number) => void;
@@ -17,6 +20,7 @@ export abstract class BaseGame {
     this.ctx = ctx;
     this.width = width;
     this.height = height;
+    this.director = new AdaptiveNarrativeDirector();
     this.setupEventListeners();
   }
 
