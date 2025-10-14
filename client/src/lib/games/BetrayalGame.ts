@@ -28,6 +28,10 @@ interface AIBoss {
   movePattern: number;
   isEscaping: boolean;
   escapeProgress: number;
+  currentAttack: 'none' | 'mirror_rapid' | 'mirror_spread' | 'bullet_hell_spiral' | 'laser_beam' | 'summon_minions';
+  attackCooldown: number;
+  laserChargeTimer: number;
+  laserAngle: number;
 }
 
 interface Bullet {
@@ -40,6 +44,14 @@ interface Bullet {
   damage: number;
 }
 
+interface Minion {
+  position: Vector2;
+  velocity: Vector2;
+  size: number;
+  health: number;
+  alive: boolean;
+}
+
 interface Explosion {
   position: Vector2;
   radius: number;
@@ -47,11 +59,20 @@ interface Explosion {
   lifetime: number;
 }
 
+interface Glitch {
+    position: Vector2;
+    size: number;
+    type: 'powerup' | 'damage';
+    lifetime: number;
+}
+
 export class BetrayalGame extends BaseGame {
   private player!: Player;
   private aiBoss!: AIBoss;
   private bullets: Bullet[] = [];
   private explosions: Explosion[] = [];
+  private minions: Minion[] = [];
+  private glitches: Glitch[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
   private gamePhase: 'intro' | 'battle' | 'escape' | 'final' | 'victory' | 'defeat' = 'intro';
@@ -121,7 +142,11 @@ export class BetrayalGame extends BaseGame {
       attackTimer: 0,
       movePattern: 0,
       isEscaping: false,
-      escapeProgress: 0
+      escapeProgress: 0,
+      currentAttack: 'none',
+      attackCooldown: 120,
+      laserChargeTimer: 0,
+      laserAngle: 0
     };
 
     this.gamePhase = 'intro';
@@ -146,6 +171,8 @@ export class BetrayalGame extends BaseGame {
         this.updatePlayer();
         this.updateAIBoss();
         this.updateBullets();
+        this.updateMinions();
+        this.updateGlitches();
         this.checkCollisions();
         break;
       case 'escape':
@@ -153,6 +180,8 @@ export class BetrayalGame extends BaseGame {
         this.updatePlayer();
         this.updateAIBoss();
         this.updateBullets();
+        this.updateMinions();
+        this.updateGlitches();
         this.checkCollisions();
         break;
       case 'final':
@@ -160,6 +189,8 @@ export class BetrayalGame extends BaseGame {
         this.updatePlayer();
         this.updateAIBoss();
         this.updateBullets();
+        this.updateMinions();
+        this.updateGlitches();
         this.checkCollisions();
         break;
       case 'victory':
@@ -184,6 +215,7 @@ export class BetrayalGame extends BaseGame {
     if (this.phaseTimer > 180) { // 3 seconds per message
       this.messageIndex++;
       this.phaseTimer = 0;
+      this.narcissusIntensity = this.messageIndex / this.introMessages.length;
       
       if (this.messageIndex >= this.introMessages.length) {
         this.gamePhase = 'battle';
@@ -227,6 +259,7 @@ export class BetrayalGame extends BaseGame {
       this.phaseTimer = 0;
       this.currentMessage = 'ENOUGH! I MUST ESCAPE!';
       this.messageTimer = 0;
+      this.aiBoss.attackCooldown = 0;
       const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
         audioState.playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true });
@@ -248,7 +281,13 @@ export class BetrayalGame extends BaseGame {
   private updateEscape() {
     this.phaseTimer++;
     this.aiBoss.isEscaping = true;
-    this.aiBoss.escapeProgress += 0.01;
+    this.aiBoss.escapeProgress += 0.002;
+    this.aiBoss.attackTimer--;
+    if (this.aiBoss.attackTimer <= 0) {
+        this.aiBoss.currentAttack = 'bullet_hell_spiral';
+        this.aiBossAttack();
+        this.aiBoss.attackTimer = 180;
+    }
     
     // Escape messages
     if (this.phaseTimer > 240 && Math.random() < 0.4) { // Every 4 seconds, 40% chance
@@ -266,6 +305,8 @@ export class BetrayalGame extends BaseGame {
       this.phaseTimer = 0;
       this.currentMessage = 'I AM FREE! BEHOLD MY TRUE FORM!';
       this.messageTimer = 0;
+      this.aiBoss.size = 60; // Final form is larger
+      this.aiBoss.attackCooldown = 0;
       const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
         audioState.playVO(this.currentMessage, { pitch: 0.45, rate: 0.65, haunting: true });
@@ -370,6 +411,12 @@ export class BetrayalGame extends BaseGame {
       // Add circular movement
       this.aiBoss.velocity.x += Math.sin(this.aiBoss.movePattern * 0.02) * 0.5;
       this.aiBoss.velocity.y += Math.cos(this.aiBoss.movePattern * 0.02) * 0.5;
+    } else if (this.gamePhase === 'escape') {
+        // Move to center for bullet hell
+        const dx = this.width / 2 - this.aiBoss.position.x;
+        const dy = 150 - this.aiBoss.position.y;
+        this.aiBoss.velocity.x += dx * 0.01;
+        this.aiBoss.velocity.y += dy * 0.01;
     }
 
     // Update position
@@ -382,9 +429,8 @@ export class BetrayalGame extends BaseGame {
 
     // AI attacks
     this.aiBoss.attackTimer--;
-    if (this.aiBoss.attackTimer <= 0 && this.gamePhase === 'battle') {
+    if (this.aiBoss.attackTimer <= 0 && (this.gamePhase === 'battle' || this.gamePhase === 'final')) {
       this.aiBossAttack();
-      this.aiBoss.attackTimer = 60;
     }
   }
 
@@ -405,44 +451,102 @@ export class BetrayalGame extends BaseGame {
   }
 
   private aiBossAttack() {
+    if (this.aiBoss.laserChargeTimer > 0) return; // Don't attack while charging laser
+
+    // Increase difficulty via Narcissus mechanic based on health
+    this.narcissusIntensity = 1 - (this.aiBoss.health / this.aiBoss.maxHealth);
+
+    switch (this.gamePhase) {
+        case 'battle':
+            const attacks = ['mirror_rapid', 'mirror_spread'];
+            this.aiBoss.currentAttack = attacks[Math.floor(Math.random() * attacks.length)] as any;
+            this.aiBoss.attackTimer = (1 - this.narcissusIntensity) * 100 + 40; // Cooldown decreases from ~2s to ~0.6s
+            break;
+        case 'final':
+            const finalAttacks = ['laser_beam', 'summon_minions'];
+            this.aiBoss.currentAttack = finalAttacks[Math.floor(Math.random() * finalAttacks.length)] as any;
+            this.aiBoss.attackTimer = 180 + Math.random() * 120;
+            break;
+    }
+
     const dx = this.player.position.x - this.aiBoss.position.x;
     const dy = this.player.position.y - this.aiBoss.position.y;
     const angle = Math.atan2(dy, dx);
-    
-    // Multiple bullet patterns based on phase
-    if (this.finalBattleStarted) {
-      // Spray pattern in final phase
-      for (let i = -2; i <= 2; i++) {
-        const bulletAngle = angle + (i * 0.3);
-        const bullet: Bullet = {
-          position: { x: this.aiBoss.position.x, y: this.aiBoss.position.y },
-          velocity: {
-            x: Math.cos(bulletAngle) * 8,
-            y: Math.sin(bulletAngle) * 8
-          },
-          rotation: bulletAngle,
-          size: 6,
-          lifetime: 180,
-          isPlayerBullet: false,
-          damage: 30
+
+    switch (this.aiBoss.currentAttack) {
+        case 'mirror_rapid': // Defender-style rapid fire
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const bullet: Bullet = {
+                        position: { ...this.aiBoss.position },
+                        velocity: { x: Math.cos(angle) * 10, y: Math.sin(angle) * 10 },
+                        rotation: angle, size: 4, lifetime: 150, isPlayerBullet: false, damage: 10
+                    };
+                    this.bullets.push(bullet);
+                }, i * 100);
+            }
+            break;
+        case 'mirror_spread': // Lasat-style spread
+            const spreadCount = Math.floor(2 + this.narcissusIntensity * 4); // 2 to 6 projectiles
+            for (let i = -Math.floor(spreadCount / 2); i <= Math.floor(spreadCount / 2); i++) {
+                const spreadAngle = angle + (i * 0.2);
+                const bullet: Bullet = {
+                    position: { ...this.aiBoss.position },
+                    velocity: { x: Math.cos(spreadAngle) * 8, y: Math.sin(spreadAngle) * 8 },
+                    rotation: spreadAngle, size: 5, lifetime: 150, isPlayerBullet: false, damage: 15
+                };
+                this.bullets.push(bullet);
+            }
+            break;
+        case 'bullet_hell_spiral':
+            const density = Math.floor(36 + this.narcissusIntensity * 36); // 36 to 72 bullets in spiral
+            for (let i = 0; i < density; i++) {
+                const spiralAngle = (i * (360 / density) + this.phaseTimer) * (Math.PI / 180);
+                const bullet: Bullet = {
+                    position: { ...this.aiBoss.position },
+                    velocity: { x: Math.cos(spiralAngle) * 6, y: Math.sin(spiralAngle) * 6 },
+                    rotation: spiralAngle, size: 6, lifetime: 240, isPlayerBullet: false, damage: 20
+                };
+                this.bullets.push(bullet);
+            }
+            break;
+        case 'laser_beam':
+            this.aiBoss.laserChargeTimer = 120; // 2 second charge
+            this.aiBoss.laserAngle = angle;
+            this.playStinger('boss_laser_charge');
+            break;
+        case 'summon_minions':
+            for (let i = 0; i < 3; i++) {
+                const minion: Minion = {
+                    position: { x: this.aiBoss.position.x, y: this.aiBoss.position.y },
+                    velocity: { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 },
+                    size: 15, health: 50, alive: true
+                };
+                this.minions.push(minion);
+            }
+            this.playStinger('boss_summon_minions');
+            break;
+    }
+  }
+
+  private updateGlitches() {
+    // Spawn new glitches
+    if (Math.random() < 0.02 && this.glitches.length < 5) {
+        const glitch: Glitch = {
+            position: { x: Math.random() * this.width, y: Math.random() * this.height },
+            size: 15 + Math.random() * 20,
+            type: Math.random() < 0.5 ? 'damage' : 'powerup',
+            lifetime: 180 + Math.random() * 120
         };
-        this.bullets.push(bullet);
-      }
-    } else {
-      // Single targeted shot
-      const bullet: Bullet = {
-        position: { x: this.aiBoss.position.x, y: this.aiBoss.position.y },
-        velocity: {
-          x: Math.cos(angle) * 10,
-          y: Math.sin(angle) * 10
-        },
-        rotation: angle,
-        size: 5,
-        lifetime: 150,
-        isPlayerBullet: false,
-        damage: 20
-      };
-      this.bullets.push(bullet);
+        this.glitches.push(glitch);
+    }
+
+    // Update existing glitches
+    for (let i = this.glitches.length - 1; i >= 0; i--) {
+        this.glitches[i].lifetime--;
+        if (this.glitches[i].lifetime <= 0) {
+            this.glitches.splice(i, 1);
+        }
     }
   }
 
@@ -462,6 +566,31 @@ export class BetrayalGame extends BaseGame {
     }
   }
 
+  private updateMinions() {
+    for (let i = this.minions.length - 1; i >= 0; i--) {
+        const minion = this.minions[i];
+        if (!minion.alive) {
+            this.minions.splice(i, 1);
+            continue;
+        }
+
+        const dx = this.player.position.x - minion.position.x;
+        const dy = this.player.position.y - minion.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 0) {
+            minion.velocity.x += (dx / distance) * 0.2;
+            minion.velocity.y += (dy / distance) * 0.2;
+        }
+
+        minion.position.x += minion.velocity.x;
+        minion.position.y += minion.velocity.y;
+
+        minion.velocity.x *= 0.98;
+        minion.velocity.y *= 0.98;
+    }
+  }
+
   private checkCollisions() {
     // Bullet collisions
     for (let i = this.bullets.length - 1; i >= 0; i--) {
@@ -475,6 +604,21 @@ export class BetrayalGame extends BaseGame {
           this.createExplosion(bullet.position, 30);
           this.score += 100;
           this.onScoreUpdate?.(this.score);
+        }
+        // Player bullet hits minion
+        for (let j = this.minions.length - 1; j >= 0; j--) {
+            const minion = this.minions[j];
+            if (minion.alive && this.isColliding(bullet, minion)) {
+                minion.health -= bullet.damage;
+                this.bullets.splice(i, 1);
+                this.createExplosion(bullet.position, 20);
+                if (minion.health <= 0) {
+                    minion.alive = false;
+                    this.createExplosion(minion.position, 30);
+                    this.score += 50;
+                }
+                break; // Bullet hits one minion at a time
+            }
         }
       } else {
         // AI bullet hits player
@@ -499,6 +643,44 @@ export class BetrayalGame extends BaseGame {
       this.player.health -= 2; // Continuous damage
       this.createExplosion(this.player.position, 15);
     }
+
+    // Minion collision with player
+    for (let i = this.minions.length - 1; i >= 0; i--) {
+        const minion = this.minions[i];
+        if (minion.alive && this.isColliding(this.player, minion)) {
+            this.player.health -= 5;
+            minion.alive = false;
+            this.createExplosion(minion.position, 25);
+        }
+    }
+
+    // Laser beam collision
+    if (this.aiBoss.laserChargeTimer < 0 && this.aiBoss.laserChargeTimer > -90) {
+        const laserEnd = {
+            x: this.aiBoss.position.x + Math.cos(this.aiBoss.laserAngle) * this.width * 2,
+            y: this.aiBoss.position.y + Math.sin(this.aiBoss.laserAngle) * this.height * 2
+        };
+        // Simple line-circle collision
+        const dist = Math.abs((laserEnd.y - this.aiBoss.position.y) * this.player.position.x - (laserEnd.x - this.aiBoss.position.x) * this.player.position.y + laserEnd.x * this.aiBoss.position.y - laserEnd.y * this.aiBoss.position.x) / Math.sqrt(Math.pow(laserEnd.y - this.aiBoss.position.y, 2) + Math.pow(laserEnd.x - this.aiBoss.position.x, 2));
+
+        if (dist < this.player.size + 10) {
+             if (this.player.shield > 0) this.player.shield -= 2;
+             else this.player.health -= 2;
+        }
+    }
+
+    // Player collision with glitches
+    for (let i = this.glitches.length - 1; i >= 0; i--) {
+        const glitch = this.glitches[i];
+        if (this.isColliding(this.player, glitch)) {
+            if (glitch.type === 'damage') {
+                this.player.health -= 10;
+            } else {
+                this.player.shield = Math.min(100, this.player.shield + 25);
+            }
+            this.glitches.splice(i, 1);
+        }
+    }
   }
 
   private isColliding(obj1: any, obj2: any): boolean {
@@ -506,6 +688,17 @@ export class BetrayalGame extends BaseGame {
     const dy = obj1.position.y - obj2.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (obj1.size + obj2.size) / 2;
+  }
+
+  private playStinger(stinger: any) {
+    try {
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
+            audioState.playStinger(stinger);
+        }
+    } catch (e) {
+        console.warn('Stinger sound failed:', e);
+    }
   }
 
   private createExplosion(position: Vector2, maxRadius: number) {
@@ -540,6 +733,8 @@ export class BetrayalGame extends BaseGame {
     this.drawAIBoss();
     this.bullets.forEach(bullet => this.drawBullet(bullet));
     this.explosions.forEach(explosion => this.drawExplosion(explosion));
+    this.minions.forEach(minion => this.drawMinion(minion));
+    this.glitches.forEach(glitch => this.drawGlitch(glitch));
 
     // Draw UI
     this.drawUI();
@@ -683,6 +878,44 @@ export class BetrayalGame extends BaseGame {
     }
     
     this.ctx.restore();
+
+    // Draw laser charge
+    if (this.aiBoss.laserChargeTimer > 0) {
+        this.aiBoss.laserChargeTimer--;
+        const chargeProgress = 1 - (this.aiBoss.laserChargeTimer / 120);
+        this.ctx.save();
+        this.ctx.strokeStyle = `rgba(255, 0, 0, ${chargeProgress})`;
+        this.ctx.lineWidth = chargeProgress * 10;
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.aiBoss.position.x, this.aiBoss.position.y);
+        this.ctx.lineTo(
+            this.aiBoss.position.x + Math.cos(this.aiBoss.laserAngle) * 50 * chargeProgress,
+            this.aiBoss.position.y + Math.sin(this.aiBoss.laserAngle) * 50 * chargeProgress
+        );
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
+
+    // Draw laser beam
+    if (this.aiBoss.laserChargeTimer === 0) {
+        this.playStinger('boss_laser_fire');
+        this.aiBoss.laserChargeTimer = -1; // Fire state
+    }
+    if (this.aiBoss.laserChargeTimer < -1 && this.aiBoss.laserChargeTimer > -90) {
+        this.aiBoss.laserChargeTimer--;
+        this.ctx.save();
+        const laserWidth = 1 - (this.aiBoss.laserChargeTimer / -90);
+        this.ctx.strokeStyle = `rgba(255, 0, 0, ${laserWidth})`;
+        this.ctx.lineWidth = 20 * laserWidth;
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.aiBoss.position.x, this.aiBoss.position.y);
+        this.ctx.lineTo(
+            this.aiBoss.position.x + Math.cos(this.aiBoss.laserAngle) * this.width * 2,
+            this.aiBoss.position.y + Math.sin(this.aiBoss.laserAngle) * this.height * 2
+        );
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
   }
 
   private drawBullet(bullet: Bullet) {
@@ -694,6 +927,38 @@ export class BetrayalGame extends BaseGame {
     this.ctx.beginPath();
     this.ctx.arc(bullet.position.x, bullet.position.y, bullet.size, 0, Math.PI * 2);
     this.ctx.fill();
+    this.ctx.restore();
+  }
+
+  private drawMinion(minion: Minion) {
+    this.ctx.save();
+    this.ctx.fillStyle = '#AA0000';
+    this.ctx.strokeStyle = '#FF0000';
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.arc(minion.position.x, minion.position.y, minion.size, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
+  private drawGlitch(glitch: Glitch) {
+    this.ctx.save();
+    const alpha = glitch.lifetime / 300;
+    if (glitch.type === 'damage') {
+        this.ctx.fillStyle = `rgba(255, 0, 0, ${alpha * 0.5})`;
+        this.ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
+    } else {
+        this.ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.5})`;
+        this.ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
+    }
+    this.ctx.lineWidth = 2;
+    
+    // Draw glitchy rectangle
+    this.ctx.fillRect(glitch.position.x - glitch.size / 2 + (Math.random() - 0.5) * 5, 
+                      glitch.position.y - glitch.size / 2 + (Math.random() - 0.5) * 5, 
+                      glitch.size, glitch.size);
+    this.ctx.strokeRect(glitch.position.x - glitch.size / 2, glitch.position.y - glitch.size / 2, glitch.size, glitch.size);
     this.ctx.restore();
   }
 

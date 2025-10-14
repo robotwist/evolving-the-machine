@@ -23,7 +23,7 @@ interface AudioState {
   playSuccess: () => void;
   playUIClick: () => void;
   playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number; distortion?: boolean; haunting?: boolean }) => Promise<void>;
-  playStinger: (kind: 'start' | 'fail' | 'clear' | 'ui_click') => void;
+  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click' | 'boss_laser_charge' | 'boss_laser_fire' | 'boss_summon_minions') => void;
   playSizzle: () => void;
 }
 
@@ -193,7 +193,7 @@ export const useAudio = create<AudioState>((set, get) => ({
     }
   }
   ,
-  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click') => {
+  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click' | 'boss_laser_charge' | 'boss_laser_fire' | 'boss_summon_minions') => {
     const { isMuted } = get();
     if (isMuted) return;
     
@@ -309,6 +309,32 @@ export const useAudio = create<AudioState>((set, get) => ({
           gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
           break;
+        case 'boss_laser_charge':
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(100, audioCtx.currentTime);
+            oscillator.frequency.linearRampToValueAtTime(1500, audioCtx.currentTime + 2);
+            gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 2);
+            break;
+        case 'boss_laser_fire':
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+            gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(3000, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.5);
+            break;
+        case 'boss_summon_minions':
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(50, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 1);
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+            break;
       }
       
       oscillator.start();
