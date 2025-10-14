@@ -4,7 +4,7 @@ interface SettingsState {
   // Graphics settings
   graphicsQuality: 'low' | 'medium' | 'high';
   fpsCap: 30 | 60 | 120 | 0;
-  dprScaling: boolean;
+  enableDprScaling: boolean;
   
   // Audio settings
   masterVolume: number;
@@ -47,7 +47,7 @@ interface SettingsState {
   // Actions
   setGraphicsQuality: (quality: 'low' | 'medium' | 'high') => void;
   setFpsCap: (fps: 30 | 60 | 120 | 0) => void;
-  setDprScaling: (enabled: boolean) => void;
+  setEnableDprScaling: (enabled: boolean) => void;
   setMasterVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
   setSfxVolume: (volume: number) => void;
@@ -71,7 +71,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   // Default values
   graphicsQuality: 'medium',
   fpsCap: 60,
-  dprScaling: true,
+  enableDprScaling: true,
   masterVolume: 0.8,
   musicVolume: 0.6,
   sfxVolume: 0.8,
@@ -131,7 +131,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   // Actions
   setGraphicsQuality: (quality) => set({ graphicsQuality: quality }),
   setFpsCap: (fps) => set({ fpsCap: fps }),
-  setDprScaling: (enabled) => set({ dprScaling: enabled }),
+  setEnableDprScaling: (enabled) => set({ enableDprScaling: enabled }),
   setMasterVolume: (volume) => set({ masterVolume: volume }),
   setMusicVolume: (volume) => set({ musicVolume: volume }),
   setSfxVolume: (volume) => set({ sfxVolume: volume }),

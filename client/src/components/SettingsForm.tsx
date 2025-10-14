@@ -7,7 +7,7 @@ export function SettingsForm() {
     voiceStyle,
     graphicsQuality,
     fpsCap,
-    dprScaling,
+    enableDprScaling,
     reduceMotion,
     hapticsEnabled,
     particles,
@@ -16,7 +16,7 @@ export function SettingsForm() {
     setVoiceStyle,
     setGraphicsQuality,
     setFpsCap,
-    setDprScaling,
+    setEnableDprScaling,
     setReduceMotion,
     setHapticsEnabled,
     setParticles,
@@ -31,7 +31,7 @@ export function SettingsForm() {
         <label className="flex items-center justify-between gap-2">
           <span>Preset</span>
           <select value={preset} onChange={(e) => setPreset(e.target.value as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
-            {presetOptions.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            {presetOptions.map((p: { value: string; label: string }) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </label>
         <label className="flex items-center justify-between gap-2">
@@ -60,7 +60,7 @@ export function SettingsForm() {
         </label>
         <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
             <span>High-DPI Scaling</span>
-            <input type="checkbox" checked={dprScaling} onChange={(e) => setDprScaling(e.target.checked)} />
+            <input type="checkbox" checked={enableDprScaling} onChange={(e) => setEnableDprScaling(e.target.checked)} />
         </label>
         <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">
             <span>Reduce Motion</span>

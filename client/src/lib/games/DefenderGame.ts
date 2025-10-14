@@ -16,6 +16,7 @@ interface Entity {
 interface Player extends Entity {
   direction: number; // -1 left, 1 right
   onGround: boolean;
+  shielded?: boolean;
 }
 
 interface Enemy extends Entity {
@@ -33,12 +34,18 @@ interface Projectile extends Entity {
   lifetime: number;
 }
 
+interface Powerup extends Entity {
+    type: 'shield';
+    lifetime: number;
+}
+
 export class DefenderGame extends BaseGame {
   private player!: Player;
   private enemies: Enemy[] = [];
   private civilians: Civilian[] = [];
   private playerBullets: Projectile[] = [];
   private enemyBullets: Projectile[] = [];
+  private powerups: Powerup[] = [];
   private camera: { x: number } = { x: 0 };
   private worldWidth = 2048;
   private keys: Set<string> = new Set();
@@ -88,10 +95,14 @@ export class DefenderGame extends BaseGame {
       position: { x: 100, y: this.height / 2 },
       size: { x: 30, y: 20 },
       velocity: { x: 0, y: 0 },
-      health: 100,
-      maxHealth: 100,
-      shield: 100
+      alive: true,
+      direction: 1,
+      onGround: false,
+      shielded: false,
     };
+
+    this.spawnWave();
+    this.spawnCivilians();
 
     // Initialize camera
     this.camera = { x: 0 };
@@ -165,6 +176,8 @@ export class DefenderGame extends BaseGame {
 
     // Update projectiles
     this.updateProjectiles();
+
+    this.updatePowerups();
 
     // Check collisions
     this.checkCollisions();
@@ -324,6 +337,42 @@ export class DefenderGame extends BaseGame {
     });
   }
 
+  private updatePowerups() {
+    // Spawn shield powerup occasionally
+    if (Math.random() < 0.002 && this.powerups.length === 0) {
+        this.powerups.push({
+            position: { x: Math.random() * this.worldWidth, y: this.height / 2 },
+            velocity: { x: 0, y: 0 },
+            size: { x: 20, y: 20 },
+            alive: true,
+            type: 'shield',
+            lifetime: 600, // 10 seconds
+        });
+    }
+
+    // Update powerups
+    for (let i = this.powerups.length - 1; i >= 0; i--) {
+        const powerup = this.powerups[i];
+        powerup.lifetime--;
+        if (powerup.lifetime <= 0) {
+            this.powerups.splice(i, 1);
+            continue;
+        }
+
+        // Check for player collision
+        if (this.isColliding(this.player, powerup)) {
+            this.activateShield();
+            this.powerups.splice(i, 1);
+        }
+    }
+  }
+
+  private activateShield() {
+      this.player.shielded = true;
+      // Lasts for one hit
+      this.playStinger('arcade_powerup');
+  }
+
   private checkCollisions() {
     // Player bullets vs enemies
     this.playerBullets.forEach(bullet => {
@@ -347,13 +396,19 @@ export class DefenderGame extends BaseGame {
     // Enemy bullets vs player
     this.enemyBullets.forEach(bullet => {
       if (this.isColliding(bullet, this.player)) {
-        this.onGameOver?.();
-        const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-        const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-        const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-        if (!reduce && allowShake) this.shakeTimer = 14;
-        if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
-        this.playExplosionSound();
+        if (this.player.shielded) {
+            this.player.shielded = false;
+            bullet.alive = false;
+            this.playStinger('pop');
+        } else {
+            this.onGameOver?.();
+            const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+            const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+            const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+            if (!reduce && allowShake) this.shakeTimer = 14;
+            if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
+            this.playExplosionSound();
+        }
       }
       // Trails for enemy bullets
       const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
@@ -466,6 +521,9 @@ export class DefenderGame extends BaseGame {
         this.drawCivilian(civilian);
       }
     });
+
+    // Draw powerups
+    this.powerups.forEach(powerup => this.drawPowerup(powerup));
 
     // Draw projectiles
     this.playerBullets.forEach(bullet => this.drawPlayerBullet(bullet));
@@ -628,6 +686,13 @@ export class DefenderGame extends BaseGame {
       this.ctx.scale(-1, 1);
     }
 
+    if (this.player.shielded) {
+        this.ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, 25, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+
     // Draw samurai
     this.ctx.fillStyle = '#2C3E50';
     this.ctx.fillRect(-10, -10, 20, 20);
@@ -691,6 +756,18 @@ export class DefenderGame extends BaseGame {
     this.ctx.restore();
   }
 
+  private drawPowerup(powerup: Powerup) {
+    this.ctx.save();
+    this.ctx.strokeStyle = '#00FFFF';
+    this.ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(powerup.position.x, powerup.position.y, 15, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
   private drawUI() {
     this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
     this.drawText(`Wave: ${this.wave}`, 20, 60, 20, '#FFD700');
@@ -730,6 +807,17 @@ export class DefenderGame extends BaseGame {
       }
     } catch (e) {
       console.warn('Explosion sound failed:', e);
+    }
+  }
+
+  private playStinger(stinger: string) {
+    try {
+        const audioState = useAudio.getState();
+        if (!audioState.isMuted) {
+            audioState.playStinger(stinger as any);
+        }
+    } catch (e) {
+        console.warn(`${stinger} sound failed:`, e);
     }
   }
 

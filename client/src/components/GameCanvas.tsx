@@ -13,7 +13,9 @@ import { BaseGame } from '../lib/games/BaseGame';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
 import { useAudio } from '../lib/stores/useAudio';
 
-const gameMap: { [key: number]: typeof BaseGame } = {
+type GameConstructor = new (ctx: CanvasRenderingContext2D, width: number, height: number) => BaseGame;
+
+const gameMap: { [key: number]: GameConstructor } = {
   1: PongGame,
   2: BreakoutGame,
   3: AsteroidsGame,
@@ -48,7 +50,7 @@ function useGameInstance(
       useGameStore.getState().unlockNextStage();
     };
 
-    game.init().catch(error => console.error('Failed to initialize game:', error));
+    game.init().catch((error: Error) => console.error('Failed to initialize game:', error));
     game.start();
 
     return () => {

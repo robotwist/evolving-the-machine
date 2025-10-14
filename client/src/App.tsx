@@ -251,10 +251,8 @@ export default function App() {
         )}
         {showTransition && (
           <ScreenTransition 
-            isActive={showTransition} 
             message={transitionMessage} 
             onComplete={handleTransitionComplete}
-            duration={2500}
           />
         )}
       </div>

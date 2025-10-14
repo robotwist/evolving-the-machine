@@ -103,7 +103,7 @@ export class BreakoutGame extends BaseGame {
     };
 
     // Initialize ball
-    this.resetBall();
+    this.resetBalls();
 
     // Initialize bricks
     this.createBricks();
@@ -158,7 +158,7 @@ export class BreakoutGame extends BaseGame {
         };
         rowBricks.push(brick);
       }
-      this.bricks.push(rowBricks);
+      this.bricks.push(...rowBricks);
     }
   }
 
@@ -201,7 +201,7 @@ export class BreakoutGame extends BaseGame {
 
     // Paddle evolution trigger at 50% completion
     const bricksDestroyed = this.bricks.filter(b => b.destroyed).length;
-    const totalBricks = this.bricks.length * this.bricks[0].length;
+    const totalBricks = this.bricks.length;
     const completionPercent = bricksDestroyed / totalBricks;
     
     if (completionPercent >= 0.5 && !this.evolutionStarted && !this.ballEaten) {
@@ -394,10 +394,8 @@ export class BreakoutGame extends BaseGame {
   }
 
   private checkBrickCollisions(ball: Ball) {
-    for (let row = 0; row < this.bricks.length; row++) {
-      for (let col = 0; col < this.bricks[row].length; col++) {
-        const brick = this.bricks[row][col];
-        if (!brick || brick.destroyed) continue;
+    for (const brick of this.bricks) {
+        if (brick.destroyed) continue;
 
         if (
           ball.x + ball.radius > brick.x &&
@@ -412,7 +410,7 @@ export class BreakoutGame extends BaseGame {
             
             // Check if this is an explosive brick
             if (brick.explosive) {
-              this.triggerExplosiveBrick(brick, row, col);
+              this.triggerExplosiveBrick(brick);
             } else {
               // Normal brick destruction
               const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
@@ -451,10 +449,9 @@ export class BreakoutGame extends BaseGame {
           break;
         }
       }
-    }
   }
 
-  private triggerExplosiveBrick(explodedBrick: Brick, row: number, col: number) {
+  private triggerExplosiveBrick(explodedBrick: Brick) {
     const explosionRadius = explodedBrick.explosionRadius || 100;
     const explosionX = explodedBrick.x + explodedBrick.width / 2;
     const explosionY = explodedBrick.y + explodedBrick.height / 2;
@@ -463,10 +460,8 @@ export class BreakoutGame extends BaseGame {
     this.particles.addExplosion(explosionX, explosionY, 30, '#FF4500', 'epic');
     
     // Damage nearby bricks
-    for (let r = 0; r < this.bricks.length; r++) {
-      for (let c = 0; c < this.bricks[r].length; c++) {
-        const brick = this.bricks[r][c];
-        if (!brick || brick.destroyed) continue;
+    for (const brick of this.bricks) {
+        if (brick.destroyed) continue;
         
         const brickCenterX = brick.x + brick.width / 2;
         const brickCenterY = brick.y + brick.height / 2;
@@ -486,7 +481,6 @@ export class BreakoutGame extends BaseGame {
           }
         }
       }
-    }
     
     // Heavy screenshake
     this.shakeTimer = 15;
@@ -557,28 +551,25 @@ export class BreakoutGame extends BaseGame {
 
   private createExplosiveBrick(x: number, y: number) {
     // Find the closest brick and make it explosive
-    let closestBrick = null;
+    let closestBrick: Brick | null = null;
     let minDistance = Infinity;
     
-    for (let row = 0; row < this.bricks.length; row++) {
-      for (let col = 0; col < this.bricks[row].length; col++) {
-        const brick = this.bricks[row][col];
-        if (brick && brick.health > 0) {
+    for (const brick of this.bricks) {
+        if (brick.health > 0) {
           const brickCenterX = brick.x + brick.width / 2;
           const brickCenterY = brick.y + brick.height / 2;
           const distance = Math.sqrt((x - brickCenterX) ** 2 + (y - brickCenterY) ** 2);
           
           if (distance < minDistance) {
             minDistance = distance;
-            closestBrick = { brick, row, col };
+            closestBrick = brick;
           }
         }
       }
-    }
     
     if (closestBrick) {
-      closestBrick.brick.explosive = true;
-      closestBrick.brick.explosionRadius = 100;
+      closestBrick.explosive = true;
+      closestBrick.explosionRadius = 100;
     }
   }
 
@@ -670,9 +661,7 @@ export class BreakoutGame extends BaseGame {
     const punchRadius = 30;
 
     // Check collision with remaining bricks
-    for (let row = 0; row < this.bricks.length; row++) {
-      for (let col = 0; col < this.bricks[row].length; col++) {
-        const brick = this.bricks[row][col];
+    for (const brick of this.bricks) {
         if (brick.destroyed) continue;
 
         const brickCenterX = brick.x + brick.width / 2;
@@ -684,7 +673,6 @@ export class BreakoutGame extends BaseGame {
           this.score += 20; // Double points for punch destruction
         }
       }
-    }
   }
 
   private startTransition() {
@@ -767,11 +755,9 @@ export class BreakoutGame extends BaseGame {
 
   private drawGameplay() {
     // Draw bricks
-    for (const row of this.bricks) {
-      for (const brick of row) {
-        if (!brick.destroyed) {
-          this.drawBrick(brick);
-        }
+    for (const brick of this.bricks) {
+      if (!brick.destroyed) {
+        this.drawBrick(brick);
       }
     }
 
@@ -852,10 +838,8 @@ export class BreakoutGame extends BaseGame {
     this.ctx.restore();
 
     // Show bricks morphing into asteroids
-    for (let row = 0; row < this.bricks.length; row++) {
-      for (let col = 0; col < this.bricks[row].length; col++) {
-        const brick = this.bricks[row][col];
-        if (brick.destroyed) return;
+    for (const brick of this.bricks) {
+        if (brick.destroyed) continue;
         
         const asteroidProgress = Math.max(0, (progress - 0.3) * 1.4);
         this.ctx.save();
@@ -888,7 +872,6 @@ export class BreakoutGame extends BaseGame {
         
         this.ctx.restore();
       }
-    }
 
     // Transition text
     this.drawText(`Ancient Blocks Transform Into Celestial Bodies...`, this.width / 2, this.height / 2, 20, '#FFD700', 'center');

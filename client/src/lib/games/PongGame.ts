@@ -77,6 +77,8 @@ export class PongGame extends BaseGame {
   private player1Combo = 0;
   private totalDamageTaken = 0;
   private pointStartTime = 0;
+  private haptics: any;
+  private settings: any;
   
   // Particle system for effects
   private particles = new (class LocalParticles {
@@ -126,7 +128,7 @@ export class PongGame extends BaseGame {
   async init() {
     // Initialize particles
     const { ParticleSystem } = await import('../utils/ParticleSystem');
-    this.particles = new ParticleSystem(this.ctx);
+    this.particles = new ParticleSystem(this.ctx) as any;
     this.visualFeedback = new VisualFeedback(this.ctx);
     
     // Initialize particle system
@@ -200,8 +202,6 @@ export class PongGame extends BaseGame {
   }
 
   update(deltaTime: number) {
-    super.update(deltaTime);
-
     this.updatePlayer(deltaTime);
     this.updateAI(deltaTime);
     this.updateBall(deltaTime);
@@ -561,7 +561,7 @@ export class PongGame extends BaseGame {
   }
 
   render() {
-    super.render();
+    this.clearCanvas();
     
     // Render particles
     this.particles.render();
@@ -844,11 +844,14 @@ export class PongGame extends BaseGame {
   }
 
   private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield') {
-    this.ball.type = type;
-    this.activePowerupType = type;
     this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // 5 seconds
     
     // Apply immediate effects
+    if (type !== 'shield') {
+      this.ball.type = type;
+      this.activePowerupType = type;
+    }
+    
     switch (type) {
       case 'speed':
         this.ball.speed *= 1.2;
