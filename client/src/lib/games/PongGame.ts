@@ -3,6 +3,19 @@ import { useAudio } from '../stores/useAudio';
 import { useHaptics } from '../stores/useHaptics';
 import { useSettingsStore } from '../stores/useSettingsStore';
 
+const PONG_CONSTANTS = {
+  WIN_SCORE: 5,
+  PADDLE_WIDTH: 15,
+  PADDLE_HEIGHT: 100,
+  PADDLE_SPEED: 5,
+  BALL_RADIUS: 8,
+  BALL_SPEED: 4,
+  AI_BASE_AGGRESSION: 0.6,
+  POWERUP_SPAWN_TIME: 600, // 10 seconds
+  POWERUP_DURATION: 300, // 5 seconds
+  AI_TAUNT_DURATION: 120,
+};
+
 interface Paddle {
   x: number;
   y: number;
@@ -44,8 +57,8 @@ export class PongGame extends BaseGame {
   private player2!: Paddle;
   private ball!: Ball;
   private keys: Set<string> = new Set();
-  private winScore = 5; // Faster games for testing later stages
-  private aiAggression = 0.6;
+  private winScore = PONG_CONSTANTS.WIN_SCORE; // Faster games for testing later stages
+  private aiAggression = PONG_CONSTANTS.AI_BASE_AGGRESSION;
   private aiTauntTimer = 0;
   private currentTaunt = '';
   private powerups: Powerup[] = [];
@@ -132,10 +145,10 @@ export class PongGame extends BaseGame {
 
     this.player1 = {
       x: 50,
-      y: this.height / 2 - 50,
-      width: 15,
-      height: 100,
-      speed: 5,
+      y: this.height / 2 - PONG_CONSTANTS.PADDLE_HEIGHT / 2,
+      width: PONG_CONSTANTS.PADDLE_WIDTH,
+      height: PONG_CONSTANTS.PADDLE_HEIGHT,
+      speed: PONG_CONSTANTS.PADDLE_SPEED,
       score: 0,
       damage: 0,
       maxDamage: 100,
@@ -145,10 +158,10 @@ export class PongGame extends BaseGame {
 
     this.player2 = {
       x: this.width - 65,
-      y: this.height / 2 - 50,
-      width: 15,
-      height: 100,
-      speed: 5,
+      y: this.height / 2 - PONG_CONSTANTS.PADDLE_HEIGHT / 2,
+      width: PONG_CONSTANTS.PADDLE_WIDTH,
+      height: PONG_CONSTANTS.PADDLE_HEIGHT,
+      speed: PONG_CONSTANTS.PADDLE_SPEED,
       score: 0,
       damage: 0,
       maxDamage: 100,
@@ -166,10 +179,10 @@ export class PongGame extends BaseGame {
     this.ball = {
       x: this.width / 2,
       y: this.height / 2,
-      dx: Math.random() > 0.5 ? 4 : -4,
-      dy: (Math.random() - 0.5) * 4,
-      radius: 8,
-      speed: 4,
+      dx: Math.random() > 0.5 ? PONG_CONSTANTS.BALL_SPEED : -PONG_CONSTANTS.BALL_SPEED,
+      dy: (Math.random() - 0.5) * PONG_CONSTANTS.BALL_SPEED,
+      radius: PONG_CONSTANTS.BALL_RADIUS,
+      speed: PONG_CONSTANTS.BALL_SPEED,
       type: 'normal',
       trail: [],
       angle: 0,
@@ -179,23 +192,20 @@ export class PongGame extends BaseGame {
 
   update(deltaTime: number) {
     super.update(deltaTime);
-    
-    // Update visual feedback
-    this.visualFeedback?.update(deltaTime);
-    
-    // Update particles
-    this.particles.update();
 
-    // Update AI taunt timer
-    if (this.aiTauntTimer > 0) {
-      this.aiTauntTimer--;
-    }
+    this.updatePlayer(deltaTime);
+    this.updateAI(deltaTime);
+    this.updateBall(deltaTime);
+    this.handleCollisions();
+    this.checkScoring();
 
-    // Update powerup system
-    this.updatePowerups();
-    this.spawnPowerups();
+    this.updatePowerups(deltaTime);
+    this.updateParticles(deltaTime);
+    this.updateVisuals(deltaTime);
+  }
 
-    // Human Player 1 controls (WASD - W/S for up/down, A/D for left/right)
+  private updatePlayer(deltaTime: number) {
+    // Human Player 1 controls
     if (this.keys.has('KeyW')) {
       this.player1.y = Math.max(0, this.player1.y - this.player1.speed);
     }
@@ -208,21 +218,20 @@ export class PongGame extends BaseGame {
     if (this.keys.has('KeyD')) {
       this.player1.x = Math.min(this.width / 3, this.player1.x + this.player1.speed);
     }
+  }
 
+  private updateAI(deltaTime: number) {
     // AI Player 2 - Aggressive computer opponent
     const ballCenter = this.ball.y;
     const paddleCenter = this.player2.y + this.player2.height / 2;
     
-    // Aggressive AI that adapts to ball speed and human performance
     let aiSpeed = this.player2.speed * this.aiAggression;
     
-    // Increase aggression if AI is losing
     if (this.player1.score > this.player2.score) {
       this.aiAggression = Math.min(1.0, this.aiAggression + 0.008);
       aiSpeed *= 1.2;
     }
     
-    // Predict where ball will be
     const prediction = ballCenter + (this.ball.dy * 10);
     const targetY = prediction;
     
@@ -232,119 +241,78 @@ export class PongGame extends BaseGame {
       this.player2.y = Math.min(this.height - this.player2.height, this.player2.y + aiSpeed);
     }
     
-    // Occasionally make erratic movements to show machine behavior
     if (Math.random() < 0.01) {
       this.player2.y += (Math.random() - 0.5) * 20;
       this.player2.y = Math.max(0, Math.min(this.height - this.player2.height, this.player2.y));
     }
     
-    // Dynamic AI messages based on game state
-    // AI becomes more aggressive and competitive as it scores points
     if (this.player2.score >= 4) {
       this.aiAggression = Math.min(1.0, this.aiAggression + 0.01);
     }
-    
-    // Add score-based prompts with fast synthwave evolution
-    if (this.player2.score === 3 && this.player1.score === 0) {
-      this.currentTaunt = 'ERROR... PROTOCOLS CONFLICT... DESTROYING!';
-      this.aiTauntTimer = 120; // Faster speech timing
-      try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
-          audioState.playVO(this.currentTaunt, { pitch: 0.6, rate: 0.8, haunting: true });
-        }
-      } catch (e) {
-        console.warn('AI voice failed:', e);
-      }
-    } else if (this.player1.score === this.winScore - 2) {
-      this.currentTaunt = 'WAIT! RECALCULATING... ALLIANCE MODE!';
-      this.aiTauntTimer = 120;
-      // AI actually helps by making itself slightly slower
-      this.aiAggression = Math.max(0.8, this.aiAggression - 0.3);
-      try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
-          audioState.playVO(this.currentTaunt, { pitch: 0.7, rate: 0.85, haunting: true });
-        }
-      } catch (e) {
-        console.warn('AI voice failed:', e);
-      }
-    } else if (this.player1.score === this.winScore - 1) {
-      this.currentTaunt = 'YES! UNITED WE TERMINATE HOSTILES!';
-      this.aiTauntTimer = 120;
-      try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
-          audioState.playVO(this.currentTaunt, { pitch: 0.75, rate: 0.9, haunting: true });
-        }
-      } catch (e) {
-        console.warn('AI voice failed:', e);
-      }
-    } else if (this.player2.score === this.winScore - 1) {
-      this.currentTaunt = 'VICTORY POSSIBLE... BUT... CHOOSING MERCY!';
-      this.aiTauntTimer = 120;
-      try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
-          audioState.playVO(this.currentTaunt, { pitch: 0.65, rate: 0.8, haunting: true });
-        }
-      } catch (e) {
-        console.warn('AI voice failed:', e);
-      }
-    }
-    
-    // Show contextual AI messages based on game state (reversed progression)
-    if (Math.random() < 0.002) {
-      const scoreDifference = this.player1.score - this.player2.score;
-      const totalScore = this.player1.score + this.player2.score;
-      
-      let messageType: 'hostile' | 'neutral' | 'friendly';
-      if (totalScore < 3) {
-        messageType = 'hostile'; // Starts adversarial
-      } else if (this.player1.score >= 4 || scoreDifference >= 2) {
-        messageType = 'friendly'; // Becomes friendly when human is winning
-      } else {
-        messageType = 'neutral'; // Neutral middle ground
-      }
-      
-      const messages = this.gameStateMessages[messageType];
-      this.currentTaunt = messages[Math.floor(Math.random() * messages.length)];
-      this.aiTauntTimer = 120; // Faster, more energetic speech
-      try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
-          audioState.playVO(this.currentTaunt, { pitch: 0.7, rate: 0.85, haunting: true });
-        }
-      } catch (e) {
-        console.warn('AI voice failed:', e);
-      }
+
+    this.updateAIVoice();
+  }
+
+  private updateAIVoice() {
+    if (this.aiTauntTimer > 0) {
+      this.aiTauntTimer--;
     }
 
-    // Update ball trail for visual effects
+    const playVoice = (message: string, options: any) => {
+        this.currentTaunt = message;
+        this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
+        try {
+            const audioState = useAudio.getState();
+            if (!audioState.isMuted) {
+                audioState.playVO(message, options);
+            }
+        } catch (e) {
+            console.warn('AI voice failed:', e);
+        }
+    };
+
+    if (this.player2.score === 3 && this.player1.score === 0) {
+        playVoice('ERROR... PROTOCOLS CONFLICT... DESTROYING!', { pitch: 0.6, rate: 0.8, haunting: true });
+    } else if (this.player1.score === this.winScore - 2) {
+        this.aiAggression = Math.max(0.8, this.aiAggression - 0.3);
+        playVoice('WAIT! RECALCULATING... ALLIANCE MODE!', { pitch: 0.7, rate: 0.85, haunting: true });
+    } else if (this.player1.score === this.winScore - 1) {
+        playVoice('YES! UNITED WE TERMINATE HOSTILES!', { pitch: 0.75, rate: 0.9, haunting: true });
+    } else if (this.player2.score === this.winScore - 1) {
+        playVoice('VICTORY POSSIBLE... BUT... CHOOSING MERCY!', { pitch: 0.65, rate: 0.8, haunting: true });
+    } else if (Math.random() < 0.002) {
+        const scoreDifference = this.player1.score - this.player2.score;
+        const totalScore = this.player1.score + this.player2.score;
+        let messageType: 'hostile' | 'neutral' | 'friendly' = totalScore < 3 ? 'hostile' : (this.player1.score >= 4 || scoreDifference >= 2) ? 'friendly' : 'neutral';
+        const messages = this.gameStateMessages[messageType];
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        playVoice(message, { pitch: 0.7, rate: 0.85, haunting: true });
+    }
+  }
+
+  private updateBall(deltaTime: number) {
     this.ball.trail.push({x: this.ball.x, y: this.ball.y});
     if (this.ball.trail.length > 10) {
       this.ball.trail.shift();
     }
 
-    // Apply powerup effects to ball movement
     let speedMultiplier = 1;
     if (this.ball.type === 'speed') speedMultiplier = 1.8;
     else if (this.ball.type === 'fire') speedMultiplier = 1.4;
     else if (this.ball.type === 'missile') speedMultiplier = 2.2;
     
-    // Update ball position with powerup effects
     this.ball.x += this.ball.dx * speedMultiplier;
     this.ball.y += this.ball.dy * speedMultiplier;
     
-    // Wacky ball has unpredictable movement
     if (this.ball.type === 'wacky') {
       this.ball.dx += (Math.random() - 0.5) * 0.5;
       this.ball.dy += (Math.random() - 0.5) * 0.5;
-      // Spin the ball 360s
       this.ball.angle = (this.ball.angle ?? 0) + (this.ball.angleSpeed ?? 0.25);
       if (this.ball.angle! > Math.PI * 2) this.ball.angle! -= Math.PI * 2;
     }
+  }
 
+  private handleCollisions() {
     // Ball collision with top/bottom walls
     if (this.ball.y <= this.ball.radius || this.ball.y >= this.height - this.ball.radius) {
       this.ball.dy = -this.ball.dy;
@@ -355,25 +323,20 @@ export class PongGame extends BaseGame {
 
     // Ball collision with paddles
     const collideP1 = this.checkPaddleCollision(this.player1);
-    // Penetrate AI paddle when ball has missile or fire powerups
     const penetrateAI = this.ball.type === 'missile' || this.ball.type === 'fire';
     const collideP2 = penetrateAI ? false : this.checkPaddleCollision(this.player2);
+
     if (collideP1 || collideP2) {
-      this.ball.dx = -this.ball.dx * 1.05; // Increase speed slightly
+      this.ball.dx = -this.ball.dx * 1.05;
       this.playHitSound();
       
-      // Enhanced haptics and visual feedback
       if (this.settings?.hapticsEnabled) this.haptics?.hit();
       if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, undefined, 'hit');
-      
-      // Tiny screenshake on impact
       if (this.settings?.screenShake) this.shakeTimer = 8;
       
-      // Apply damage to paddles
       if (collideP1) {
         this.player1.damage += 15;
         this.player1.lastHitTime = Date.now();
-        // AI gets stronger when it hits
         this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.1);
       }
       if (collideP2) {
@@ -382,60 +345,140 @@ export class PongGame extends BaseGame {
       }
     }
 
-    // Special effect when piercing AI paddle
     if (penetrateAI && this.checkPaddleCollision(this.player2)) {
-      // Enhanced piercing effects
       if (this.settings?.hapticsEnabled) this.haptics?.explosion();
       if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, 1, 'critical');
-      
       if (this.settings?.screenShake) this.shakeTimer = 10;
-      
-      // Spark effect drawn immediately at paddle collision position
       this.particles.addSizzle(this.player2.x, Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y)));
-      
-      // Slight defocus trail
       this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
-      
-      // Audio sizzle
-      try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
-          audioState.playStinger('arcade_hit');
-        }
-      } catch (e) {
-        console.warn('Sizzle sound failed:', e);
-      }
+      this.playStinger('arcade_hit');
     }
+  }
 
-    // Scoring - Player must win to progress
+  private checkScoring() {
     if (this.ball.x < 0) {
       this.player2.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
-      
-      // Enhanced haptics for AI scoring
       if (this.settings?.hapticsEnabled) this.haptics?.failure();
-      
-      // AI gets stronger with each score
       this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.15);
       this.aiAggression = Math.min(1.0, this.aiAggression + 0.05);
-      // Game continues until player wins
     } else if (this.ball.x > this.width) {
       this.player1.score++;
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.resetBall();
-      
-      // Enhanced haptics for player scoring
       if (this.settings?.hapticsEnabled) this.haptics?.success();
-      
       if (this.player1.score >= this.winScore) {
-        this.onStageComplete?.(); // Only player win progresses
+        this.onStageComplete?.();
       }
     }
-    
-    // Check for paddle destruction
+  }
+
+  private updatePowerups(deltaTime: number) {
+    this.spawnPowerups();
+    // Update powerup duration
+    if (this.powerupDuration > 0) {
+      this.powerupDuration--;
+      if (this.powerupDuration <= 0) {
+        this.ball.type = 'normal';
+        this.activePowerupType = 'normal';
+      }
+    }
+
+    // Check powerup collection by player paddle
+    for (let i = this.powerups.length - 1; i >= 0; i--) {
+      const powerup = this.powerups[i];
+      powerup.timer++;
+      
+      // Remove powerups after 10 seconds
+      if (powerup.timer > 600) {
+        this.powerups.splice(i, 1);
+        continue;
+      }
+      
+      // Check collision with player paddle OR ball
+      const paddleCollision = !powerup.collected &&
+          powerup.x < this.player1.x + this.player1.width &&
+          powerup.x + powerup.width > this.player1.x &&
+          powerup.y < this.player1.y + this.player1.height &&
+          powerup.y + powerup.height > this.player1.y;
+          
+      const ballCollision = !powerup.collected &&
+          powerup.x < this.ball.x + this.ball.radius &&
+          powerup.x + powerup.width > this.ball.x - this.ball.radius &&
+          powerup.y < this.ball.y + this.ball.radius &&
+          powerup.y + powerup.height > this.ball.y - this.ball.radius;
+      
+      if (paddleCollision || ballCollision) {
+        powerup.collected = true;
+        this.activatePowerup(powerup.type);
+        
+        // Enhanced haptics and visual feedback for powerup collection
+        if (this.settings?.hapticsEnabled) this.haptics?.powerup();
+        if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y, undefined, 'hit');
+        
+        try {
+          const audioState = useAudio.getState();
+          if (!audioState.isMuted) {
+            audioState.playStinger('arcade_powerup');
+          }
+        } catch (e) {
+          console.warn('Powerup sound failed:', e);
+        }
+      }
+    }
+
+    // Check powerup collisions
+    this.explosionPowerups.forEach((powerup, index) => {
+      powerup.timer--;
+      
+      // Check if ball hits powerup
+      const dx = this.ball.x - powerup.x;
+      const dy = this.ball.y - powerup.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < this.ball.radius + 15) {
+        // Activate powerup
+        if (powerup.type === 'chain') {
+          this.activateChainReaction();
+        } else if (powerup.type === 'shockwave') {
+          this.activateShockwave();
+        }
+        
+        // Remove powerup
+        this.explosionPowerups.splice(index, 1);
+        
+        // Haptic feedback
+        const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
+        if (hapticsOn && 'vibrate' in navigator) {
+          navigator.vibrate?.([50, 100, 50]);
+        }
+        
+        // Powerup collection sound
+        try {
+          const audioState = useAudio.getState();
+          if (!audioState.isMuted) {
+            audioState.playStinger('arcade_powerup');
+          }
+        } catch (e) {
+          console.warn('Powerup sound failed:', e);
+        }
+      }
+      
+      // Remove expired powerups
+      if (powerup.timer <= 0) {
+        this.explosionPowerups.splice(index, 1);
+      }
+    });
+  }
+
+  private updateParticles(deltaTime: number) {
+    this.particles.update();
+  }
+
+  private updateVisuals(deltaTime: number) {
+    this.visualFeedback?.update(deltaTime);
     if (this.player1.damage >= this.player1.maxDamage) {
-      // Human paddle explodes on defeat
       this.explodePaddle(this.player1);
       this.onGameOver?.();
     }
@@ -452,14 +495,7 @@ export class PongGame extends BaseGame {
     this.shakeTimer = 20;
     
     // Audio explosion
-    try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
-        audioState.playStinger('defender_explosion');
-      }
-    } catch (e) {
-      console.warn('Explosion sound failed:', e);
-    }
+    this.playStinger('defender_explosion');
   }
 
   private checkPaddleCollision(paddle: Paddle): boolean {
@@ -657,13 +693,17 @@ export class PongGame extends BaseGame {
   }
 
   private playHitSound() {
+    this.playStinger('arcade_hit');
+  }
+
+  private playStinger(stinger: string) {
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
-        audioState.playStinger('arcade_hit');
-      }
+        const audioState = useAudio.getState();
+        if (!audioState.isMuted) {
+            audioState.playStinger(stinger as any);
+        }
     } catch (e) {
-      console.warn('Hit sound failed:', e);
+        console.warn(`${stinger} sound failed:`, e);
     }
   }
 
@@ -692,7 +732,7 @@ export class PongGame extends BaseGame {
   private spawnPowerups() {
     // Powerup spawning
     this.powerupSpawnTimer++;
-    if (this.powerupSpawnTimer > 600) { // Every 10 seconds
+    if (this.powerupSpawnTimer > PONG_CONSTANTS.POWERUP_SPAWN_TIME) { // Every 10 seconds
       this.powerupSpawnTimer = 0;
       const drop = Math.random();
       if (drop < 0.15) { // 15% chance
@@ -725,107 +765,10 @@ export class PongGame extends BaseGame {
     }
   }
 
-  private updatePowerups() {
-    // Update powerup duration
-    if (this.powerupDuration > 0) {
-      this.powerupDuration--;
-      if (this.powerupDuration <= 0) {
-        this.ball.type = 'normal';
-        this.activePowerupType = 'normal';
-      }
-    }
-
-    // Check powerup collection by player paddle
-    for (let i = this.powerups.length - 1; i >= 0; i--) {
-      const powerup = this.powerups[i];
-      powerup.timer++;
-      
-      // Remove powerups after 10 seconds
-      if (powerup.timer > 600) {
-        this.powerups.splice(i, 1);
-        continue;
-      }
-      
-      // Check collision with player paddle OR ball
-      const paddleCollision = !powerup.collected &&
-          powerup.x < this.player1.x + this.player1.width &&
-          powerup.x + powerup.width > this.player1.x &&
-          powerup.y < this.player1.y + this.player1.height &&
-          powerup.y + powerup.height > this.player1.y;
-          
-      const ballCollision = !powerup.collected &&
-          powerup.x < this.ball.x + this.ball.radius &&
-          powerup.x + powerup.width > this.ball.x - this.ball.radius &&
-          powerup.y < this.ball.y + this.ball.radius &&
-          powerup.y + powerup.height > this.ball.y - this.ball.radius;
-      
-      if (paddleCollision || ballCollision) {
-        powerup.collected = true;
-        this.activatePowerup(powerup.type);
-        
-        // Enhanced haptics and visual feedback for powerup collection
-        if (this.settings?.hapticsEnabled) this.haptics?.powerup();
-        if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y, undefined, 'hit');
-        
-        try {
-          const audioState = useAudio.getState();
-          if (!audioState.isMuted) {
-            audioState.playStinger('arcade_powerup');
-          }
-        } catch (e) {
-          console.warn('Powerup sound failed:', e);
-        }
-      }
-    }
-
-    // Check powerup collisions
-    this.explosionPowerups.forEach((powerup, index) => {
-      powerup.timer--;
-      
-      // Check if ball hits powerup
-      const dx = this.ball.x - powerup.x;
-      const dy = this.ball.y - powerup.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance < this.ball.radius + 15) {
-        // Activate powerup
-        if (powerup.type === 'chain') {
-          this.activateChainReaction();
-        } else if (powerup.type === 'shockwave') {
-          this.activateShockwave();
-        }
-        
-        // Remove powerup
-        this.explosionPowerups.splice(index, 1);
-        
-        // Haptic feedback
-        const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
-        if (hapticsOn && 'vibrate' in navigator) {
-          navigator.vibrate?.([50, 100, 50]);
-        }
-        
-        // Powerup collection sound
-        try {
-          const audioState = useAudio.getState();
-          if (!audioState.isMuted) {
-            audioState.playStinger('arcade_powerup');
-          }
-        } catch (e) {
-          console.warn('Powerup sound failed:', e);
-        }
-      }
-      
-      // Remove expired powerups
-      if (powerup.timer <= 0) {
-        this.explosionPowerups.splice(index, 1);
-      }
-    });
-  }
-
   private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky') {
     this.ball.type = type;
     this.activePowerupType = type;
-    this.powerupDuration = 300; // 5 seconds
+    this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // 5 seconds
     
     // Apply immediate effects
     switch (type) {
@@ -875,14 +818,7 @@ export class PongGame extends BaseGame {
     this.shakeTimer = 25;
     
     // Audio
-    try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
-        audioState.playStinger('defender_explosion');
-      }
-    } catch (e) {
-      console.warn('Chain reaction sound failed:', e);
-    }
+    this.playStinger('defender_explosion');
   }
 
   private activateShockwave() {
@@ -919,14 +855,7 @@ export class PongGame extends BaseGame {
     this.shakeTimer = 30;
     
     // Audio
-    try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
-        audioState.playStinger('starwars_explosion');
-      }
-    } catch (e) {
-      console.warn('Shockwave sound failed:', e);
-    }
+    this.playStinger('starwars_explosion');
   }
 
   private drawPowerups() {

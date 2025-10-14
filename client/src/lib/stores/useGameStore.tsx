@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+const MAX_STAGE = 8;
+
 export type GameScreen = 'menu' | 'stage-select' | 'game' | 'transition';
 export type GameState = 'playing' | 'paused' | 'ended' | 'stage-complete';
 
@@ -31,6 +33,7 @@ export const useGameStore = create<GameStore>()(
       
       setCurrentScreen: (screen) => set({ currentScreen: screen }),
       
+      // Sets the current stage and resets game state to 'playing'
       setCurrentStage: (stage) => set({ 
         currentStage: stage,
         gameState: 'playing'
@@ -43,7 +46,6 @@ export const useGameStore = create<GameStore>()(
       })),
       
       goToNextStage: () => {
-        const MAX_STAGE = 8;
         const { currentStage } = get();
         if (currentStage < MAX_STAGE) {
           set({

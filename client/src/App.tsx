@@ -6,6 +6,7 @@ import { StageSelect } from './components/StageSelect';
 import { GameCanvas } from './components/GameCanvas';
 import { GameUI } from './components/GameUI';
 import { ScreenTransition } from './components/ScreenTransition';
+import { UpdatePrompt } from './components/UpdatePrompt';
 import { useGameStore } from './lib/stores/useGameStore';
 import { useAudio } from './lib/stores/useAudio';
 import { useSettingsStore } from './lib/stores/useSettingsStore';
@@ -48,9 +49,20 @@ export default function App() {
     loadAudio();
   }, [setBackgroundMusic, setHitSound, setSuccessSound]);
 
-  // Intro VO sequencer when landing on menu initially
+  // Combined effect for screen changes
   useEffect(() => {
-    const run = async () => {
+    // Stinger for state transitions
+    if (currentScreen === 'game') {
+      useAudio.getState().playStinger('start');
+    }
+
+    // Hide demo when leaving menu
+    if (currentScreen !== 'menu') {
+      setShowDemo(false);
+    }
+
+    // Intro VO sequencer when landing on menu initially
+    const runIntroVO = async () => {
       if (currentScreen === 'menu') {
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         const deviceLine = isMobile ? 'MOBILE THRUSTERS CALIBRATED.' : 'DESKTOP LINK ESTABLISHED.';
@@ -94,14 +106,8 @@ export default function App() {
         } catch {}
       }
     };
-    run();
-  }, [currentScreen]);
+    runIntroVO();
 
-  // Stinger for state transitions
-  useEffect(() => {
-    if (currentScreen === 'game') {
-      useAudio.getState().playStinger('start');
-    }
   }, [currentScreen]);
 
   // Screen transition logic
@@ -211,12 +217,6 @@ export default function App() {
     }
   }, [currentScreen, currentStage]);
 
-  useEffect(() => {
-    if (currentScreen !== 'menu') {
-      setShowDemo(false);
-    }
-  }, [currentScreen]);
-
   if (!assetsLoaded) {
     return (
       <div className="game-container">
@@ -257,46 +257,5 @@ export default function App() {
         )}
       </div>
     </QueryClientProvider>
-  );
-}
-
-function UpdatePrompt() {
-  const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.getRegistration().then((reg) => {
-      if (!reg) return;
-      reg.onupdatefound = () => {
-        const sw = reg.installing;
-        if (!sw) return;
-        sw.onstatechange = () => {
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-            setWaiting(sw);
-            setShow(true);
-          }
-        };
-      };
-    });
-  }, []);
-
-  if (!show || !waiting) return null;
-  return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-black/80 border border-white/20 text-white px-3 py-2 rounded shadow">
-      <span className="mr-3">An update is available.</span>
-      <button
-        className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded"
-        onClick={() => {
-          waiting.postMessage({ type: 'SKIP_WAITING' });
-          waiting.addEventListener('statechange', () => {
-            if (waiting.state === 'activated') {
-              window.location.reload();
-            }
-          });
-        }}
-      >
-        Update now
-      </button>
-    </div>
   );
 }
