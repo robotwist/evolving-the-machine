@@ -14,6 +14,16 @@ interface Dancer {
   leapHeight: number;
 }
 
+interface RhythmTarget {
+  x: number;
+  y: number;
+  time: number; // in frames
+  duration: number;
+  hit: boolean;
+  missed: boolean;
+  active: boolean;
+}
+
 export class DanceInterlude extends BaseGame {
   private dancer!: Dancer;
   private danceTimer = 0;
@@ -23,6 +33,11 @@ export class DanceInterlude extends BaseGame {
   private curtains = 0;
   private applauseTimer = 0;
   private musicStarted = false;
+  private score = 0;
+  private combo = 0;
+  private playerPerformance = 1.0; // 0.0 (bad) to 1.0 (perfect)
+  private rhythmTargets: RhythmTarget[] = [];
+  private beatMap: Array<{time: number, x: number, y: number}> = [];
 
   // Dance sequence breakdown
   private readonly sequences = [
@@ -57,6 +72,23 @@ export class DanceInterlude extends BaseGame {
     // Initialize stage lights
     this.initializeStageLights();
     this.curtains = this.height; // Start with curtains down
+    this.createBeatMap();
+  }
+
+  private createBeatMap() {
+    // Correlate beats with dance sequences
+    this.sequences.forEach(seq => {
+        if (seq.name === 'CURTAIN_RISE' || seq.name === 'CURTAIN_CALL') return;
+
+        const beats = seq.name.includes('TAP_DANCE') ? 16 : 8;
+        for (let i = 0; i < beats; i++) {
+            this.beatMap.push({
+                time: seq.start + (i * (seq.duration / beats)),
+                x: this.width * (0.2 + Math.random() * 0.6),
+                y: this.height * (0.3 + Math.random() * 0.4)
+            });
+        }
+    });
   }
 
   private initializeStageLights() {
@@ -83,12 +115,19 @@ export class DanceInterlude extends BaseGame {
     // Update dancer movements
     this.updateDancerMovements();
     
+    // Update rhythm targets
+    this.updateRhythmTargets();
+
     // Update stage effects
     this.updateStageEffects();
 
     // End dance after duration
     if (this.danceTimer >= this.DANCE_DURATION) {
-      this.onStageComplete?.();
+      if (this.score > 5000) { // Require a minimum score to pass
+          this.onStageComplete?.();
+      } else {
+          this.onGameOver?.();
+      }
     }
   }
 
@@ -101,14 +140,17 @@ export class DanceInterlude extends BaseGame {
     const currentSequence = this.getCurrentSequence();
     const sequenceProgress = this.getSequenceProgress();
 
+    // Performance affects animation quality
+    const performanceFactor = 0.5 + this.playerPerformance * 0.5;
+
     switch (currentSequence?.name) {
       case 'CURTAIN_RISE':
         this.curtains = this.height * (1 - sequenceProgress);
         break;
       
       case 'OPENING_BOW':
-        this.dancer.angle = Math.sin(sequenceProgress * Math.PI) * 0.5;
-        this.dancer.hatTilt = sequenceProgress * 0.3;
+        this.dancer.angle = Math.sin(sequenceProgress * Math.PI) * 0.5 * performanceFactor;
+        this.dancer.hatTilt = sequenceProgress * 0.3 * performanceFactor;
         break;
       
       case 'TOP_HAT_TRICKS':
@@ -243,22 +285,53 @@ export class DanceInterlude extends BaseGame {
 
   private updateFinalBow(progress: number) {
     // Deep theatrical bow
-    this.dancer.angle = Math.sin(progress * Math.PI) * 0.8;
-    this.dancer.hatTilt = progress * 0.5;
-    this.dancer.caneAngle = progress * 0.3;
+    const performanceFactor = 0.5 + this.playerPerformance * 0.5;
+    this.dancer.angle = Math.sin(progress * Math.PI) * 0.8 * performanceFactor;
+    this.dancer.hatTilt = progress * 0.5 * performanceFactor;
+    this.dancer.caneAngle = progress * 0.3 * performanceFactor;
     
     // Arms sweeping bow gesture
-    this.dancer.armPhase = progress * 0.4;
+    this.dancer.armPhase = progress * 0.4 * performanceFactor;
   }
 
   private updateDancerMovements() {
     // Update leap physics
     if (this.dancer.isLeaping) {
-      this.dancer.leapHeight = Math.sin(this.dancer.stepPhase) * 20;
+      this.dancer.leapHeight = Math.sin(this.dancer.stepPhase) * 20 * this.playerPerformance;
     }
     
     // Keep dancer on stage
     this.dancer.x = Math.max(100, Math.min(this.width - 100, this.dancer.x));
+  }
+
+  private updateRhythmTargets() {
+    // Spawn targets from beatmap
+    const upcomingBeats = this.beatMap.filter(beat => beat.time >= this.danceTimer && beat.time < this.danceTimer + 1);
+    upcomingBeats.forEach(beat => {
+        this.rhythmTargets.push({
+            x: beat.x,
+            y: beat.y,
+            time: this.danceTimer,
+            duration: 120, // 2 seconds to hit
+            hit: false,
+            missed: false,
+            active: true
+        });
+    });
+
+    // Update existing targets
+    for (let i = this.rhythmTargets.length - 1; i >= 0; i--) {
+        const target = this.rhythmTargets[i];
+        if (!target.active) continue;
+
+        const age = this.danceTimer - target.time;
+        if (age > target.duration) {
+            target.missed = true;
+            target.active = false;
+            this.combo = 0;
+            this.playerPerformance = Math.max(0, this.playerPerformance - 0.1);
+        }
+    }
   }
 
   private updateStageEffects() {
@@ -285,6 +358,9 @@ export class DanceInterlude extends BaseGame {
     // Draw the dancing AI humanoid
     this.drawDancer();
     
+    // Draw rhythm targets
+    this.drawRhythmTargets();
+
     // Draw curtains
     this.drawCurtains();
     
@@ -462,6 +538,27 @@ export class DanceInterlude extends BaseGame {
     }
   }
 
+  private drawRhythmTargets() {
+    this.rhythmTargets.forEach(target => {
+        if (!target.active) return;
+
+        const age = this.danceTimer - target.time;
+        const progress = age / target.duration;
+        const radius = 20 + (1 - progress) * 30; // Shrinks as time runs out
+        const alpha = 1 - progress;
+
+        this.ctx.save();
+        this.ctx.strokeStyle = `rgba(255, 215, 0, ${alpha})`;
+        this.ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.3})`;
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(target.x, target.y, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        this.ctx.restore();
+    });
+  }
+
   private drawDanceInfo() {
     const currentSeq = this.getCurrentSequence();
     const timeLeft = Math.max(0, (this.DANCE_DURATION - this.danceTimer) / 60);
@@ -516,5 +613,32 @@ export class DanceInterlude extends BaseGame {
     if (event.code === 'Space') {
       this.danceTimer = this.DANCE_DURATION;
     }
+  }
+
+  handlePointerDown(x: number, y: number) {
+    for (let i = this.rhythmTargets.length - 1; i >= 0; i--) {
+        const target = this.rhythmTargets[i];
+        if (target.active) {
+            const dx = x - target.x;
+            const dy = y - target.y;
+            const age = this.danceTimer - target.time;
+            const progress = age / target.duration;
+            const radius = 20 + (1 - progress) * 30;
+
+            if (Math.sqrt(dx * dx + dy * dy) < radius) {
+                target.hit = true;
+                target.active = false;
+                this.combo++;
+                this.score += 100 * this.combo;
+                this.playerPerformance = Math.min(1, this.playerPerformance + 0.05);
+                // Play a success sound
+                return;
+            }
+        }
+    }
+
+    // Missed click
+    this.combo = 0;
+    this.playerPerformance = Math.max(0, this.playerPerformance - 0.02);
   }
 }

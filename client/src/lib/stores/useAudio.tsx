@@ -23,7 +23,7 @@ interface AudioState {
   playSuccess: () => void;
   playUIClick: () => void;
   playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number; distortion?: boolean; haunting?: boolean }) => Promise<void>;
-  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click' | 'boss_laser_charge' | 'boss_laser_fire' | 'boss_summon_minions') => void;
+  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click' | 'boss_laser_charge' | 'boss_laser_fire' | 'boss_summon_minions' | 'boss_enrage') => void;
   playSizzle: () => void;
 }
 
@@ -193,7 +193,7 @@ export const useAudio = create<AudioState>((set, get) => ({
     }
   }
   ,
-  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click' | 'boss_laser_charge' | 'boss_laser_fire' | 'boss_summon_minions') => {
+  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click' | 'boss_laser_charge' | 'boss_laser_fire' | 'boss_summon_minions' | 'boss_enrage') => {
     const { isMuted } = get();
     if (isMuted) return;
     
@@ -334,6 +334,15 @@ export const useAudio = create<AudioState>((set, get) => ({
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
             filter.type = 'bandpass';
             filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+            break;
+        case 'boss_enrage':
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(80, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.5);
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(500, audioCtx.currentTime);
             break;
       }
       

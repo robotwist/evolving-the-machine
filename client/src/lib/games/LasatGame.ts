@@ -28,6 +28,9 @@ interface Enemy extends Entity {
   shootTimer: number;
   specialAttackTimer: number;
   behavior: 'aggressive' | 'defensive' | 'berserker';
+  rage: number;
+  enraged: boolean;
+  enrageTimer: number;
 }
 
 interface Projectile extends Entity {
@@ -60,6 +63,7 @@ interface TrenchElement {
   height: number;
   type: 'wall' | 'tower' | 'exhaust_port';
   targetable: boolean;
+  shootCooldown?: number;
 }
 
 export class LasatGame extends BaseGame {
@@ -143,7 +147,8 @@ export class LasatGame extends BaseGame {
         width: 30,
         height: 50,
         type: 'tower',
-        targetable: true
+        targetable: true,
+        shootCooldown: 60 + Math.random() * 60
       });
     }
     
@@ -240,7 +245,10 @@ export class LasatGame extends BaseGame {
       type,
       shootTimer: Math.random() * 40, // More aggressive shooting
       specialAttackTimer: 80 + Math.random() * 120,
-      behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as any // More aggressive
+      behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as any, // More aggressive
+      rage: 0,
+      enraged: false,
+      enrageTimer: 0
     };
 
     this.enemies.push(enemy);
@@ -268,6 +276,11 @@ export class LasatGame extends BaseGame {
 
     // Update power-ups
     this.updatePowerUps();
+
+    // Update trench elements
+    if (this.starWarsTrenchMode) {
+        this.updateTrenchElements();
+    }
 
     // Check collisions
     this.checkCollisions();
@@ -334,6 +347,7 @@ export class LasatGame extends BaseGame {
       this.activateShield();
       this.keys.delete('KeyZ');
     }
+    this.playStinger('boss_enrage');
   }
 
   private updatePlayer() {
@@ -344,6 +358,36 @@ export class LasatGame extends BaseGame {
     // Keep player in bounds
     this.player.position.x = Math.max(this.player.size, Math.min(this.width - this.player.size, this.player.position.x));
     this.player.position.y = Math.max(this.player.size, Math.min(this.height - this.player.size, this.player.position.y));
+  }
+
+  private updateTrenchElements() {
+    this.trenchElements.forEach(element => {
+        if (element.type === 'tower') {
+            element.shootCooldown = (element.shootCooldown ?? 0) - 1;
+            if (element.shootCooldown <= 0) {
+                const dx = this.player.position.x - element.x;
+                const dy = this.player.position.y - element.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 0 && distance < 400) { // Only shoot if player is in range
+                    const bullet: Projectile = {
+                        position: { x: element.x + element.width / 2, y: element.y },
+                        velocity: { x: (dx / distance) * 5, y: (dy / distance) * 5 },
+                        size: 4,
+                        health: 1,
+                        maxHealth: 1,
+                        alive: true,
+                        owner: 'enemy',
+                        type: 'turret_shot',
+                        damage: 10,
+                        lifetime: 120
+                    };
+                    this.enemyProjectiles.push(bullet);
+                    element.shootCooldown = 120 + Math.random() * 60;
+                }
+            }
+        }
+    });
   }
 
   private updateEnemy(enemy: Enemy) {
@@ -372,18 +416,25 @@ export class LasatGame extends BaseGame {
       enemy.velocity.y = Math.abs(enemy.velocity.y);
     }
 
+    if (enemy.enraged) {
+        enemy.enrageTimer--;
+        if (enemy.enrageTimer <= 0) {
+            enemy.enraged = false;
+        }
+    }
+
     // Shooting
     enemy.shootTimer--;
     if (enemy.shootTimer <= 0) {
       this.enemyShoot(enemy);
-      enemy.shootTimer = 30 + Math.random() * 60;
+      enemy.shootTimer = 30 + Math.random() * (enemy.enraged ? 20 : 60);
     }
 
     // Special attacks
     enemy.specialAttackTimer--;
     if (enemy.specialAttackTimer <= 0) {
       this.enemySpecialAttack(enemy);
-      enemy.specialAttackTimer = 180 + Math.random() * 300;
+      enemy.specialAttackTimer = 180 + Math.random() * (enemy.enraged ? 100 : 300);
     }
   }
 
@@ -395,9 +446,9 @@ export class LasatGame extends BaseGame {
     
     if (distance > 0) {
       // Aggressive AI behavior - faster pursuit when player is weak
-      const aggressionMultiplier = this.player.health < 50 ? 2.5 : 1.8;
+      const aggressionMultiplier = (this.player.health < 50 ? 2.5 : 1.8) * (enemy.enraged ? 1.5 : 1);
       enemy.velocity.x = (dx / distance) * aggressionMultiplier;
-      enemy.velocity.y = (dy / distance) * 1.5;
+      enemy.velocity.y = (dy / distance) * 1.5 * (enemy.enraged ? 1.5 : 1);
     }
   }
 
@@ -582,6 +633,13 @@ export class LasatGame extends BaseGame {
       this.enemies.forEach(enemy => {
         if (enemy.alive && this.isColliding(proj, enemy)) {
           enemy.health -= proj.damage;
+          enemy.rage += proj.damage;
+          if (enemy.rage >= 100 && !enemy.enraged) {
+              enemy.enraged = true;
+              enemy.enrageTimer = 300; // 5 seconds
+              enemy.rage = 0;
+              this.playStinger('boss_enrage');
+          }
           proj.alive = false;
           
           if (enemy.health <= 0) {
@@ -623,6 +681,17 @@ export class LasatGame extends BaseGame {
     const dy = obj1.position.y - obj2.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (obj1.size + obj2.size) / 2;
+  }
+
+  private playStinger(stinger: any) {
+    try {
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
+            audioState.playStinger(stinger);
+        }
+    } catch (e) {
+        console.warn('Stinger sound failed:', e);
+    }
   }
 
   private collectPowerUp(powerUp: PowerUp) {
@@ -863,6 +932,12 @@ export class LasatGame extends BaseGame {
     this.ctx.translate(enemy.position.x, enemy.position.y);
 
     // All enemies are now AI machines - distinct visual markers
+    if (enemy.enraged) {
+        const pulse = Math.sin(Date.now() * 0.02) * 0.5 + 0.5;
+        this.ctx.shadowColor = `rgba(255, 0, 0, ${pulse})`;
+        this.ctx.shadowBlur = 20;
+    }
+
     switch (enemy.type) {
       case 'giant':
         // Mechanical giant with glowing core
