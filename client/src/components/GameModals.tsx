@@ -5,6 +5,7 @@ import { useAudio } from '../lib/stores/useAudio';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
+import { SettingsForm } from './SettingsForm';
 
 // A generic modal wrapper
 function Modal({ children, onKeyDown, modalRef, className }: { children: React.ReactNode, onKeyDown: (e: React.KeyboardEvent) => void, modalRef: React.RefObject<HTMLDivElement>, className?: string }) {
@@ -20,28 +21,6 @@ function Modal({ children, onKeyDown, modalRef, className }: { children: React.R
 }
 
 function PauseMenu({ handleMainMenu, handleRestart, handlePause }: { handleMainMenu: () => void, handleRestart: () => void, handlePause: () => void }) {
-  const {
-    preset,
-    voiceStyle,
-    graphicsQuality,
-    fpsCap,
-    dprScaling,
-    reduceMotion,
-    hapticsEnabled,
-    particles,
-    screenShake,
-    setPreset,
-    setVoiceStyle,
-    setGraphicsQuality,
-    setFpsCap,
-    setDprScaling,
-    setReduceMotion,
-    setHapticsEnabled,
-    setParticles,
-    setScreenShake,
-    presetOptions
-  } = useSettingsStore();
-
   return (
     <>
       <h2 className="text-2xl font-bold text-white mb-4">Game Paused</h2>
@@ -49,19 +28,7 @@ function PauseMenu({ handleMainMenu, handleRestart, handlePause }: { handleMainM
         <Button onClick={handlePause} className="bg-blue-600 hover:bg-blue-700">Resume</Button>
         <Button onClick={handleRestart} variant="outline" className="border-white/20 text-white">Restart</Button>
         <Button onClick={handleMainMenu} variant="outline" className="border-white/20 text-white">Main Menu</Button>
-        <div className="text-left mt-4 p-3 bg-white/5 rounded border border-white/10">
-          <div className="text-white font-semibold mb-2">Settings</div>
-          {/* Settings form will be extracted later */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-white/90">
-            <label className="flex items-center justify-between gap-2">
-              <span>Preset</span>
-              <select value={preset} onChange={(e) => setPreset(e.target.value as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
-                {presetOptions.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </label>
-            {/* Add other settings controls here */}
-          </div>
-        </div>
+        <SettingsForm />
       </div>
     </>
   );

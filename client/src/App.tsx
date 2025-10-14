@@ -16,7 +16,7 @@ const queryClient = new QueryClient();
 
 export default function App() {
   const { currentScreen, currentStage } = useGameStore();
-  const { setBackgroundMusic, setHitSound, setSuccessSound } = useAudio();
+  const { setBackgroundMusic, setHitSound, setSuccessSound, setUIClickSound } = useAudio();
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [showDemo, setShowDemo] = useState(true);
   const [showTransition, setShowTransition] = useState(false);
@@ -31,6 +31,7 @@ export default function App() {
         const bgMusic = new Audio('/sounds/background.mp3');
         const hitSound = new Audio('/sounds/hit.mp3');
         const successSound = new Audio('/sounds/success.mp3');
+        const uiClickSound = new Audio('/sounds/ui-click.mp3');
         
         bgMusic.loop = true;
         bgMusic.volume = 0.3;
@@ -38,6 +39,7 @@ export default function App() {
         setBackgroundMusic(bgMusic);
         setHitSound(hitSound);
         setSuccessSound(successSound);
+        setUIClickSound(uiClickSound);
         
         setAssetsLoaded(true);
       } catch (error) {
@@ -47,7 +49,7 @@ export default function App() {
     };
 
     loadAudio();
-  }, [setBackgroundMusic, setHitSound, setSuccessSound]);
+  }, [setBackgroundMusic, setHitSound, setSuccessSound, setUIClickSound]);
 
   // Combined effect for screen changes
   useEffect(() => {

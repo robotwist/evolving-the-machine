@@ -4,6 +4,7 @@ interface AudioState {
   backgroundMusic: HTMLAudioElement | null;
   hitSound: HTMLAudioElement | null;
   successSound: HTMLAudioElement | null;
+  uiClickSound: HTMLAudioElement | null;
   isMuted: boolean;
   // VO helpers
   voGain?: GainNode | null;
@@ -14,13 +15,15 @@ interface AudioState {
   setBackgroundMusic: (music: HTMLAudioElement) => void;
   setHitSound: (sound: HTMLAudioElement) => void;
   setSuccessSound: (sound: HTMLAudioElement) => void;
+  setUIClickSound: (sound: HTMLAudioElement) => void;
   
   // Control functions
   toggleMute: () => void;
   playHit: () => void;
   playSuccess: () => void;
+  playUIClick: () => void;
   playVO: (text: string, opts?: { rate?: number; pitch?: number; volume?: number; distortion?: boolean; haunting?: boolean }) => Promise<void>;
-  playStinger: (kind: 'start' | 'fail' | 'clear') => void;
+  playStinger: (kind: 'start' | 'fail' | 'clear' | 'ui_click') => void;
   playSizzle: () => void;
 }
 
@@ -28,11 +31,13 @@ export const useAudio = create<AudioState>((set, get) => ({
   backgroundMusic: null,
   hitSound: null,
   successSound: null,
+  uiClickSound: null,
   isMuted: true, // Start muted by default
   
   setBackgroundMusic: (music) => set({ backgroundMusic: music }),
   setHitSound: (sound) => set({ hitSound: sound }),
   setSuccessSound: (sound) => set({ successSound: sound }),
+  setUIClickSound: (sound) => set({ uiClickSound: sound }),
   
   toggleMute: () => {
     const { isMuted } = get();
@@ -77,8 +82,19 @@ export const useAudio = create<AudioState>((set, get) => ({
         console.log("Success sound play prevented:", error);
       });
     }
-  }
-  ,
+  },
+
+  playUIClick: () => {
+    const { uiClickSound, isMuted } = get();
+    if (uiClickSound && !isMuted) {
+      const soundClone = uiClickSound.cloneNode() as HTMLAudioElement;
+      soundClone.volume = 0.5;
+      soundClone.play().catch(error => {
+        console.log("UI click sound play prevented:", error);
+      });
+    }
+  },
+  
   // Enhanced VO with digital distortion and Sinistar-like effects
   playVO: async (text: string, opts?: { rate?: number; pitch?: number; volume?: number; distortion?: boolean; haunting?: boolean }) => {
     const { isMuted, backgroundMusic } = get();
@@ -177,7 +193,7 @@ export const useAudio = create<AudioState>((set, get) => ({
     }
   }
   ,
-  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup') => {
+  playStinger: (type: 'start' | 'clear' | 'fail' | 'hit' | 'pop' | 'defender_shoot' | 'defender_explosion' | 'starwars_laser' | 'starwars_explosion' | 'arcade_hit' | 'arcade_powerup' | 'ui_click') => {
     const { isMuted } = get();
     if (isMuted) return;
     
@@ -217,6 +233,12 @@ export const useAudio = create<AudioState>((set, get) => ({
           gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
           break;
+        case 'ui_click':
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            break;
         case 'hit':
           // Defender-style hit sound
           oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
