@@ -28,6 +28,7 @@ interface Paddle {
   maxDamage: number; // New: max damage before destruction
   pulsateIntensity: number; // New: for AI paddle pulsing
   lastHitTime: number; // New: for damage timing
+  shielded?: boolean;
 }
 
 interface Ball {
@@ -48,7 +49,7 @@ interface Powerup {
   y: number;
   width: number;
   height: number;
-  type: 'speed' | 'fire' | 'missile' | 'wacky';
+  type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield';
   timer: number;
   collected: boolean;
 }
@@ -66,6 +67,7 @@ export class PongGame extends BaseGame {
   private powerupSpawnTimer = 0;
   private activePowerupType = 'normal';
   private powerupDuration = 0;
+  private shieldTimer = 0;
   private shakeTimer = 0;
   // New explosion-based powerups
   private chainReactionTimer = 0;
@@ -224,6 +226,13 @@ export class PongGame extends BaseGame {
     if (this.keys.has('KeyD')) {
       this.player1.x = Math.min(this.width / 3, this.player1.x + this.player1.speed);
     }
+
+    if (this.shieldTimer > 0) {
+        this.shieldTimer--;
+        if (this.shieldTimer <= 0) {
+            this.player1.shielded = false;
+        }
+    }
   }
 
   private updateAI(deltaTime: number) {
@@ -341,15 +350,21 @@ export class PongGame extends BaseGame {
       if (this.settings?.screenShake) this.shakeTimer = 8;
       
       if (collideP1) {
-        const damage = 15;
-        this.player1.damage += damage;
+        if (this.player1.shielded) {
+            this.player1.shielded = false;
+            this.shieldTimer = 0;
+            this.playStinger('pop');
+        } else {
+            const damage = 15;
+            this.player1.damage += damage;
+            if (useSettingsStore.getState().damageNumbers) {
+                this.visualFeedback.addDamageNumber(this.player1.x + 20, this.player1.y, damage);
+            }
+        }
         this.player1.lastHitTime = Date.now();
         this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.1);
         this.player1Combo++;
         this.visualFeedback.updateCombo(this.player1.x + 20, this.player1.y, this.player1Combo);
-        if (useSettingsStore.getState().damageNumbers) {
-            this.visualFeedback.addDamageNumber(this.player1.x + 20, this.player1.y, damage);
-        }
       } else {
           this.player1Combo = 0;
       }
@@ -607,6 +622,14 @@ export class PongGame extends BaseGame {
       const damageColor = damagePercent > 0.7 ? '#8B0000' : damagePercent > 0.4 ? '#CD5C5C' : '#F5F5DC';
       const damageGlow = damagePercent > 0.5 ? `rgba(255, 0, 0, ${damagePercent * 0.3})` : 'transparent';
       
+      if (paddle.shielded) {
+        this.ctx.strokeStyle = '#00FFFF';
+        this.ctx.lineWidth = 3;
+        this.ctx.shadowColor = '#00FFFF';
+        this.ctx.shadowBlur = 15;
+        this.ctx.strokeRect(paddle.x - 5, paddle.y - 5, paddle.width + 10, paddle.height + 10);
+      }
+
       // Damage glow effect
       if (damageGlow !== 'transparent') {
         this.ctx.shadowColor = damageGlow;
@@ -767,7 +790,7 @@ export class PongGame extends BaseGame {
     
     // Spawn powerups very frequently to speed up the game dramatically
     if (this.powerupSpawnTimer > 240 && this.powerups.length < 2) { // Every ~4 seconds, up to 2 at once
-      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky')[] = ['speed', 'fire', 'missile', 'wacky'];
+      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield')[] = ['speed', 'fire', 'missile', 'wacky', 'shield'];
       const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
       
       this.powerups.push({
@@ -784,7 +807,7 @@ export class PongGame extends BaseGame {
     }
   }
 
-  private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky') {
+  private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield') {
     this.ball.type = type;
     this.activePowerupType = type;
     this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // 5 seconds
@@ -806,6 +829,10 @@ export class PongGame extends BaseGame {
       case 'wacky':
         // Unpredictable movement handled in update
         this.ball.angleSpeed = 0.35;
+        break;
+      case 'shield':
+        this.player1.shielded = true;
+        this.shieldTimer = 600; // 10 seconds
         break;
     }
   }

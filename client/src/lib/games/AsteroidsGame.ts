@@ -17,6 +17,7 @@ interface GameObject {
 interface Player extends GameObject {
   thrust: boolean;
   rotationSpeed: number;
+  shielded?: boolean;
 }
 
 interface Asteroid extends GameObject {
@@ -28,10 +29,16 @@ interface Bullet extends GameObject {
   lifetime: number;
 }
 
+interface Powerup extends GameObject {
+    type: 'shield';
+    lifetime: number;
+}
+
 export class AsteroidsGame extends BaseGame {
   private player!: Player;
   private asteroids: Asteroid[] = [];
   private bullets: Bullet[] = [];
+  private powerups: Powerup[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
   private lives = 3;
@@ -74,7 +81,8 @@ export class AsteroidsGame extends BaseGame {
       rotation: 0,
       size: 15,
       thrust: false,
-      rotationSpeed: 0.1
+      rotationSpeed: 0.1,
+      shielded: false,
     };
 
     this.spawnAsteroids();
@@ -251,6 +259,8 @@ export class AsteroidsGame extends BaseGame {
       this.aiNarrativeTimer = 0;
     }
 
+    this.updatePowerups();
+
     // Human player controls (WASD only) + virtual controls
     if (this.keys.has('KeyA')) {
       this.player.rotation -= this.player.rotationSpeed;
@@ -349,6 +359,43 @@ export class AsteroidsGame extends BaseGame {
     this.bullets.push(bullet);
   }
 
+  private updatePowerups() {
+    // Spawn shield powerup occasionally
+    if (Math.random() < 0.001 && this.powerups.length === 0) {
+        this.powerups.push({
+            position: this.getRandomEdgePosition(),
+            velocity: { x: (Math.random() - 0.5) * 1, y: (Math.random() - 0.5) * 1 },
+            rotation: 0,
+            size: 20,
+            type: 'shield',
+            lifetime: 600, // 10 seconds
+        });
+    }
+
+    // Update powerups
+    for (let i = this.powerups.length - 1; i >= 0; i--) {
+        const powerup = this.powerups[i];
+        this.updateGameObject(powerup);
+        powerup.lifetime--;
+        if (powerup.lifetime <= 0) {
+            this.powerups.splice(i, 1);
+            continue;
+        }
+
+        // Check for player collision
+        if (this.isColliding(this.player, powerup)) {
+            this.activateShield();
+            this.powerups.splice(i, 1);
+        }
+    }
+  }
+
+  private activateShield() {
+      this.player.shielded = true;
+      // Shield lasts for one hit, no timer needed
+      this.playStinger('arcade_powerup');
+  }
+
   private checkCollisions() {
     // Bullet-asteroid collisions
     for (let i = this.bullets.length - 1; i >= 0; i--) {
@@ -378,13 +425,23 @@ export class AsteroidsGame extends BaseGame {
     // Player-asteroid collisions
     this.asteroids.forEach(asteroid => {
       if (this.isColliding(this.player, asteroid)) {
-        this.lives--;
-        if (this.lives <= 0) {
-          this.onGameOver?.();
+        if (this.player.shielded) {
+            this.player.shielded = false;
+            // find asteroid and destroy it
+            const index = this.asteroids.indexOf(asteroid);
+            if (index > -1) {
+                this.asteroids.splice(index, 1);
+            }
+            this.playStinger('pop');
         } else {
-          // Respawn player
-          this.player.position = { x: this.width / 2, y: this.height / 2 };
-          this.player.velocity = { x: 0, y: 0 };
+            this.lives--;
+            if (this.lives <= 0) {
+              this.onGameOver?.();
+            } else {
+              // Respawn player
+              this.player.position = { x: this.width / 2, y: this.height / 2 };
+              this.player.velocity = { x: 0, y: 0 };
+            }
         }
       }
     });
@@ -412,6 +469,9 @@ export class AsteroidsGame extends BaseGame {
     // Draw bullets (energy projectiles)
     this.bullets.forEach(bullet => this.drawBullet(bullet));
     
+    // Draw powerups
+    this.powerups.forEach(powerup => this.drawPowerup(powerup));
+
     // Draw AI defense bullets (different color to show AI assistance)
     this.aiDefenseBullets.forEach(bullet => {
       this.ctx.save();
@@ -507,6 +567,14 @@ export class AsteroidsGame extends BaseGame {
     this.ctx.translate(this.player.position.x, this.player.position.y);
     this.ctx.rotate(this.player.rotation);
 
+    if (this.player.shielded) {
+        this.ctx.strokeStyle = '#00FFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, this.player.size + 10, 0, Math.PI * 2);
+        this.ctx.stroke();
+    }
+
     // Draw Mayan-inspired spacecraft
     this.ctx.strokeStyle = '#FFD700';
     this.ctx.fillStyle = '#8B4513';
@@ -579,6 +647,18 @@ export class AsteroidsGame extends BaseGame {
     this.ctx.restore();
   }
 
+  private drawPowerup(powerup: Powerup) {
+    this.ctx.save();
+    this.ctx.strokeStyle = '#00FFFF';
+    this.ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(powerup.position.x, powerup.position.y, powerup.size, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
   private findNearestAsteroid(): Asteroid | null {
     if (this.asteroids.length === 0) return null;
     
@@ -637,6 +717,17 @@ export class AsteroidsGame extends BaseGame {
     const dx = pos1.x - pos2.x;
     const dy = pos1.y - pos2.y;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private playStinger(stinger: string) {
+    try {
+        const audioState = useAudio.getState();
+        if (!audioState.isMuted) {
+            audioState.playStinger(stinger as any);
+        }
+    } catch (e) {
+        console.warn(`${stinger} sound failed:`, e);
+    }
   }
 
   handleInput(event: KeyboardEvent) {

@@ -89,6 +89,8 @@ export class BreakoutGame extends BaseGame {
   private shakeTimer = 0;
   // Powerups
   private activeLongPaddleTimer = 0;
+  private shieldActive = false;
+  private shieldTimer = 0;
   
   async init() {
     // Initialize paddle
@@ -322,20 +324,25 @@ export class BreakoutGame extends BaseGame {
 
           // Out of bounds
           if (ball.y > this.height) {
-            // remove this ball
-            this.balls = this.balls.filter(b => b !== ball);
-            if (this.balls.length === 0) {
-              this.lives--;
-              this.resetBalls();
-              if (this.lives <= 0 && this.score < 50) {
-                if (this.score > 20) {
-                  this.lives = 1;
-                  this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
-                  this.aiMessageTimer = 0;
-                } else {
-                  this.onGameOver?.();
+            if (this.shieldActive) {
+                ball.dy = -Math.abs(ball.dy);
+                this.playHitSound();
+            } else {
+                // remove this ball
+                this.balls = this.balls.filter(b => b !== ball);
+                if (this.balls.length === 0) {
+                  this.lives--;
+                  this.resetBalls();
+                  if (this.lives <= 0 && this.score < 50) {
+                    if (this.score > 20) {
+                      this.lives = 1;
+                      this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
+                      this.aiMessageTimer = 0;
+                    } else {
+                      this.onGameOver?.();
+                    }
+                  }
                 }
-              }
             }
           }
         }
@@ -498,7 +505,7 @@ export class BreakoutGame extends BaseGame {
   // Powerups
   private spawnPowerup(x: number, y: number) {
     // Three types: triple balls, long paddle, and explosive brick
-    const type = Math.random() < 0.4 ? 'triple' : Math.random() < 0.7 ? 'long' : 'explosive';
+    const type = Math.random() < 0.3 ? 'triple' : Math.random() < 0.6 ? 'long' : Math.random() < 0.8 ? 'shield' : 'explosive';
     
     if (type === 'triple') {
       // Spawn two extra balls from one of current balls
@@ -523,6 +530,9 @@ export class BreakoutGame extends BaseGame {
       // Long paddle for a short duration
       this.paddle.width = 140;
       this.activeLongPaddleTimer = 600; // 10s at 60fps
+    } else if (type === 'shield') {
+        this.shieldActive = true;
+        this.shieldTimer = 600; // 10s
     } else if (type === 'explosive') {
       // Create explosive brick that will explode when hit
       this.createExplosiveBrick(x, y);
