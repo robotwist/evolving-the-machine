@@ -125,3 +125,24 @@ canvas {
   pointer-events: none;
   background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.3) 100%);
 }
+
+.curtain-transition {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 30% 30%, #440000, transparent 50%),
+    radial-gradient(circle at 70% 70%, #880000, transparent 50%),
+    linear-gradient(45deg, #000000, #330000);
+  background-blend-mode: screen;
+  animation: flowing-curtain 3s ease-in-out infinite alternate;
+}
+
+@keyframes flowing-curtain {
+  from {
+    background-position: 0% 0%, 100% 100%, 0% 0%;
+  }
+  to {
+    background-position: 100% 100%, 0% 0%, 0% 0%;
+  }
+}

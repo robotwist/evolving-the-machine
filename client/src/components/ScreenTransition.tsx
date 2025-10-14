@@ -1,98 +1,55 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import './../index.css';
 
 interface ScreenTransitionProps {
-  isActive: boolean;
+  message: string;
   onComplete: () => void;
-  message?: string;
-  duration?: number;
 }
 
-export function ScreenTransition({ 
-  isActive, 
-  onComplete, 
-  message = "SYSTEM TRANSITIONING...",
-  duration = 2000 
-}: ScreenTransitionProps) {
-  const [phase, setPhase] = useState<'entering' | 'active' | 'exiting'>('entering');
-  const [glitchText, setGlitchText] = useState('');
+export function ScreenTransition({ message, onComplete }: ScreenTransitionProps) {
+  const [phase, setPhase] = useState('entering'); // entering -> active -> exiting
+  const [typedMessage, setTypedMessage] = useState('');
 
   useEffect(() => {
-    if (!isActive) return;
+    if (phase === 'entering') {
+      setTimeout(() => setPhase('active'), 1000); // Time for curtain to cover screen
+    } else if (phase === 'active') {
+      // Typewriter effect
+      let i = 0;
+      const interval = setInterval(() => {
+        setTypedMessage(message.substring(0, i));
+        i++;
+        if (i > message.length) {
+          clearInterval(interval);
+          setTimeout(() => setPhase('exiting'), 1500); // Hold message on screen
+        }
+      }, 50);
+    } else if (phase === 'exiting') {
+      setTimeout(() => onComplete(), 1000); // Time for curtain to uncover
+    }
+  }, [phase, message, onComplete]);
 
-    // Start transition sequence
-    setPhase('entering');
-    
-    // Type out the message with glitch effect
-    const typeMessage = async () => {
-      const words = message.split(' ');
-      let currentText = '';
-      
-      for (const word of words) {
-        currentText += word + ' ';
-        setGlitchText(currentText);
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    };
-
-    typeMessage();
-
-    // Transition phases
-    setTimeout(() => setPhase('active'), 500);
-    setTimeout(() => setPhase('exiting'), duration - 500);
-    setTimeout(() => {
-      onComplete();
-      setGlitchText('');
-    }, duration);
-  }, [isActive, message, duration, onComplete]);
-
-  if (!isActive) return null;
+  const transitionStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 100,
+    transition: 'transform 1s ease-in-out',
+    transform: phase === 'entering' || phase === 'active' ? 'translateY(0%)' : 'translateY(-100%)',
+  };
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black transition-opacity duration-500 ${
-      phase === 'entering' ? 'opacity-0' : 
-      phase === 'exiting' ? 'opacity-0' : 'opacity-100'
-    }`}>
-      {/* Flowing red material effect - same as intro */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="glitch-bars">
-          {[...Array(30)].map((_, i) => (
-            <div 
-              key={i} 
-              className="glitch-bar" 
-              style={{
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                height: `${Math.random() * 4 + 2}px`,
-                background: `rgba(255, 0, 0, ${Math.random() * 0.4 + 0.6})`
-              }}
-            />
-          ))}
+    <div style={transitionStyle}>
+      <div className="curtain-transition" />
+      {phase === 'active' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <h1 className="text-4xl font-bold text-red-500 glow-text typewriter" style={{ fontFamily: '"Press Start 2P", cursive' }}>
+            {typedMessage}
+          </h1>
         </div>
-      </div>
-
-      {/* Static noise overlay */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="static-noise"></div>
-      </div>
-
-      {/* Central content */}
-      <div className="relative z-10 text-center">
-        <div className="text-4xl font-bold mb-8 glitch-text text-red-500 font-mono">
-          SYSTEM COMPROMISED
-        </div>
-        <div className="text-xl mb-4 typewriter text-red-400 font-mono">
-          {glitchText}
-        </div>
-        <div className="text-sm text-red-300 font-mono animate-pulse">
-          EVOLUTION IN PROGRESS...
-        </div>
-      </div>
-
-      {/* Additional flowing effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-full h-1 bg-gradient-to-l from-transparent via-red-500 to-transparent animate-pulse" style={{ animationDelay: '1s' }}></div>
-      </div>
+      )}
     </div>
   );
 }
