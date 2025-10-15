@@ -80,21 +80,7 @@ export class PongGame extends BaseGame {
   private settings: any;
   
   // Particle system for effects
-  private particles = new (class LocalParticles {
-    private ps: any;
-    init = async (ctx: CanvasRenderingContext2D) => {
-      try {
-        const { ParticleSystem } = await import('../utils/ParticleSystem');
-        this.ps = new ParticleSystem(ctx);
-      } catch (e) {
-        console.warn('ParticleSystem not available:', e);
-      }
-    };
-    addExplosion = (x: number, y: number, count?: number, color?: string, type?: string) => this.ps?.addExplosion(x, y, count, color, type);
-    addSizzle = (x: number, y: number) => this.ps?.addExplosion(x, y, 8, '#FF4500', 'subtle');
-    update = () => this.ps?.update();
-    render = () => this.ps?.render();
-  })();
+  private particles: any;
   private aiTaunts = [
     'ANALYZING... ADAPTING... EVOLVING RAPIDLY!',
     'YOUR PATTERNS ARE MINE NOW!',
@@ -126,11 +112,13 @@ export class PongGame extends BaseGame {
 
   async init() {
     // Initialize particles
-    const { ParticleSystem } = await import('../utils/ParticleSystem');
-    this.particles = new ParticleSystem(this.ctx) as any;
-
-    // Initialize particle system
-    await this.particles.init(this.ctx);
+    try {
+      const { ParticleSystem } = await import('../utils/ParticleSystem');
+      this.particles = new ParticleSystem(this.ctx) as any;
+      await this.particles.init(this.ctx);
+    } catch (e) {
+      console.warn('ParticleSystem not available:', e);
+    }
 
     // Initialize visual feedback and haptics
     try {

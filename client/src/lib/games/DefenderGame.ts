@@ -68,21 +68,7 @@ export class DefenderGame extends BaseGame {
   };
   private shakeTimer = 0;
   // Particle system for effects
-  private particles = new (class LocalParticles {
-    private ps: any;
-    init = async (ctx: CanvasRenderingContext2D) => {
-      try {
-        const { ParticleSystem } = await import('../utils/ParticleSystem');
-        this.ps = new ParticleSystem(ctx);
-      } catch (e) {
-        console.warn('ParticleSystem not available:', e);
-      }
-    };
-    addExplosion = (x: number, y: number, count?: number, color?: string, type?: string) => this.ps?.addExplosion(x, y, count, color, type);
-    addTrail = (x: number, y: number, vx: number, vy: number, color?: string) => this.ps?.addTrail(x, y, vx, vy, color);
-    update = () => this.ps?.update();
-    render = () => this.ps?.render();
-  })();
+  private particles: any;
   // Ambient whispers (WebAudio)
   private audioCtx: AudioContext | null = null;
   private whisperGain: GainNode | null = null;
@@ -108,7 +94,13 @@ export class DefenderGame extends BaseGame {
     this.camera = { x: 0 };
 
     // Initialize particle system
-    await this.particles.init(this.ctx);
+    try {
+      const { ParticleSystem } = await import('../utils/ParticleSystem');
+      this.particles = new ParticleSystem(this.ctx) as any;
+      await this.particles.init(this.ctx);
+    } catch (e) {
+      console.warn('ParticleSystem not available:', e);
+    }
   }
 
   private spawnWave() {
