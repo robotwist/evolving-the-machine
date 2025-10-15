@@ -29,7 +29,7 @@ jobs:
       run: npx tsc --noEmit
     
     - name: Lint
-      run: npx eslint src --ext .ts,.tsx --max-warnings 0
+      run: npm run lint
     
     - name: Build
       run: npm run build
@@ -46,6 +46,37 @@ jobs:
         fi
         echo "Build successful"
     
+    - name: Security Audit
+      run: npm audit --audit-level=moderate
+
+    - name: Check bundle size
+      run: |
+        echo "=== Bundle Size Analysis ==="
+
+        # Check main bundle size
+        MAIN_BUNDLE=$(find dist/public/assets -name "index-*.js" -exec wc -c {} \; | awk '{print $1}' | head -1)
+        MAIN_BUNDLE_MB=$(echo "scale=2; $MAIN_BUNDLE / 1024 / 1024" | bc)
+
+        # Check CSS bundle size
+        CSS_BUNDLE=$(find dist/public/assets -name "index-*.css" -exec wc -c {} \; | awk '{print $1}' | head -1)
+        CSS_BUNDLE_MB=$(echo "scale=2; $CSS_BUNDLE / 1024 / 1024" | bc)
+
+        echo "Main bundle: $MAIN_BUNDLE_MB MB"
+        echo "CSS bundle: $CSS_BUNDLE_MB MB"
+
+        # Performance budget checks (adjust limits as needed)
+        if (( $(echo "$MAIN_BUNDLE_MB > 2.0" | bc -l) )); then
+          echo "⚠️  Main bundle exceeds 2MB limit"
+        else
+          echo "✅ Main bundle size is acceptable"
+        fi
+
+        if (( $(echo "$CSS_BUNDLE_MB > 0.5" | bc -l) )); then
+          echo "⚠️  CSS bundle exceeds 0.5MB limit"
+        else
+          echo "✅ CSS bundle size is acceptable"
+        fi
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:

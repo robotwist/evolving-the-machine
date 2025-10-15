@@ -69,7 +69,7 @@ function StageCompleteMenu({ handleMainMenu, handleRestart, handleNextStage }: {
         {currentStage < 8 ? (
           <Button onClick={handleNextStage} className="bg-green-600 hover:bg-green-700">Next Stage</Button>
         ) : (
-          <div className="text-gold-400 mb-2">Congratulations! You've mastered all cultures!</div>
+          <div className="text-gold-400 mb-2">Congratulations! You&apos;ve mastered all cultures!</div>
         )}
         {isDev && <Button onClick={handleNextStage} variant="outline" className="border-white/20 text-white">Next Stage (dev)</Button>}
         <Button onClick={handleRestart} variant="outline" className="border-white/20 text-white">Play Again</Button>
