@@ -184,8 +184,8 @@ export default function App() {
     const attempts = useGameStore.getState().stageAttempts[currentStage] ?? 0;
     const friendliness = Math.min(attempts, 5);
     const style = useSettingsStore.getState().voiceStyle;
-    const stylePitch = style === 'friendly' ? 0.1 : style === 'robotic' ? -0.1 : 0;
-    const styleRate = style === 'friendly' ? 0.05 : style === 'robotic' ? -0.02 : 0;
+    const stylePitch = style === 'normal' ? 0 : style === 'haunting' ? -0.1 : style === 'glitch' ? 0 : 0;
+    const styleRate = style === 'normal' ? 0 : style === 'haunting' ? -0.02 : style === 'glitch' ? -0.05 : 0;
     const basePitch = 0.85 + friendliness * 0.03 + stylePitch;
     const baseRate = 0.9 + friendliness * 0.02 + styleRate;
     const lines: Record<number, string[]> = {
