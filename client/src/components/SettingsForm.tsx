@@ -37,9 +37,9 @@ export function SettingsForm() {
         <label className="flex items-center justify-between gap-2">
             <span>Voice Style</span>
             <select value={voiceStyle} onChange={(e) => setVoiceStyle(e.target.value as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
-                <option value="neutral">Neutral</option>
-                <option value="friendly">Friendly</option>
-                <option value="robotic">Robotic</option>
+                <option value="normal">Normal</option>
+                <option value="haunting">Haunting</option>
+                <option value="glitch">Glitch</option>
             </select>
         </label>
         <label className="flex items-center justify-between gap-2">
@@ -54,8 +54,9 @@ export function SettingsForm() {
             <span>FPS Cap</span>
             <select value={fpsCap} onChange={(e) => setFpsCap(Number(e.target.value) as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
                 <option value={30}>30 FPS</option>
-                <option value={45}>45 FPS</option>
                 <option value={60}>60 FPS</option>
+                <option value={120}>120 FPS</option>
+                <option value={0}>Unlimited</option>
             </select>
         </label>
         <label className="flex items-center justify-between gap-2 col-span-1 sm:col-span-2">

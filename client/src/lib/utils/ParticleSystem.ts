@@ -194,7 +194,7 @@ export class ParticleSystem {
       
       // Keep particle if still alive and within bounce limits
       if (particle.life > 0 && 
-          (particle.bounceCount === undefined || particle.bounceCount <= particle.maxBounces)) {
+          (particle.bounceCount === undefined || particle.maxBounces === undefined || particle.bounceCount <= particle.maxBounces)) {
         if (write !== read) this.particles[write] = particle;
         write++;
       } else {

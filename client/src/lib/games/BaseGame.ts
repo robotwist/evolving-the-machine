@@ -24,7 +24,7 @@ export abstract class BaseGame {
     this.setupEventListeners();
   }
 
-  abstract init(): void;
+  abstract init(): Promise<void> | void;
   abstract update(deltaTime: number): void;
   abstract render(): void;
   abstract handleInput(event: KeyboardEvent): void;

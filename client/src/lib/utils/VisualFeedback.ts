@@ -22,9 +22,21 @@ export class VisualFeedback {
     private ctx: CanvasRenderingContext2D;
     private damageNumbers: { x: number, y: number, text: string, timer: number }[] = [];
     private comboCounter: { x: number, y: number, count: number, timer: number } | null = null;
+    private hitMarkers: HitMarker[] = [];
 
     constructor(ctx: CanvasRenderingContext2D) {
         this.ctx = ctx;
+    }
+
+    addHitMarker(x: number, y: number, damage?: number, type: 'hit' | 'critical' | 'miss' = 'hit') {
+        this.hitMarkers.push({
+            x,
+            y,
+            life: 1,
+            maxLife: 15,
+            damage,
+            type
+        });
     }
 
     addDamageNumber(x: number, y: number, damage: number) {
@@ -53,6 +65,14 @@ export class VisualFeedback {
                 this.comboCounter = null;
             }
         }
+        
+        // Update hit markers
+        for (let i = this.hitMarkers.length - 1; i >= 0; i--) {
+            this.hitMarkers[i].life++;
+            if (this.hitMarkers[i].life > this.hitMarkers[i].maxLife) {
+                this.hitMarkers.splice(i, 1);
+            }
+        }
     }
 
     render() {
@@ -73,6 +93,19 @@ export class VisualFeedback {
             this.ctx.fillStyle = 'orange';
             this.ctx.font = `bold ${18 + this.comboCounter.count}px Arial`;
             this.ctx.fillText(`x${this.comboCounter.count}`, this.comboCounter.x, this.comboCounter.y);
+        }
+
+        // Render hit markers
+        for (const marker of this.hitMarkers) {
+            const alpha = 1 - (marker.life / marker.maxLife);
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(marker.x - 5, marker.y - 5);
+            this.ctx.lineTo(marker.x + 5, marker.y + 5);
+            this.ctx.moveTo(marker.x + 5, marker.y - 5);
+            this.ctx.lineTo(marker.x - 5, marker.y + 5);
+            this.ctx.stroke();
         }
 
         this.ctx.restore();

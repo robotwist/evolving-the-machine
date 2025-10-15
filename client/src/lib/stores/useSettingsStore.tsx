@@ -115,7 +115,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     mobile: () => set({
       graphicsQuality: 'medium',
       fpsCap: 60,
-      dprScaling: true,
+      enableDprScaling: true,
       hapticsEnabled: true,
       hapticsIntensity: 'medium'
     }),
@@ -152,7 +152,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const state = get();
     if (!state._mobileDefaultsApplied) {
       set({
-        dprScaling: true,
+        enableDprScaling: true,
         hapticsEnabled: true,
         hapticsIntensity: 'medium',
         _mobileDefaultsApplied: true

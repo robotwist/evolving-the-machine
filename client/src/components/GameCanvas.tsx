@@ -50,7 +50,7 @@ function useGameInstance(
       useGameStore.getState().unlockNextStage();
     };
 
-    game.init().catch((error: Error) => console.error('Failed to initialize game:', error));
+    Promise.resolve(game.init()).catch((error: Error) => console.error('Failed to initialize game:', error));
     game.start();
 
     return () => {

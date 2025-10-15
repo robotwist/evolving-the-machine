@@ -147,7 +147,8 @@ export class PongGame extends BaseGame {
     this.settings = {
       hapticsEnabled: (window as any).__CULTURAL_ARCADE_HAPTICS_ENABLED__ ?? true,
       hitMarkers: (window as any).__CULTURAL_ARCADE_HIT_MARKERS__ ?? true,
-      screenShake: (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true
+      screenShake: (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true,
+      damageNumbers: (window as any).__CULTURAL_ARCADE_DAMAGE_NUMBERS__ ?? true
     };
 
     // Initialize paddles with Greek column design
@@ -334,8 +335,8 @@ export class PongGame extends BaseGame {
     if (this.ball.y <= this.ball.radius || this.ball.y >= this.height - this.ball.radius) {
       this.ball.dy = -this.ball.dy;
       this.playHitSound();
-      if (this.settings?.hapticsEnabled) this.haptics?.hit();
-      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, undefined, 'hit');
+      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('hit');
+      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y);
     }
 
     // Ball collision with paddles
@@ -347,8 +348,8 @@ export class PongGame extends BaseGame {
       this.ball.dx = -this.ball.dx * 1.05;
       this.playHitSound();
       
-      if (this.settings?.hapticsEnabled) this.haptics?.hit();
-      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, undefined, 'hit');
+      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('hit');
+      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y);
       if (this.settings?.screenShake) this.shakeTimer = 8;
       
       if (collideP1) {
@@ -359,7 +360,7 @@ export class PongGame extends BaseGame {
         } else {
             const damage = 15;
             this.player1.damage += damage;
-            if (useSettingsStore.getState().damageNumbers) {
+            if (this.settings?.damageNumbers) {
                 this.visualFeedback.addDamageNumber(this.player1.x + 20, this.player1.y, damage);
             }
         }
@@ -374,14 +375,14 @@ export class PongGame extends BaseGame {
         const damage = 10;
         this.player2.damage += damage;
         this.player2.lastHitTime = Date.now();
-        if (useSettingsStore.getState().damageNumbers) {
+        if (this.settings?.damageNumbers) {
             this.visualFeedback.addDamageNumber(this.player2.x, this.player2.y, damage);
         }
       }
     }
 
     if (penetrateAI && this.checkPaddleCollision(this.player2)) {
-      if (this.settings?.hapticsEnabled) this.haptics?.explosion();
+      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('explosion');
       if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, 1, 'critical');
       if (this.settings?.screenShake) this.shakeTimer = 10;
       this.particles.addSizzle(this.player2.x, Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y)));
@@ -396,7 +397,7 @@ export class PongGame extends BaseGame {
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.updateDirectorMetrics();
       this.resetBall();
-      if (this.settings?.hapticsEnabled) this.haptics?.failure();
+      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('failure');
       this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.15);
       this.aiAggression = Math.min(1.0, this.aiAggression + 0.05);
     } else if (this.ball.x > this.width) {
@@ -404,7 +405,7 @@ export class PongGame extends BaseGame {
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.updateDirectorMetrics();
       this.resetBall();
-      if (this.settings?.hapticsEnabled) this.haptics?.success();
+      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('success');
       if (this.player1.score >= this.winScore) {
         this.onStageComplete?.();
       }
@@ -467,11 +468,11 @@ export class PongGame extends BaseGame {
         this.director.updateMetrics({ powerUpsCollected: 1 });
         
         // Enhanced haptics and visual feedback for powerup collection
-        if (this.settings?.hapticsEnabled) this.haptics?.powerup();
-        if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y, undefined, 'hit');
+        if (this.settings?.hapticsEnabled) this.haptics?.vibrate('powerup');
+        if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y);
         
         try {
-          const audioState = useAudio.getState();
+          const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
           if (!audioState.isMuted) {
             audioState.playStinger('arcade_powerup');
           }
@@ -502,14 +503,11 @@ export class PongGame extends BaseGame {
         this.explosionPowerups.splice(index, 1);
         
         // Haptic feedback
-        const hapticsOn = (window as any).__CULTURAL_ARCADE_HAPTICS__ ?? true;
-        if (hapticsOn && 'vibrate' in navigator) {
-          navigator.vibrate?.([50, 100, 50]);
-        }
+        if (this.settings?.hapticsEnabled) this.haptics?.vibrate('explosion');
         
         // Powerup collection sound
         try {
-          const audioState = useAudio.getState();
+          const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
           if (!audioState.isMuted) {
             audioState.playStinger('arcade_powerup');
           }
