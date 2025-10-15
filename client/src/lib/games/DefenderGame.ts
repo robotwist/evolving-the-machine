@@ -812,8 +812,8 @@ export class DefenderGame extends BaseGame {
 
   private playStinger(stinger: string) {
     try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
             audioState.playStinger(stinger as any);
         }
     } catch (e) {

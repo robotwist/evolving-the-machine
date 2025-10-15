@@ -712,7 +712,10 @@ export class LasatGame extends BaseGame {
         break;
     }
     
-    useAudio.getState().playSuccess();
+    const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    if (audioState && !audioState.isMuted) {
+      audioState.playSuccess();
+    }
   }
 
   render() {
@@ -1154,8 +1157,10 @@ export class LasatGame extends BaseGame {
   }
 
   private playHitSound() {
-    const audio = useAudio.getState();
-    audio.playHit();
+    const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    if (audioState && !audioState.isMuted) {
+      audioState.playHit();
+    }
   }
 
   protected setupEventListeners() {

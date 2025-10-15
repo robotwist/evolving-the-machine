@@ -2,7 +2,6 @@ import { BaseGame } from './BaseGame';
 import { useAudio } from '../stores/useAudio';
 import { useHaptics } from '../stores/useHaptics';
 import { useSettingsStore } from '../stores/useSettingsStore';
-import { VisualFeedback } from '../utils/VisualFeedback';
 
 const PONG_CONSTANTS = {
   WIN_SCORE: 5,
@@ -73,7 +72,7 @@ export class PongGame extends BaseGame {
   private chainReactionTimer = 0;
   private shockwaveTimer = 0;
   private explosionPowerups: Array<{x: number, y: number, type: 'chain' | 'shockwave', timer: number}> = [];
-  private visualFeedback!: VisualFeedback;
+  private visualFeedback: any;
   private player1Combo = 0;
   private totalDamageTaken = 0;
   private pointStartTime = 0;
@@ -129,11 +128,10 @@ export class PongGame extends BaseGame {
     // Initialize particles
     const { ParticleSystem } = await import('../utils/ParticleSystem');
     this.particles = new ParticleSystem(this.ctx) as any;
-    this.visualFeedback = new VisualFeedback(this.ctx);
-    
+
     // Initialize particle system
     await this.particles.init(this.ctx);
-    
+
     // Initialize visual feedback and haptics
     try {
       const { VisualFeedback } = await import('../utils/VisualFeedback');
@@ -280,8 +278,8 @@ export class PongGame extends BaseGame {
         this.currentTaunt = message;
         this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
         try {
-            const audioState = useAudio.getState();
-            if (!audioState.isMuted) {
+            const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+            if (audioState && !audioState.isMuted) {
                 audioState.playVO(message, options);
             }
         } catch (e) {
@@ -758,8 +756,8 @@ export class PongGame extends BaseGame {
 
   private playStinger(stinger: string) {
     try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
             audioState.playStinger(stinger as any);
         }
     } catch (e) {
@@ -793,8 +791,8 @@ export class PongGame extends BaseGame {
     this.currentTaunt = message;
     this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
     try {
-        const audioState = useAudio.getState();
-        if (!audioState.isMuted) {
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
             audioState.playVO(message, options);
         }
     } catch (e) {

@@ -227,7 +227,10 @@ export class AsteroidsGame extends BaseGame {
       this.messageIndex++;
       this.narcissusProgress = this.messageIndex / this.aiMessages.length; // Track mirroring progress
       this.aiNarrativeTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
+      }
     }
     
     // Clear message after display time
@@ -244,7 +247,10 @@ export class AsteroidsGame extends BaseGame {
       ];
       this.currentAIMessage = betrayalMessages[Math.floor(Math.random() * betrayalMessages.length)];
       this.aiNarrativeTimer = 0;
-      useAudio.getState().playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
+      }
     }
 
     // Add moments where AI questions its own loyalty and betrayal impulses
@@ -721,7 +727,7 @@ export class AsteroidsGame extends BaseGame {
 
   private playStinger(stinger: string) {
     try {
-        const audioState = useAudio.getState();
+        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
         if (!audioState.isMuted) {
             audioState.playStinger(stinger as any);
         }
@@ -779,8 +785,10 @@ export class AsteroidsGame extends BaseGame {
   }
 
   private playHitSound() {
-    const audio = useAudio.getState();
-    audio.playHit();
+    const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    if (audioState && !audioState.isMuted) {
+      audioState.playHit();
+    }
   }
 
   protected setupEventListeners() {

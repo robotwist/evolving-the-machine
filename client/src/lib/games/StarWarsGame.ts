@@ -891,9 +891,11 @@ export class StarWarsGame extends BaseGame {
 
   private playLaserSound() {
     try {
-      const audioState = useAudio.getState();
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
       if (!audioState.isMuted) {
         audioState.playStinger('starwars_laser');
+      }
       }
     } catch (e) {
       console.warn('Laser sound failed:', e);
@@ -902,8 +904,8 @@ export class StarWarsGame extends BaseGame {
 
   private playExplosionSound() {
     try {
-      const audioState = useAudio.getState();
-      if (!audioState.isMuted) {
+      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
         audioState.playStinger('starwars_explosion');
       }
     } catch (e) {
