@@ -48,11 +48,12 @@ export const useGameStore = create<GameStore>()(
       goToNextStage: () => {
         const { currentStage } = get();
         if (currentStage < MAX_STAGE) {
-          set({
+          set((state) => ({
             currentStage: currentStage + 1,
             gameState: 'playing',
-            currentScreen: 'game'
-          });
+            currentScreen: 'game',
+            unlockedStages: Math.max(state.unlockedStages, currentStage + 1)
+          }));
         } else {
           set({ currentScreen: 'stage-select' });
         }
@@ -72,7 +73,9 @@ export const useGameStore = create<GameStore>()(
       partialize: (state) => ({
         unlockedStages: state.unlockedStages,
         stageAttempts: state.stageAttempts
-      })
+      }),
+      // Version the storage to allow breaking changes
+      version: 1,
     }
   )
 );

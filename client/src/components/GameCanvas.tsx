@@ -35,9 +35,18 @@ function useGameInstance(
   const gameRef = useRef<BaseGame | null>(null);
   const { currentStage, setGameState } = useGameStore();
   const { updateScore } = useScoreStore();
+  const isInitializing = useRef(false);
 
   useEffect(() => {
     if (!ctx || width === 0 || height === 0) return;
+    if (isInitializing.current) return; // Prevent double initialization
+    
+    isInitializing.current = true;
+    console.log(`🎮 Initializing game for stage ${currentStage}`);
+
+    // Clear canvas before creating new game to prevent white screen
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
 
     const gameClass = gameMap[currentStage] || PongGame;
     const game = new gameClass(ctx, width, height);
@@ -50,12 +59,23 @@ function useGameInstance(
       useGameStore.getState().unlockNextStage();
     };
 
-    Promise.resolve(game.init()).catch((error: Error) => console.error('Failed to initialize game:', error));
-    game.start();
+    // Initialize game asynchronously
+    Promise.resolve(game.init())
+      .then(() => {
+        console.log(`✅ Game initialized for stage ${currentStage}`);
+        game.start();
+        isInitializing.current = false;
+      })
+      .catch((error: Error) => {
+        console.error(`❌ Failed to initialize game for stage ${currentStage}:`, error);
+        isInitializing.current = false;
+      });
 
     return () => {
+      console.log(`🧹 Cleaning up game for stage ${currentStage}`);
       game.destroy();
       gameRef.current = null;
+      isInitializing.current = false;
     };
   }, [currentStage, ctx, width, height, updateScore, setGameState]);
 

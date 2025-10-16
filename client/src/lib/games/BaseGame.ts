@@ -10,6 +10,7 @@ export abstract class BaseGame {
   protected lastFrameTimeMs: number | null = null;
   protected frameAccumulatorMs = 0;
   protected director: AdaptiveNarrativeDirector;
+  protected keydownHandler: ((e: KeyboardEvent) => void) | null = null;
   
   // Event callbacks
   onScoreUpdate?: (score: number) => void;
@@ -90,14 +91,21 @@ export abstract class BaseGame {
   }
 
   protected setupEventListeners() {
-    document.addEventListener('keydown', (e) => {
+    // Store the handler so we can remove it later
+    this.keydownHandler = (e: KeyboardEvent) => {
       if (this.isRunning && !this.isPaused) {
         this.handleInput(e);
       }
-    });
+    };
+    document.addEventListener('keydown', this.keydownHandler);
   }
 
   protected cleanup() {
+    // Remove event listener to prevent memory leaks
+    if (this.keydownHandler) {
+      document.removeEventListener('keydown', this.keydownHandler);
+      this.keydownHandler = null;
+    }
     // Override in subclasses if needed
   }
 

@@ -162,16 +162,23 @@ export default function App() {
   }, [currentScreen]);
 
   // Dev helpers via query params: ?unlock=all, ?stage=3
+  // This runs ONCE on mount and overrides persisted storage if needed
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const unlock = params.get('unlock');
     if (unlock === 'all') {
-      useGameStore.setState({ unlockedStages: 8 });
+      console.log('🔓 Dev Mode: Unlocking all stages');
+      // Force override the persisted storage value
+      const store = useGameStore.getState();
+      store.resetProgress(); // Clear first to avoid stale data
+      useGameStore.setState({ unlockedStages: 8, currentScreen: 'menu' });
+      console.log('✅ All 8 stages unlocked:', useGameStore.getState().unlockedStages);
     }
     const stageParam = params.get('stage');
     if (stageParam) {
       const stageNum = Number(stageParam);
       if (!Number.isNaN(stageNum) && stageNum >= 1 && stageNum <= 8) {
+        console.log(`🎮 Dev Mode: Jumping to stage ${stageNum}`);
         useGameStore.getState().setCurrentStage(stageNum);
         useGameStore.getState().setCurrentScreen('game');
       }
