@@ -186,6 +186,54 @@ export default [
     },
   },
   {
+    files: ['server/**/*.{ts,js}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2021,
+        sourceType: 'module',
+        project: './tsconfig.json',
+      },
+      globals: {
+        // Node.js globals
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        // Express globals
+        express: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly',
+        NextFunction: 'readonly',
+        // Server-specific
+        Application: 'readonly',
+        Router: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': ts,
+    },
+    rules: {
+      ...ts.configs.recommended.rules,
+
+      // Server-specific rules
+      '@typescript-eslint/no-explicit-any': 'warn', // Allow but warn about any types
+      '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_' }],
+      '@typescript-eslint/explicit-function-return-type': 'off', // Express middleware doesn't need explicit returns
+      '@typescript-eslint/explicit-module-boundary-types': 'off', // Allow module boundary flexibility
+      '@typescript-eslint/no-empty-function': 'off', // Allow empty middleware functions
+    },
+  },
+  {
     ignores: [
       'node_modules/**',
       'dist/**',

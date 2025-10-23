@@ -1,4 +1,5 @@
-import { users, type User, type InsertUser } from "@shared/schema";
+import { type User, type InsertUser } from "@shared/schema";
+// import { users } from "@shared/schema"; // TODO: Use for database queries when implementing persistence
 
 // modify the interface with any CRUD methods
 // you might need

@@ -9,6 +9,13 @@ import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
+// Vite server options interface
+interface ViteServerOptions {
+  middlewareMode: boolean;
+  hmr: { server: Server };
+  allowedHosts: boolean | string[];
+}
+
 const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {
@@ -23,10 +30,10 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
-  const serverOptions: any = {
+  const serverOptions: ViteServerOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true as any,
+    allowedHosts: true,
   };
 
   const vite = await createViteServer({
