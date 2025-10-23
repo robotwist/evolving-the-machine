@@ -84,23 +84,23 @@ export function StageSelect() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">Choose Your Cultural Journey</h1>
-          <p className="text-gray-300 text-lg">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black p-2 sm:p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-4">Choose Your Cultural Journey</h1>
+          <p className="text-gray-300 text-sm sm:text-base lg:text-lg px-2">
             Progress through gaming evolution while learning about world cultures
           </p>
-          <Button 
+          <Button
             onClick={() => setCurrentScreen('menu')}
             variant="outline"
-            className="mt-4 border-white/20 text-white"
+            className="mt-3 sm:mt-4 border-white/20 text-white text-sm sm:text-base"
           >
             ← Back to Menu
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           {stages.map((stage) => {
             const isUnlocked = unlockedStages >= stage.id;
             const highScore = highScores[stage.id];
@@ -115,13 +115,13 @@ export function StageSelect() {
                 }`}
                 onClick={() => handleStageSelect(stage.id)}
               >
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl text-white flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${stage.color} flex items-center justify-center text-white font-bold`}>
-                        {isUnlocked ? stage.id : <Lock size={16} />}
+                    <CardTitle className="text-base sm:text-lg lg:text-xl text-white flex items-center gap-2">
+                      <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r ${stage.color} flex items-center justify-center text-white font-bold text-sm`}>
+                        {isUnlocked ? stage.id : <Lock size={14} />}
                       </div>
-                      {stage.name}
+                      <span className="truncate">{stage.name}</span>
                     </CardTitle>
                     <div className="text-right">
                       <div className="text-xs text-gray-400">{stage.difficulty}</div>
@@ -130,16 +130,16 @@ export function StageSelect() {
                       )}
                     </div>
                   </div>
-                  <div className="text-lg text-purple-300">{stage.culture}</div>
+                  <div className="text-sm sm:text-base lg:text-lg text-purple-300">{stage.culture}</div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-gray-300 text-sm mb-4">
+                <CardContent className="pt-0">
+                  <p className="text-gray-300 text-xs sm:text-sm mb-3 line-clamp-2">
                     {stage.description}
                   </p>
                   
                   {isUnlocked ? (
-                    <Button 
-                      className={`w-full bg-gradient-to-r ${stage.color} hover:opacity-90`}
+                    <Button
+                      className={`w-full bg-gradient-to-r ${stage.color} hover:opacity-90 text-sm sm:text-base py-2`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleStageSelect(stage.id);
@@ -148,7 +148,7 @@ export function StageSelect() {
                       Start Journey
                     </Button>
                   ) : (
-                    <div className="text-center text-gray-500 text-sm">
+                    <div className="text-center text-gray-500 text-xs sm:text-sm">
                       Complete previous stage to unlock
                     </div>
                   )}

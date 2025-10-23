@@ -1,5 +1,6 @@
 import { BaseGame } from './BaseGame';
-import { useAudio } from '../stores/useAudio';
+import { ParticleSystem } from '../utils/ParticleSystem';
+import { GameSettings, WindowExtensions } from '@shared/types';
 
 interface Vector2 {
   x: number;
@@ -67,8 +68,9 @@ export class DefenderGame extends BaseGame {
     narcissusStage: 0 // 0-5, how much AI mirrors the user
   };
   private shakeTimer = 0;
+  private playerShootCooldown = 0;
   // Particle system for effects
-  private particles: any;
+  private particles: ParticleSystem | null = null;
   // Ambient whispers (WebAudio)
   private audioCtx: AudioContext | null = null;
   private whisperGain: GainNode | null = null;
@@ -96,8 +98,7 @@ export class DefenderGame extends BaseGame {
     // Initialize particle system
     try {
       const { ParticleSystem } = await import('../utils/ParticleSystem');
-      this.particles = new ParticleSystem(this.ctx) as any;
-      await this.particles.init(this.ctx);
+      this.particles = new ParticleSystem(this.ctx);
     } catch (e) {
       console.warn('ParticleSystem not available:', e);
     }
@@ -107,10 +108,24 @@ export class DefenderGame extends BaseGame {
     const enemyCount = 5 + this.wave * 2;
     
     for (let i = 0; i < enemyCount; i++) {
+      // Spawn enemies at various heights, some within jump range
+      const spawnHeight = Math.random();
+      let y;
+      if (spawnHeight < 0.4) {
+        // 40% spawn low (within jump range)
+        y = this.height * 0.3 + Math.random() * (this.height * 0.4);
+      } else if (spawnHeight < 0.8) {
+        // 40% spawn medium
+        y = this.height * 0.6 + Math.random() * (this.height * 0.2);
+      } else {
+        // 20% spawn high (challenging)
+        y = 50 + Math.random() * 100;
+      }
+
       const enemy: Enemy = {
         position: {
           x: Math.random() * this.worldWidth,
-          y: 50 + Math.random() * 100
+          y: y
         },
         velocity: {
           x: (Math.random() - 0.5) * 2,
@@ -144,7 +159,7 @@ export class DefenderGame extends BaseGame {
     }
   }
 
-  update(deltaTime: number) {
+  update(_deltaTime: number) {
     // Handle input
     this.handleMovement();
 
@@ -183,7 +198,7 @@ export class DefenderGame extends BaseGame {
       this.spawnWave();
       if (this.wave > 10) { // Complete after 10 waves
         // Play success sound through window global
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
           audioState.playSuccess();
         }
@@ -207,13 +222,22 @@ export class DefenderGame extends BaseGame {
     }
 
     if ((this.keys.has('KeyW') || this.keys.has('ArrowUp')) && this.player.onGround) {
-      this.player.velocity.y = -8; // Jump
+      this.player.velocity.y = -12; // Increased jump height
       this.player.onGround = false;
     }
 
     if (this.keys.has('Space')) {
       this.shootPlayerBullet();
       this.keys.delete('Space');
+    }
+
+    // Allow continuous upward shooting when W/Up is held
+    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
+      // Check if we should shoot (limit fire rate)
+      if (!this.playerShootCooldown || this.playerShootCooldown <= 0) {
+        this.shootPlayerBullet();
+        this.playerShootCooldown = 10; // 10 frame cooldown
+      }
     }
   }
 
@@ -232,6 +256,11 @@ export class DefenderGame extends BaseGame {
       this.player.position.y = this.height - 60;
       this.player.velocity.y = 0;
       this.player.onGround = true;
+    }
+
+    // Update shoot cooldown
+    if (this.playerShootCooldown > 0) {
+      this.playerShootCooldown--;
     }
 
     // World boundaries
@@ -280,12 +309,25 @@ export class DefenderGame extends BaseGame {
   }
 
   private shootPlayerBullet() {
+    // Calculate bullet direction based on player state
+    let bulletDx = this.player.direction * 8;
+    let bulletDy = 0;
+
+    // If player is jumping, give bullets upward trajectory
+    if (!this.player.onGround && this.player.velocity.y < 0) {
+      bulletDy = -4; // Slight upward angle when jumping
+    } else if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
+      // If W/Up is pressed, shoot upward
+      bulletDy = -6;
+      bulletDx *= 0.7; // Reduce horizontal speed for upward shots
+    }
+
     const bullet: Projectile = {
-      position: { 
-        x: this.player.position.x + this.player.direction * 15, 
-        y: this.player.position.y 
+      position: {
+        x: this.player.position.x + this.player.direction * 15,
+        y: this.player.position.y
       },
-      velocity: { x: this.player.direction * 8, y: 0 },
+      velocity: { x: bulletDx, y: bulletDy },
       size: { x: 4, y: 2 },
       alive: true,
       owner: 'player',
@@ -314,9 +356,10 @@ export class DefenderGame extends BaseGame {
       bullet.position.x += bullet.velocity.x;
       bullet.position.y += bullet.velocity.y;
       bullet.lifetime--;
-      
-      return bullet.alive && bullet.lifetime > 0 && 
-             bullet.position.x >= 0 && bullet.position.x <= this.worldWidth;
+
+      return bullet.alive && bullet.lifetime > 0 &&
+             bullet.position.x >= 0 && bullet.position.x <= this.worldWidth &&
+             bullet.position.y >= 0 && bullet.position.y <= this.height;
     });
 
     // Update enemy bullets
@@ -375,9 +418,9 @@ export class DefenderGame extends BaseGame {
           this.score += enemy.type === 'bomber' ? 200 : 100;
           this.playHitSound();
           // Effects
-          const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-          const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-          const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+          const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+          const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+          const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
           if (!reduce && allowShake) this.shakeTimer = 10;
           if (allowParticles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444', 'dramatic');
           this.playExplosionSound();
@@ -394,16 +437,16 @@ export class DefenderGame extends BaseGame {
             this.playStinger('pop');
         } else {
             this.onGameOver?.();
-            const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-            const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-            const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+            const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+            const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+            const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
             if (!reduce && allowShake) this.shakeTimer = 14;
             if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
             this.playExplosionSound();
         }
       }
       // Trails for enemy bullets
-      const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+      const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
       if (allowParticles && bullet.owner === 'enemy') {
         this.particles.addTrail(bullet.position.x, bullet.position.y, bullet.velocity.x, bullet.velocity.y, '#FF4500');
       }
@@ -417,7 +460,7 @@ export class DefenderGame extends BaseGame {
         this.score += 500;
         this.civiliansRescued++;
         // Play success sound through window global
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
           audioState.playSuccess();
         }
@@ -480,8 +523,8 @@ export class DefenderGame extends BaseGame {
 
   render() {
     // screenshake
-    const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-    const allowShake = (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+    const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
     const shake = !reduce && allowShake && this.shakeTimer > 0 ? this.shakeTimer : 0;
     if (shake > 0) this.shakeTimer--;
     const ox = shake ? (Math.random() - 0.5) * 6 : 0;
@@ -524,7 +567,7 @@ export class DefenderGame extends BaseGame {
     this.ctx.restore();
 
     // particles overlay
-    const allowParticles = (window as any).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+    const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
     if (allowParticles) {
       this.particles.update();
       this.particles.render();
@@ -538,7 +581,7 @@ export class DefenderGame extends BaseGame {
   }
 
   private drawSpookyOverlays() {
-    const reduce = (window as any).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
     // Pulsating vignette
     const t = Date.now() * 0.001;
     const pulse = reduce ? 0.08 : 0.12 + 0.06 * (Math.sin(t * 0.7) * 0.5 + 0.5);
@@ -576,7 +619,7 @@ export class DefenderGame extends BaseGame {
           enemy.position.y,
           auraRadius
         );
-        const hue = 280; // eerie purple
+        const _hue = 280; // eerie purple
         rg.addColorStop(0, `rgba(255, 0, 50, ${0.12 * intensity})`);
         rg.addColorStop(1, `rgba(120, 0, 160, 0)`);
         this.ctx.fillStyle = rg;
@@ -591,9 +634,9 @@ export class DefenderGame extends BaseGame {
   private startWhispers() {
     try {
       if (this.audioCtx) return;
-      if ((window as any).__CULTURAL_ARCADE_AUDIO__?.isMuted) return;
+      if ((window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__?.isMuted) return;
       // Create audio context and noise source
-      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = (window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const bufferSize = 2 * ctx.sampleRate;
@@ -770,11 +813,35 @@ export class DefenderGame extends BaseGame {
   }
 
   handleInput(event: KeyboardEvent) {
-    // Handled in update method through keys Set
+    if (event.type === 'keydown') {
+      this.keys.add(event.code);
+    } else if (event.type === 'keyup') {
+      this.keys.delete(event.code);
+    }
+  }
+
+  // Touch/pointer controls for mobile
+  handlePointerDown(x: number, _y: number) {
+    // Left side of screen = move left, right side = move right
+    if (x < this.width * 0.5) {
+      this.keys.add('ArrowLeft');
+      this.keys.add('KeyA');
+    } else {
+      this.keys.add('ArrowRight');
+      this.keys.add('KeyD');
+    }
+  }
+
+  handlePointerUp() {
+    // Remove movement keys when touch ends
+    this.keys.delete('ArrowLeft');
+    this.keys.delete('KeyA');
+    this.keys.delete('ArrowRight');
+    this.keys.delete('KeyD');
   }
 
   private playHitSound() {
-    const audio = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    const audio = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
     if (audio) {
       audio.playHit();
     }
@@ -782,7 +849,7 @@ export class DefenderGame extends BaseGame {
 
   private playShootSound() {
     try {
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
       if (!audioState?.isMuted) {
         audioState?.playStinger('defender_shoot');
       }
@@ -793,7 +860,7 @@ export class DefenderGame extends BaseGame {
 
   private playExplosionSound() {
     try {
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
       if (!audioState?.isMuted) {
         audioState?.playStinger('defender_explosion');
       }
@@ -804,9 +871,9 @@ export class DefenderGame extends BaseGame {
 
   private playStinger(stinger: string) {
     try {
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
-            audioState.playStinger(stinger as any);
+            audioState.playStinger(stinger);
         }
     } catch (e) {
         console.warn(`${stinger} sound failed:`, e);

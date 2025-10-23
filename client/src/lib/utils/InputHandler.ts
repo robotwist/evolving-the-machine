@@ -1,6 +1,6 @@
 export class InputHandler {
   private keys: Set<string> = new Set();
-  private callbacks: Map<string, Function[]> = new Map();
+  private callbacks: Map<string, (() => void)[]> = new Map();
 
   constructor() {
     this.setupEventListeners();
@@ -22,7 +22,7 @@ export class InputHandler {
     return this.keys.has(key);
   }
 
-  onKeyDown(key: string, callback: Function) {
+  onKeyDown(key: string, callback: () => void) {
     const eventKey = `keydown:${key}`;
     if (!this.callbacks.has(eventKey)) {
       this.callbacks.set(eventKey, []);
@@ -30,7 +30,7 @@ export class InputHandler {
     this.callbacks.get(eventKey)!.push(callback);
   }
 
-  onKeyUp(key: string, callback: Function) {
+  onKeyUp(key: string, callback: () => void) {
     const eventKey = `keyup:${key}`;
     if (!this.callbacks.has(eventKey)) {
       this.callbacks.set(eventKey, []);

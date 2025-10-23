@@ -46,7 +46,7 @@ export class AdaptiveNarrativeDirector {
   private adjustDifficulty() {
     // Analyze metrics to determine player skill
     const averageCombo = this.metrics.combos.reduce((a, b) => a + b, 0) / (this.metrics.combos.length || 1);
-    const averageTime = this.metrics.timePerStage.reduce((a, b) => a + b, 0) / (this.metrics.timePerStage.length || 1);
+    const _averageTime = this.metrics.timePerStage.reduce((a, b) => a + b, 0) / (this.metrics.timePerStage.length || 1);
 
     // Example logic: if player is taking little damage and has high combos, increase difficulty
     if (this.metrics.damageTaken < 50 && averageCombo > 10) {

@@ -1,29 +1,50 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
-import { PongGame } from '../lib/games/PongGame';
-import { BreakoutGame } from '../lib/games/BreakoutGame';
-import { AsteroidsGame } from '../lib/games/AsteroidsGame';
-import { DefenderGame } from '../lib/games/DefenderGame';
-import { LasatGame } from '../lib/games/LasatGame';
-import { DanceInterlude } from '../lib/games/DanceInterlude';
-import { StarWarsGame } from '../lib/games/StarWarsGame';
-import { BetrayalGame } from '../lib/games/BetrayalGame';
 import { BaseGame } from '../lib/games/BaseGame';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
-import { useAudio } from '../lib/stores/useAudio';
+import { assetLoader } from '../lib/utils/AssetLoader';
 
-type GameConstructor = new (ctx: CanvasRenderingContext2D, width: number, height: number) => BaseGame;
-
-const gameMap: { [key: number]: GameConstructor } = {
-  1: PongGame,
-  2: BreakoutGame,
-  3: AsteroidsGame,
-  4: DefenderGame,
-  5: LasatGame,
-  6: DanceInterlude,
-  7: StarWarsGame,
-  8: BetrayalGame,
+// Lazy load game classes for code splitting
+const loadGame = async (stage: number): Promise<new (ctx: CanvasRenderingContext2D, width: number, height: number) => BaseGame> => {
+  switch (stage) {
+    case 1: {
+      const { PongGame } = await import('../lib/games/PongGame');
+      return PongGame;
+    }
+    case 2: {
+      const { BreakoutGame } = await import('../lib/games/BreakoutGame');
+      return BreakoutGame;
+    }
+    case 3: {
+      const { AsteroidsGame } = await import('../lib/games/AsteroidsGame');
+      return AsteroidsGame;
+    }
+    case 4: {
+      const { DefenderGame } = await import('../lib/games/DefenderGame');
+      return DefenderGame;
+    }
+    case 5: {
+      const { LasatGame } = await import('../lib/games/LasatGame');
+      return LasatGame;
+    }
+    case 6: {
+      const { DanceInterlude } = await import('../lib/games/DanceInterlude');
+      return DanceInterlude;
+    }
+    case 7: {
+      const { StarWarsGame } = await import('../lib/games/StarWarsGame');
+      return StarWarsGame;
+    }
+    case 8: {
+      const { BetrayalGame } = await import('../lib/games/BetrayalGame');
+      return BetrayalGame;
+    }
+    default: {
+      const { PongGame: DefaultGame } = await import('../lib/games/PongGame');
+      return DefaultGame;
+    }
+  }
 };
 
 // Custom hook for managing the game instance lifecycle
@@ -40,7 +61,7 @@ function useGameInstance(
   useEffect(() => {
     if (!ctx || width === 0 || height === 0) return;
     if (isInitializing.current) return; // Prevent double initialization
-    
+
     isInitializing.current = true;
     console.log(`🎮 Initializing game for stage ${currentStage}`);
 
@@ -48,32 +69,45 @@ function useGameInstance(
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, width, height);
 
-    const gameClass = gameMap[currentStage] || PongGame;
-    const game = new gameClass(ctx, width, height);
-    gameRef.current = game;
+    // Preload assets for this stage
+    assetLoader.preloadStageAssets(currentStage)
+      .then(() => console.log(`🎨 Stage ${currentStage} assets ready`))
+      .catch(error => console.warn(`⚠️ Failed to preload stage ${currentStage} assets:`, error));
 
-    game.onScoreUpdate = (score: number) => updateScore(currentStage, score);
-    game.onGameOver = () => setGameState('ended');
-    game.onStageComplete = () => {
-      setGameState('stage-complete');
-      useGameStore.getState().unlockNextStage();
-    };
+    // Load and create game instance dynamically
+    loadGame(currentStage)
+      .then((gameClass) => {
+        const game = new gameClass(ctx, width, height);
+        gameRef.current = game;
 
-    // Initialize game asynchronously
-    Promise.resolve(game.init())
-      .then(() => {
-        console.log(`✅ Game initialized for stage ${currentStage}`);
-        game.start();
-        isInitializing.current = false;
+        game.onScoreUpdate = (score: number) => updateScore(currentStage, score);
+        game.onGameOver = () => setGameState('ended');
+        game.onStageComplete = () => {
+          setGameState('stage-complete');
+          useGameStore.getState().unlockNextStage();
+        };
+
+        // Initialize game asynchronously
+        return Promise.resolve(game.init())
+          .then(() => {
+            console.log(`✅ Game initialized for stage ${currentStage}`);
+            game.start();
+            isInitializing.current = false;
+          })
+          .catch((error: Error) => {
+            console.error(`❌ Failed to initialize game for stage ${currentStage}:`, error);
+            isInitializing.current = false;
+            throw error;
+          });
       })
       .catch((error: Error) => {
-        console.error(`❌ Failed to initialize game for stage ${currentStage}:`, error);
+        console.error(`❌ Failed to load game class for stage ${currentStage}:`, error);
         isInitializing.current = false;
       });
 
     return () => {
       console.log(`🧹 Cleaning up game for stage ${currentStage}`);
-      game.destroy();
+      gameRef.current?.destroy();
       gameRef.current = null;
       isInitializing.current = false;
     };

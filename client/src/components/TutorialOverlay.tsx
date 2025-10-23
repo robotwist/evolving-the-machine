@@ -37,7 +37,7 @@ export function TutorialOverlay() {
   if (!show[stageKey] || !tutorial) return null;
 
   return (
-    <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onClick={() => markSeen(stageKey)}>
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onClick={() => markSeen(stageKey)} onKeyDown={(e) => e.key === 'Enter' || e.key === ' ' ? markSeen(stageKey) : undefined} role="button" tabIndex={0}>
       <Card className="bg-black/90 border-white/20 max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
         <CardContent className="p-6 text-white text-center">
           <div className="text-xl font-bold mb-2">{tutorial.title}</div>

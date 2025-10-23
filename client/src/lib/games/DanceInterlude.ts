@@ -1,5 +1,5 @@
 import { BaseGame } from './BaseGame';
-import { useAudio } from '../stores/useAudio';
+import { AudioState } from '@shared/types';
 
 interface Dancer {
   x: number;
@@ -100,7 +100,7 @@ export class DanceInterlude extends BaseGame {
     ];
   }
 
-  update(deltaTime: number) {
+  update(_deltaTime: number) {
     this.danceTimer++;
 
     // Start music on first frame
@@ -132,8 +132,23 @@ export class DanceInterlude extends BaseGame {
   }
 
   private startDanceMusic() {
-    // In a real implementation, you'd play "Puttin' on the Ritz"
-    console.log("🎵 PLAYING: Puttin' on the Ritz - Young Frankenstein Edition");
+    // Play "Puttin' on the Ritz" music
+    try {
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
+      if (audioState && !audioState.isMuted) {
+        // Load and play the dance music
+        const danceMusic = new Audio('/sounds/puttin-on-the-ritz.mp3');
+        danceMusic.loop = true;
+        danceMusic.volume = 0.6; // Slightly lower volume for dance music
+        danceMusic.play().catch(e => {
+          console.warn('Could not play dance music:', e);
+        });
+
+        console.log("🎵 PLAYING: Puttin' on the Ritz - Young Frankenstein Edition");
+      }
+    } catch (error) {
+      console.warn('Dance music system not available:', error);
+    }
   }
 
   private updateDanceSequence() {

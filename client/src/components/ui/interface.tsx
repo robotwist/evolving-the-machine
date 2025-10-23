@@ -1,11 +1,6 @@
 import React, { useEffect } from 'react';
 import { Button } from './button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card';
-import { Input } from './input';
-import { Label } from './label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
-import { Textarea } from './textarea';
-import { useSettingsStore } from '../../lib/stores/useSettingsStore';
+import { Card, CardContent } from './card';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useAudio } from '../../lib/stores/useAudio';
 

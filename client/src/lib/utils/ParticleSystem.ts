@@ -1,3 +1,10 @@
+// Extend window interface for game globals
+declare global {
+  interface Window {
+    __CULTURAL_ARCADE_QUALITY__: string;
+  }
+}
+
 interface Particle {
   x: number;
   y: number;
@@ -31,7 +38,7 @@ export class ParticleSystem {
   }
 
   addExplosion(x: number, y: number, count = 20, color = '#FFD700', type: 'subtle' | 'dramatic' | 'epic' = 'subtle') {
-    const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
+    const quality = window.__CULTURAL_ARCADE_QUALITY__ || 'medium';
     const particleMultiplier = quality === 'high' ? 1.5 : quality === 'low' ? 0.7 : 1;
     const finalCount = Math.floor(count * particleMultiplier);
     
@@ -104,7 +111,7 @@ export class ParticleSystem {
           // Subtle explosion sound
           audioState.playStinger('arcade_hit');
         }
-      } catch (e) {
+      } catch {
         // Audio system not available
       }
     })();
@@ -213,7 +220,7 @@ export class ParticleSystem {
       // Render trails first
       if (particle.trail && particle.trail.length > 0) {
         this.ctx.globalCompositeOperation = 'lighter';
-        particle.trail.forEach((trailPoint, index) => {
+        particle.trail.forEach((trailPoint, _index) => {
           const trailAlpha = (trailPoint.life / 10) * alpha * 0.3;
           this.ctx.globalAlpha = trailAlpha;
           this.ctx.fillStyle = particle.color;

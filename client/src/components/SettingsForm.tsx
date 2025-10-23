@@ -30,13 +30,13 @@ export function SettingsForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-white/90">
         <label className="flex items-center justify-between gap-2">
           <span>Preset</span>
-          <select value={preset} onChange={(e) => setPreset(e.target.value as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
-            {presetOptions.map((p: { value: string; label: string }) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          <select value={preset} onChange={(e) => setPreset(e.target.value)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
+            {presetOptions.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </label>
         <label className="flex items-center justify-between gap-2">
             <span>Voice Style</span>
-            <select value={voiceStyle} onChange={(e) => setVoiceStyle(e.target.value as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
+            <select value={voiceStyle} onChange={(e) => setVoiceStyle(e.target.value)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
                 <option value="normal">Normal</option>
                 <option value="haunting">Haunting</option>
                 <option value="glitch">Glitch</option>
@@ -44,7 +44,7 @@ export function SettingsForm() {
         </label>
         <label className="flex items-center justify-between gap-2">
             <span>Graphics Quality</span>
-            <select value={graphicsQuality} onChange={(e) => setGraphicsQuality(e.target.value as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
+            <select value={graphicsQuality} onChange={(e) => setGraphicsQuality(e.target.value)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
@@ -52,7 +52,7 @@ export function SettingsForm() {
         </label>
         <label className="flex items-center justify-between gap-2">
             <span>FPS Cap</span>
-            <select value={fpsCap} onChange={(e) => setFpsCap(Number(e.target.value) as any)} className="bg-black/50 border border-white/20 rounded px-2 py-1">
+            <select value={fpsCap} onChange={(e) => setFpsCap(Number(e.target.value))} className="bg-black/50 border border-white/20 rounded px-2 py-1">
                 <option value={30}>30 FPS</option>
                 <option value={60}>60 FPS</option>
                 <option value={120}>120 FPS</option>

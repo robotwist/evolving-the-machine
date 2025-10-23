@@ -1,4 +1,5 @@
 import { AdaptiveNarrativeDirector } from "../utils/AdaptiveNarrativeDirector";
+import { performanceMonitor } from "../utils/PerformanceMonitor";
 
 export abstract class BaseGame {
   protected ctx: CanvasRenderingContext2D;
@@ -37,6 +38,7 @@ export abstract class BaseGame {
   start() {
     this.isRunning = true;
     this.isPaused = false;
+    performanceMonitor.startMonitoring(); // Start performance monitoring
     this.init();
     this.gameLoop();
   }
@@ -54,6 +56,7 @@ export abstract class BaseGame {
 
   stop() {
     this.isRunning = false;
+    performanceMonitor.stopMonitoring(); // Stop performance monitoring
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
@@ -68,7 +71,7 @@ export abstract class BaseGame {
   protected gameLoop() {
     if (!this.isRunning) return;
     const now = performance.now();
-    const targetFps = (window as any).__CULTURAL_ARCADE_FPS_CAP__ ?? 60;
+    const targetFps = (window as unknown as { __CULTURAL_ARCADE_FPS_CAP__?: number }).__CULTURAL_ARCADE_FPS_CAP__ ?? 60;
     const minFrameMs = 1000 / Math.max(1, targetFps);
 
     if (this.lastFrameTimeMs == null) {
@@ -76,6 +79,9 @@ export abstract class BaseGame {
     }
     const deltaMs = now - this.lastFrameTimeMs;
     this.lastFrameTimeMs = now;
+
+    // Update performance monitor
+    performanceMonitor.update();
 
     if (!this.isPaused) {
       this.frameAccumulatorMs += deltaMs;

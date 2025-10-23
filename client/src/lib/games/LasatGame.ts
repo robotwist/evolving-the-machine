@@ -1,5 +1,5 @@
 import { BaseGame } from './BaseGame';
-import { useAudio } from '../stores/useAudio';
+import { CollidableObject, AudioState, WindowExtensions } from '@shared/types';
 
 interface Vector2 {
   x: number;
@@ -72,7 +72,6 @@ export class LasatGame extends BaseGame {
   private playerProjectiles: Projectile[] = [];
   private enemyProjectiles: Projectile[] = [];
   private powerUps: PowerUp[] = [];
-  private particles: any[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
   private wave = 1;
@@ -245,7 +244,7 @@ export class LasatGame extends BaseGame {
       type,
       shootTimer: Math.random() * 40, // More aggressive shooting
       specialAttackTimer: 80 + Math.random() * 120,
-      behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as any, // More aggressive
+      behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as 'aggressive' | 'defensive' | 'berserker', // More aggressive
       rage: 0,
       enraged: false,
       enrageTimer: 0
@@ -254,7 +253,7 @@ export class LasatGame extends BaseGame {
     this.enemies.push(enemy);
   }
 
-  update(deltaTime: number) {
+  update(_deltaTime: number) {
     // Handle input
     this.handleMovement();
 
@@ -676,16 +675,16 @@ export class LasatGame extends BaseGame {
     });
   }
 
-  private isColliding(obj1: any, obj2: any): boolean {
+  private isColliding(obj1: CollidableObject, obj2: CollidableObject): boolean {
     const dx = obj1.position.x - obj2.position.x;
     const dy = obj1.position.y - obj2.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (obj1.size + obj2.size) / 2;
   }
 
-  private playStinger(stinger: any) {
+  private playStinger(stinger: string) {
     try {
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
             audioState.playStinger(stinger);
         }
@@ -702,17 +701,18 @@ export class LasatGame extends BaseGame {
       case 'energy':
         this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 50);
         break;
-      case 'weapon':
+      case 'weapon': {
         const weapons: Player['weaponType'][] = ['laser', 'plasma', 'lightning'];
         this.player.weaponType = weapons[Math.floor(Math.random() * weapons.length)];
         break;
+      }
       case 'shield':
         this.player.shieldActive = true;
         this.player.shieldTimer = 300;
         break;
     }
     
-    const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
     if (audioState && !audioState.isMuted) {
       audioState.playSuccess();
     }
@@ -1152,12 +1152,12 @@ export class LasatGame extends BaseGame {
     }
   }
 
-  handleInput(event: KeyboardEvent) {
+  handleInput(_event: KeyboardEvent) {
     // Handled in update method through keys Set
   }
 
   private playHitSound() {
-    const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
     if (audioState && !audioState.isMuted) {
       audioState.playHit();
     }

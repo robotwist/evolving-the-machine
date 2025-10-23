@@ -1,6 +1,6 @@
 import { BaseGame } from './BaseGame';
 import { VirtualStick } from '../controls/VirtualStick';
-import { useAudio } from '../stores/useAudio';
+import { AudioOptions, AudioState } from '@shared/types';
 
 interface Vector2 {
   x: number;
@@ -227,9 +227,9 @@ export class AsteroidsGame extends BaseGame {
       this.messageIndex++;
       this.narcissusProgress = this.messageIndex / this.aiMessages.length; // Track mirroring progress
       this.aiNarrativeTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
+        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true } as AudioOptions);
       }
     }
     
@@ -247,9 +247,9 @@ export class AsteroidsGame extends BaseGame {
       ];
       this.currentAIMessage = betrayalMessages[Math.floor(Math.random() * betrayalMessages.length)];
       this.aiNarrativeTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
+        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true } as AudioOptions);
       }
     }
 
@@ -727,9 +727,9 @@ export class AsteroidsGame extends BaseGame {
 
   private playStinger(stinger: string) {
     try {
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
         if (!audioState.isMuted) {
-            audioState.playStinger(stinger as any);
+            audioState.playStinger(stinger);
         }
     } catch (e) {
         console.warn(`${stinger} sound failed:`, e);
@@ -785,7 +785,7 @@ export class AsteroidsGame extends BaseGame {
   }
 
   private playHitSound() {
-    const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+    const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: { isMuted: boolean; playHit: () => void } }).__CULTURAL_ARCADE_AUDIO__;
     if (audioState && !audioState.isMuted) {
       audioState.playHit();
     }

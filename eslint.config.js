@@ -61,6 +61,9 @@ export default [
         HTMLUListElement: 'readonly',
         HTMLLIElement: 'readonly',
         HTMLOListElement: 'readonly',
+        HTMLOlistElement: 'readonly',
+        HTMLImageElement: 'readonly',
+        Image: 'readonly',
         CanvasRenderingContext2D: 'readonly',
         CanvasTextAlign: 'readonly',
         // Web APIs
@@ -83,6 +86,10 @@ export default [
         ServiceWorker: 'readonly',
         // React globals
         React: 'readonly',
+        // Jest globals (for setup files)
+        jest: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
       },
     },
     plugins: {
@@ -118,6 +125,64 @@ export default [
       react: {
         version: 'detect',
       },
+    },
+  },
+  {
+    files: ['**/*.{test,spec}.{ts,tsx}', '**/client/src/**/__tests__/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2021,
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        // Jest globals for test files
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        jest: 'readonly',
+        // Test environment globals
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        // All browser globals from main config
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        navigator: 'readonly',
+        // DOM element types for test files
+        HTMLElement: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLOListElement: 'readonly',
+        Image: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': ts,
+      'react': react,
+      'react-hooks': reactHooks,
+      'jsx-a11y': jsxA11y,
+    },
+    rules: {
+      ...ts.configs.recommended.rules,
+      ...react.configs.recommended.rules,
+      ...jsxA11y.configs.recommended.rules,
+      // Test-specific rules
+      '@typescript-eslint/no-explicit-any': 'off', // Allow any in tests
+      'jsx-a11y/click-events-have-key-events': 'off', // Tests don't need full accessibility
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'jsx-a11y/heading-has-content': 'off',
+      'jsx-a11y/anchor-has-content': 'off',
     },
   },
   {

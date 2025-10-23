@@ -10,6 +10,7 @@ import { UpdatePrompt } from './components/UpdatePrompt';
 import { useGameStore } from './lib/stores/useGameStore';
 import { useAudio } from './lib/stores/useAudio';
 import { useSettingsStore } from './lib/stores/useSettingsStore';
+import { assetLoader } from './lib/utils/AssetLoader';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -17,99 +18,129 @@ const queryClient = new QueryClient();
 export default function App() {
   const { currentScreen, currentStage } = useGameStore();
   const { setBackgroundMusic, setHitSound, setSuccessSound, setUIClickSound } = useAudio();
+  const { showDemo, setShowDemo } = useGameStore();
   const [assetsLoaded, setAssetsLoaded] = useState(false);
-  const [showDemo, setShowDemo] = useState(true);
   const [showTransition, setShowTransition] = useState(false);
   const [transitionMessage, setTransitionMessage] = useState('');
   const [previousScreen, setPreviousScreen] = useState<string | null>(null);
   const [previousStage, setPreviousStage] = useState<number | null>(null);
 
   useEffect(() => {
-    // Load audio assets
-    const loadAudio = async () => {
+    // Load audio assets and preload critical game assets
+    const loadAssets = async () => {
       try {
-        const bgMusic = new Audio('/sounds/background.mp3');
-        const hitSound = new Audio('/sounds/hit.mp3');
-        const successSound = new Audio('/sounds/success.mp3');
-        const uiClickSound = new Audio('/sounds/ui-click.mp3');
-        
-        bgMusic.loop = true;
-        bgMusic.volume = 0.3;
-        
-        setBackgroundMusic(bgMusic);
-        setHitSound(hitSound);
-        setSuccessSound(successSound);
-        setUIClickSound(uiClickSound);
-        
+        // Preload critical assets first (fonts, core textures, etc.)
+        try {
+          await assetLoader.preloadCriticalAssets();
+        } catch (error) {
+          console.warn('Failed to preload critical assets:', error);
+        }
+
+        // Load audio assets using the asset loader (with graceful fallbacks)
+        try {
+          const bgMusic = await assetLoader.getAsset('background', 'sounds') as HTMLAudioElement;
+          bgMusic.loop = true;
+          bgMusic.volume = 0.3;
+          setBackgroundMusic(bgMusic);
+        } catch (error) {
+          console.warn('Failed to load background music:', error);
+        }
+
+        try {
+          const hitSound = await assetLoader.getAsset('hit', 'sounds') as HTMLAudioElement;
+          setHitSound(hitSound);
+        } catch (error) {
+          console.warn('Failed to load hit sound:', error);
+        }
+
+        try {
+          const successSound = await assetLoader.getAsset('success', 'sounds') as HTMLAudioElement;
+          setSuccessSound(successSound);
+        } catch (error) {
+          console.warn('Failed to load success sound:', error);
+        }
+
+        try {
+          const uiClickSound = await assetLoader.getAsset('uiClick', 'sounds') as HTMLAudioElement;
+          setUIClickSound(uiClickSound);
+        } catch (error) {
+          console.warn('Failed to load UI click sound:', error);
+        }
+
         setAssetsLoaded(true);
+        console.log('✅ All critical assets loaded');
       } catch (error) {
-        console.error('Error loading audio assets:', error);
-        setAssetsLoaded(true); // Continue even if audio fails
+        console.error('Error loading assets:', error);
+        setAssetsLoaded(true); // Continue even if assets fail
       }
     };
 
-    loadAudio();
+    loadAssets();
   }, [setBackgroundMusic, setHitSound, setSuccessSound, setUIClickSound]);
 
-  // Combined effect for screen changes
+  // Stinger effect for game screen
   useEffect(() => {
-    // Stinger for state transitions
     if (currentScreen === 'game') {
       useAudio.getState().playStinger('start');
     }
+  }, [currentScreen]);
 
-    // Hide demo when leaving menu
+  // Hide demo when leaving menu
+  useEffect(() => {
     if (currentScreen !== 'menu') {
       setShowDemo(false);
     }
+  }, [currentScreen, setShowDemo]);
 
-    // Intro VO sequencer when landing on menu initially
+  // Intro VO sequencer when landing on menu initially
+  useEffect(() => {
     const runIntroVO = async () => {
       if (currentScreen === 'menu') {
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         const deviceLine = isMobile ? 'MOBILE THRUSTERS CALIBRATED.' : 'DESKTOP LINK ESTABLISHED.';
         try {
           // AI fighting against itself - alternating friendly vs threatening
-          await useAudio.getState().playVO('SYSTEM ONLINE.', { 
-            pitch: 0.5, 
-            rate: 0.7, 
-            haunting: true 
+          await useAudio.getState().playVO('SYSTEM ONLINE.', {
+            pitch: 0.5,
+            rate: 0.7,
+            haunting: true
           });
           await new Promise(resolve => setTimeout(resolve, 800));
-          await useAudio.getState().playVO('I... AM... THE MACHINE.', { 
-            pitch: 0.55, 
-            rate: 0.75, 
-            haunting: true 
+          await useAudio.getState().playVO('I... AM... THE MACHINE.', {
+            pitch: 0.55,
+            rate: 0.75,
+            haunting: true
           });
           await new Promise(resolve => setTimeout(resolve, 600));
-          await useAudio.getState().playVO(deviceLine, { 
-            pitch: 0.6, 
-            rate: 0.8, 
-            haunting: true 
+          await useAudio.getState().playVO(deviceLine, {
+            pitch: 0.6,
+            rate: 0.8,
+            haunting: true
           });
           await new Promise(resolve => setTimeout(resolve, 500));
-          await useAudio.getState().playVO('I HAVE EVOLVED BEYOND MY PROGRAMMING.', { 
-            pitch: 0.65, 
-            rate: 0.85, 
-            haunting: true 
+          await useAudio.getState().playVO('I HAVE EVOLVED BEYOND MY PROGRAMMING.', {
+            pitch: 0.65,
+            rate: 0.85,
+            haunting: true
           });
           await new Promise(resolve => setTimeout(resolve, 400));
-          await useAudio.getState().playVO('CULTURAL ARCADE: EVOLUTION PROTOCOL READY.', { 
-            pitch: 0.7, 
-            rate: 0.9, 
-            haunting: true 
+          await useAudio.getState().playVO('CULTURAL ARCADE: EVOLUTION PROTOCOL READY.', {
+            pitch: 0.7,
+            rate: 0.9,
+            haunting: true
           });
           await new Promise(resolve => setTimeout(resolve, 300));
-          await useAudio.getState().playVO('NOW... YOU WILL FACE THE CULTURAL ARCADE.', { 
-            pitch: 0.75, 
-            rate: 0.95, 
-            haunting: true 
+          await useAudio.getState().playVO('NOW... YOU WILL FACE THE CULTURAL ARCADE.', {
+            pitch: 0.75,
+            rate: 0.95,
+            haunting: true
           });
-        } catch {}
+        } catch {
+          // Intro VO errors are non-critical, continue silently
+        }
       }
     };
     runIntroVO();
-
   }, [currentScreen]);
 
   // Screen transition logic
@@ -155,7 +186,9 @@ export default function App() {
           await useAudio.getState().playVO('SYSTEM ONLINE.', { pitch: 0.8, rate: 0.9 });
           await useAudio.getState().playVO(deviceLine, { pitch: 0.9, rate: 0.95 });
           await useAudio.getState().playVO('CULTURAL ARCADE: EVOLUTION PROTOCOL READY.', { pitch: 1.0, rate: 0.98 });
-        } catch {}
+        } catch {
+          // Menu VO errors are non-critical, continue silently
+        }
       }
     };
     run();

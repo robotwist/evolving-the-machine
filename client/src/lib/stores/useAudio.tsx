@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { WindowExtensions } from "@shared/types";
 
 interface AudioState {
   backgroundMusic: HTMLAudioElement | null;
@@ -119,7 +120,7 @@ export const useAudio = create<AudioState>((set, get) => ({
         }
         // Enhanced digital distortion effects
         try {
-          const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+          const AudioCtx = (window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;
           if (AudioCtx) {
             const ctx = new AudioCtx();
             if (opts?.haunting) {
@@ -185,7 +186,9 @@ export const useAudio = create<AudioState>((set, get) => ({
               setTimeout(() => ctx.close(), 200);
             }
           }
-        } catch {}
+        } catch {
+          // Audio context creation failed, continue without audio effects
+        }
         window.speechSynthesis.speak(utt);
       });
     } catch (e) {
@@ -198,7 +201,7 @@ export const useAudio = create<AudioState>((set, get) => ({
     if (isMuted) return;
     
     try {
-      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = (window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;
       if (!AudioCtx) return;
       const audioCtx = new AudioCtx();
       
@@ -349,7 +352,7 @@ export const useAudio = create<AudioState>((set, get) => ({
       oscillator.start();
       oscillator.stop(audioCtx.currentTime + 0.5);
       setTimeout(() => audioCtx.close(), 550);
-    } catch (e) {
+    } catch {
       // Audio system not available
     }
   },
@@ -357,7 +360,7 @@ export const useAudio = create<AudioState>((set, get) => ({
     const { isMuted } = get();
     if (isMuted) return;
     try {
-      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = (window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const bufferSize = Math.floor(0.18 * ctx.sampleRate);
@@ -378,6 +381,8 @@ export const useAudio = create<AudioState>((set, get) => ({
       noise.start();
       noise.stop(ctx.currentTime + 0.18);
       setTimeout(() => ctx.close(), 280);
-    } catch {}
+    } catch {
+      // Sizzle sound generation failed, continue without audio
+    }
   }
 }));

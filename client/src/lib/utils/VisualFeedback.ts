@@ -8,15 +8,6 @@ interface HitMarker {
   type: 'hit' | 'critical' | 'miss' | 'combo';
 }
 
-interface DamageNumber {
-  x: number;
-  y: number;
-  value: number;
-  life: number;
-  maxLife: number;
-  velocity: { x: number; y: number };
-  type: 'damage' | 'heal' | 'combo';
-}
 
 export class VisualFeedback {
     private ctx: CanvasRenderingContext2D;
@@ -47,7 +38,7 @@ export class VisualFeedback {
         this.comboCounter = { x, y, count, timer: 120 };
     }
 
-    update(deltaTime: number) {
+    update(_deltaTime: number) {
         // Update damage numbers
         for (let i = this.damageNumbers.length - 1; i >= 0; i--) {
             const dn = this.damageNumbers[i];

@@ -1,0 +1,423 @@
+
+> rest-express@1.0.0 lint
+> eslint client/src --ext .ts,.tsx --max-warnings 200
+
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/App.tsx
+  135:17  warning  Empty block statement                                                                                           no-empty
+  140:6   warning  React Hook useEffect has a missing dependency: 'setShowDemo'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  185:17  warning  Empty block statement                                                                                           no-empty
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/ArcadeDemo.tsx
+  12:10  warning  'effects' is assigned a value but never used. Allowed unused vars must match /^_/u                                      @typescript-eslint/no-unused-vars
+  13:29  warning  'setCurrentStage' is assigned a value but never used. Allowed unused vars must match /^_/u                              @typescript-eslint/no-unused-vars
+  20:65  warning  Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  21:14  warning  'e' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  32:6   warning  React Hook useEffect has a missing dependency: 'startGlitchSequence'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/GameCanvas.tsx
+   6:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  13:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  16:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  19:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  22:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  25:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  28:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  31:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  34:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+  37:7   warning  Unexpected lexical declaration in case block                                no-case-declarations
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/GameModals.tsx
+   7:10  warning  'useSettingsStore' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                 @typescript-eslint/no-unused-vars
+  13:5   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  84:69  warning  'currentStage' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                            @typescript-eslint/no-unused-vars
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/PerformanceMonitor.tsx
+  26:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/SettingsForm.tsx
+  33:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:89  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:99  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:89  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/TutorialOverlay.tsx
+  40:5  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  40:5  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/ui/alert.tsx
+  39:3  warning  Headings must have content and the content must be accessible by a screen reader  jsx-a11y/heading-has-content
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/ui/interface.tsx
+  3:29  warning  'CardDescription' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  3:46  warning  'CardHeader' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  3:58  warning  'CardTitle' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  4:10  warning  'Input' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+  5:10  warning  'Label' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+  6:10  warning  'Tabs' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  6:16  warning  'TabsContent' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  6:29  warning  'TabsList' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  6:39  warning  'TabsTrigger' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  7:10  warning  'Textarea' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  8:10  warning  'useSettingsStore' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/components/ui/pagination.tsx
+  48:3  warning  Anchors must have content and the content must be accessible by a screen reader  jsx-a11y/anchor-has-content
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/AsteroidsGame.ts
+    3:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  230:37  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  250:37  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  730:39  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  732:47  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  788:35  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/BaseGame.ts
+  74:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/BetrayalGame.ts
+   158:10   warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+   224:39   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   233:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   250:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   263:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   274:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   296:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   310:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   324:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   335:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   343:37   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   461:13   warning  Unexpected lexical declaration in case block                                 no-case-declarations
+   462:96   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   466:13   warning  Unexpected lexical declaration in case block                                 no-case-declarations
+   467:106  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   490:13   warning  Unexpected lexical declaration in case block                                 no-case-declarations
+   502:13   warning  Unexpected lexical declaration in case block                                 no-case-declarations
+   686:29   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   686:40   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   693:32   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   695:39   warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   714:14   warning  'e' is defined but never used                                                @typescript-eslint/no-unused-vars
+  1004:15   warning  'event' is defined but never used. Allowed unused args must match /^_/u      @typescript-eslint/no-unused-vars
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/BreakoutGame.ts
+     3:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u                @typescript-eslint/no-unused-vars
+    75:22  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   101:56  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   157:10  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u               @typescript-eslint/no-unused-vars
+   183:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   215:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   228:39  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   239:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   249:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   408:42  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   438:43  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   439:41  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   482:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   528:34  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   535:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   573:35  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   587:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   598:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   676:34  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   683:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   703:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   704:35  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   780:39  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+   812:13  warning  'finalProgress' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   963:58  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  1077:11  warning  'centerY' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  1099:15  warning  'event' is defined but never used. Allowed unused args must match /^_/u                   @typescript-eslint/no-unused-vars
+  1105:37  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/DanceInterlude.ts
+    2:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  103:10  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  137:37  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/DefenderGame.ts
+    2:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+   72:22  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  100:56  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  161:10  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u     @typescript-eslint/no-unused-vars
+  200:39  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  420:37  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  421:41  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  422:45  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  439:39  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  440:43  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  441:47  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  448:41  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  462:39  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  525:31  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  526:35  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  569:39  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  583:31  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  621:15  warning  'hue' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  636:22  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  638:35  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  638:67  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  823:32  warning  'y' is defined but never used. Allowed unused args must match /^_/u             @typescript-eslint/no-unused-vars
+  843:30  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  851:37  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  862:37  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  873:39  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+  875:47  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/LasatGame.ts
+     2:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+    75:22  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   248:93  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   257:10  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+   679:29  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   679:40  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   686:32  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   688:39  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   706:9   warning  Unexpected lexical declaration in case block                                 no-case-declarations
+   715:35  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+  1155:15  warning  'event' is defined but never used. Allowed unused args must match /^_/u      @typescript-eslint/no-unused-vars
+  1160:35  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/PongGame.ts
+    2:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+    3:10  warning  'useHaptics' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+    4:10  warning  'useSettingsStore' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+   75:27  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   79:20  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   80:21  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   83:22  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  117:56  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  131:31  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  133:34  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  134:30  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  135:31  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  136:33  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  140:32  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  172:14  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  203:24  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u          @typescript-eslint/no-unused-vars
+  226:20  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u          @typescript-eslint/no-unused-vars
+  264:50  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  268:43  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  296:22  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u          @typescript-eslint/no-unused-vars
+  415:26  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u          @typescript-eslint/no-unused-vars
+  460:41  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  495:41  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  511:27  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u          @typescript-eslint/no-unused-vars
+  525:32  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  635:11  warning  'hitFlash' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  639:11  warning  'pulse' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  764:39  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  766:47  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  795:49  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  799:39  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/games/StarWarsGame.ts
+    2:10  warning  'useAudio' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  179:10  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u        @typescript-eslint/no-unused-vars
+  247:11  warning  Unexpected lexical declaration in case block                                       no-case-declarations
+  247:17  warning  'radius' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  252:11  warning  Unexpected lexical declaration in case block                                       no-case-declarations
+  253:11  warning  Unexpected lexical declaration in case block                                       no-case-declarations
+  254:11  warning  Unexpected lexical declaration in case block                                       no-case-declarations
+  894:37  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  907:37  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/stores/__tests__/useGameStore.test.ts
+    4:1   error  'describe' is not defined      no-undef
+    5:3   error  'beforeEach' is not defined    no-undef
+    7:5   error  'localStorage' is not defined  no-undef
+   18:3   error  'it' is not defined            no-undef
+   21:5   error  'expect' is not defined        no-undef
+   22:5   error  'expect' is not defined        no-undef
+   23:5   error  'expect' is not defined        no-undef
+   24:5   error  'expect' is not defined        no-undef
+   25:5   error  'expect' is not defined        no-undef
+   28:3   error  'it' is not defined            no-undef
+   35:5   error  'expect' is not defined        no-undef
+   38:3   error  'it' is not defined            no-undef
+   45:5   error  'expect' is not defined        no-undef
+   46:5   error  'expect' is not defined        no-undef
+   49:3   error  'it' is not defined            no-undef
+   56:5   error  'expect' is not defined        no-undef
+   59:3   error  'it' is not defined            no-undef
+   71:5   error  'expect' is not defined        no-undef
+   74:3   error  'it' is not defined            no-undef
+   87:5   error  'expect' is not defined        no-undef
+   95:5   error  'expect' is not defined        no-undef
+   98:3   error  'it' is not defined            no-undef
+  105:5   error  'expect' is not defined        no-undef
+  106:5   error  'expect' is not defined        no-undef
+  107:5   error  'expect' is not defined        no-undef
+  110:3   error  'it' is not defined            no-undef
+  119:5   error  'expect' is not defined        no-undef
+  120:5   error  'expect' is not defined        no-undef
+  123:3   error  'it' is not defined            no-undef
+  133:5   error  'expect' is not defined        no-undef
+  134:5   error  'expect' is not defined        no-undef
+  135:5   error  'expect' is not defined        no-undef
+  142:5   error  'expect' is not defined        no-undef
+  143:5   error  'expect' is not defined        no-undef
+  144:5   error  'expect' is not defined        no-undef
+  145:5   error  'expect' is not defined        no-undef
+  146:5   error  'expect' is not defined        no-undef
+  149:3   error  'it' is not defined            no-undef
+  158:5   error  'expect' is not defined        no-undef
+  159:5   error  'expect' is not defined        no-undef
+  162:3   error  'it' is not defined            no-undef
+  171:20  error  'localStorage' is not defined  no-undef
+  172:5   error  'expect' is not defined        no-undef
+  175:5   error  'expect' is not defined        no-undef
+  176:5   error  'expect' is not defined        no-undef
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/stores/useAudio.tsx
+  122:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  122:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:17  warning  Empty block statement                     no-empty
+  201:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  352:14  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  360:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  360:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  381:13  warning  Empty block statement                     no-empty
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils.ts
+   8:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils/AdaptiveNarrativeDirector.ts
+  49:11  warning  'averageTime' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils/AssetLoader.ts
+   10:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   11:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:49  error    'HTMLImageElement' is not defined         no-undef
+  110:23  error    'Image' is not defined                    no-undef
+  156:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  164:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  173:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils/InputHandler.ts
+   3:34  warning  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  25:36  warning  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  33:34  warning  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils/ParticleSystem.ts
+   34:32  warning  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+  107:16  warning  'e' is defined but never used                                            @typescript-eslint/no-unused-vars
+  216:45  warning  'index' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils/PerformanceMonitor.ts
+  56:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils/VisualFeedback.ts
+  11:11  warning  'DamageNumber' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  50:12  warning  'deltaTime' is defined but never used. Allowed unused args must match /^_/u     @typescript-eslint/no-unused-vars
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/lib/utils/__tests__/AssetLoader.test.ts
+   3:1   error    'describe' is not defined                 no-undef
+   6:3   error    'beforeEach' is not defined               no-undef
+  10:3   error    'describe' is not defined                 no-undef
+  11:5   error    'it' is not defined                       no-undef
+  12:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:7   error    'expect' is not defined                   no-undef
+  16:5   error    'it' is not defined                       no-undef
+  17:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:7   error    'expect' is not defined                   no-undef
+  21:5   error    'it' is not defined                       no-undef
+  22:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:7   error    'expect' is not defined                   no-undef
+  27:3   error    'describe' is not defined                 no-undef
+  28:5   error    'it' is not defined                       no-undef
+  32:7   error    'expect' is not defined                   no-undef
+  35:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:7   error    'expect' is not defined                   no-undef
+  39:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:7   error    'expect' is not defined                   no-undef
+  43:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:7   error    'expect' is not defined                   no-undef
+  47:5   error    'it' is not defined                       no-undef
+  48:7   error    'expect' is not defined                   no-undef
+  52:3   error    'describe' is not defined                 no-undef
+  53:5   error    'it' is not defined                       no-undef
+  54:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:7   error    'expect' is not defined                   no-undef
+  57:7   error    'expect' is not defined                   no-undef
+  58:7   error    'expect' is not defined                   no-undef
+  59:7   error    'expect' is not defined                   no-undef
+  62:5   error    'it' is not defined                       no-undef
+  63:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  65:7   error    'expect' is not defined                   no-undef
+  66:7   error    'expect' is not defined                   no-undef
+  67:7   error    'expect' is not defined                   no-undef
+  70:5   error    'it' is not defined                       no-undef
+  71:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  73:7   error    'expect' is not defined                   no-undef
+  74:7   error    'expect' is not defined                   no-undef
+  75:7   error    'expect' is not defined                   no-undef
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/main.tsx
+  35:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  37:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/robwistrand/code/game-dev/EvolvingTheMachine/client/src/setupTests.ts
+    6:16  error    'jest' is not defined                     no-undef
+    7:15  error    'jest' is not defined                     no-undef
+    8:15  error    'jest' is not defined                     no-undef
+    9:17  error    'jest' is not defined                     no-undef
+   10:16  error    'jest' is not defined                     no-undef
+   11:13  error    'jest' is not defined                     no-undef
+   12:13  error    'jest' is not defined                     no-undef
+   13:13  error    'jest' is not defined                     no-undef
+   14:11  error    'jest' is not defined                     no-undef
+   15:11  error    'jest' is not defined                     no-undef
+   16:14  error    'jest' is not defined                     no-undef
+   17:16  error    'jest' is not defined                     no-undef
+   18:12  error    'jest' is not defined                     no-undef
+   19:13  error    'jest' is not defined                     no-undef
+   20:19  error    'jest' is not defined                     no-undef
+   21:16  error    'jest' is not defined                     no-undef
+   22:19  error    'jest' is not defined                     no-undef
+   23:19  error    'jest' is not defined                     no-undef
+   24:27  error    'jest' is not defined                     no-undef
+   25:21  error    'jest' is not defined                     no-undef
+   27:27  error    'jest' is not defined                     no-undef
+   28:21  error    'jest' is not defined                     no-undef
+   78:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   97:16  error    'jest' is not defined                     no-undef
+  103:6   error    'jest' is not defined                     no-undef
+  110:16  error    'jest' is not defined                     no-undef
+  117:16  error    'jest' is not defined                     no-undef
+  118:14  error    'jest' is not defined                     no-undef
+  119:13  error    'jest' is not defined                     no-undef
+  128:16  error    'jest' is not defined                     no-undef
+  135:16  error    'jest' is not defined                     no-undef
+  142:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  143:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  146:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:10  error    'jest' is not defined                     no-undef
+  148:11  error    'jest' is not defined                     no-undef
+  154:10  error    'jest' is not defined                     no-undef
+  160:1   error    'beforeEach' is not defined               no-undef
+  163:11  error    'jest' is not defined                     no-undef
+  164:12  error    'jest' is not defined                     no-undef
+  168:1   error    'afterEach' is not defined                no-undef
+
+✖ 351 problems (115 errors, 236 warnings)
+

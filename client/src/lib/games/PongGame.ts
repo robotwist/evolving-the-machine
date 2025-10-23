@@ -1,7 +1,7 @@
 import { BaseGame } from './BaseGame';
-import { useAudio } from '../stores/useAudio';
-import { useHaptics } from '../stores/useHaptics';
-import { useSettingsStore } from '../stores/useSettingsStore';
+import { VisualFeedback } from '../utils/VisualFeedback';
+import { ParticleSystem } from '../utils/ParticleSystem';
+import { GameSettings, HapticsAPI, WindowExtensions, AudioOptions } from '@shared/types';
 
 const PONG_CONSTANTS = {
   WIN_SCORE: 5,
@@ -36,10 +36,10 @@ interface Ball {
   dx: number;
   dy: number;
   radius: number;
+  angle: number;
   speed: number;
   type: 'normal' | 'speed' | 'fire' | 'missile' | 'wacky';
   trail: Array<{x: number, y: number}>;
-  angle?: number;
   angleSpeed?: number;
 }
 
@@ -68,19 +68,25 @@ export class PongGame extends BaseGame {
   private powerupDuration = 0;
   private shieldTimer = 0;
   private shakeTimer = 0;
+  private shadowBlur = 0; // Visual quality setting for shadow effects
   // New explosion-based powerups
   private chainReactionTimer = 0;
   private shockwaveTimer = 0;
   private explosionPowerups: Array<{x: number, y: number, type: 'chain' | 'shockwave', timer: number}> = [];
-  private visualFeedback: any;
+  private visualFeedback: VisualFeedback | null = null;
   private player1Combo = 0;
   private totalDamageTaken = 0;
   private pointStartTime = 0;
-  private haptics: any;
-  private settings: any;
+  private haptics: HapticsAPI | null = null;
+  private settings: {
+    hapticsEnabled: boolean;
+    hitMarkers: boolean;
+    damageNumbers: boolean;
+    screenShake: boolean;
+  } | null = null;
   
   // Particle system for effects
-  private particles: any;
+  private particles: ParticleSystem | null = null;
   private aiTaunts = [
     'ANALYZING... ADAPTING... EVOLVING RAPIDLY!',
     'YOUR PATTERNS ARE MINE NOW!',
@@ -114,8 +120,7 @@ export class PongGame extends BaseGame {
     // Initialize particles
     try {
       const { ParticleSystem } = await import('../utils/ParticleSystem');
-      this.particles = new ParticleSystem(this.ctx) as any;
-      await this.particles.init(this.ctx);
+      this.particles = new ParticleSystem(this.ctx);
     } catch (e) {
       console.warn('ParticleSystem not available:', e);
     }
@@ -129,16 +134,16 @@ export class PongGame extends BaseGame {
     }
     
     // Initialize haptics and settings through window globals
-    this.haptics = (window as any).__CULTURAL_ARCADE_HAPTICS__;
+    this.haptics = (window as unknown as { __CULTURAL_ARCADE_HAPTICS__?: HapticsAPI }).__CULTURAL_ARCADE_HAPTICS__;
     this.settings = {
-      hapticsEnabled: (window as any).__CULTURAL_ARCADE_HAPTICS_ENABLED__ ?? true,
-      hitMarkers: (window as any).__CULTURAL_ARCADE_HIT_MARKERS__ ?? true,
-      screenShake: (window as any).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true,
-      damageNumbers: (window as any).__CULTURAL_ARCADE_DAMAGE_NUMBERS__ ?? true
+      hapticsEnabled: (window as unknown as GameSettings).__CULTURAL_ARCADE_HAPTICS_ENABLED__ ?? true,
+      hitMarkers: (window as unknown as GameSettings).__CULTURAL_ARCADE_HIT_MARKERS__ ?? true,
+      screenShake: (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true,
+      damageNumbers: (window as unknown as GameSettings).__CULTURAL_ARCADE_DAMAGE_NUMBERS__ ?? true
     };
 
     // Initialize paddles with Greek column design
-    const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ as 'low' | 'medium' | 'high' | undefined;
+    const quality = (window as unknown as GameSettings).__CULTURAL_ARCADE_QUALITY__ as 'low' | 'medium' | 'high' | undefined;
     const shadowBlur = quality === 'low' ? 0 : quality === 'medium' ? 5 : 15;
 
     this.player1 = {
@@ -170,7 +175,7 @@ export class PongGame extends BaseGame {
     // Initialize ball
     this.resetBall();
     // store visual quality for render usage
-    (this as any)._shadowBlur = shadowBlur;
+    this.shadowBlur = shadowBlur;
   }
 
   private resetBall() {
@@ -188,20 +193,20 @@ export class PongGame extends BaseGame {
     };
   }
 
-  update(deltaTime: number) {
-    this.updatePlayer(deltaTime);
-    this.updateAI(deltaTime);
-    this.updateBall(deltaTime);
+  update(_deltaTime: number) {
+    this.updatePlayer(_deltaTime);
+    this.updateAI(_deltaTime);
+    this.updateBall(_deltaTime);
     this.handleCollisions();
     this.checkScoring();
 
-    this.updatePowerups(deltaTime);
-    this.updateParticles(deltaTime);
-    this.updateVisuals(deltaTime);
-    this.visualFeedback.update(deltaTime);
+    this.updatePowerups(_deltaTime);
+    this.updateParticles(_deltaTime);
+    this.updateVisuals(_deltaTime);
+    this.visualFeedback?.update(_deltaTime);
   }
 
-  private updatePlayer(deltaTime: number) {
+  private updatePlayer(_deltaTime: number) {
     // Human Player 1 controls
     if (this.keys.has('KeyW')) {
       this.player1.y = Math.max(0, this.player1.y - this.player1.speed);
@@ -224,7 +229,7 @@ export class PongGame extends BaseGame {
     }
   }
 
-  private updateAI(deltaTime: number) {
+  private updateAI(_deltaTime: number) {
     // AI Player 2 - Aggressive computer opponent
     const ballCenter = this.ball.y;
     const paddleCenter = this.player2.y + this.player2.height / 2;
@@ -262,11 +267,11 @@ export class PongGame extends BaseGame {
       this.aiTauntTimer--;
     }
 
-    const playVoice = (message: string, options: any) => {
+    const playVoice = (message: string, options: AudioOptions) => {
         this.currentTaunt = message;
         this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
         try {
-            const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+            const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
             if (audioState && !audioState.isMuted) {
                 audioState.playVO(message, options);
             }
@@ -294,7 +299,7 @@ export class PongGame extends BaseGame {
     }
   }
 
-  private updateBall(deltaTime: number) {
+  private updateBall(_deltaTime: number) {
     this.ball.trail.push({x: this.ball.x, y: this.ball.y});
     if (this.ball.trail.length > 10) {
       this.ball.trail.shift();
@@ -413,7 +418,7 @@ export class PongGame extends BaseGame {
     this.pointStartTime = Date.now();
   }
 
-  private updatePowerups(deltaTime: number) {
+  private updatePowerups(_deltaTime: number) {
     this.spawnPowerups();
     // Update powerup duration
     if (this.powerupDuration > 0) {
@@ -458,7 +463,7 @@ export class PongGame extends BaseGame {
         if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y);
         
         try {
-          const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+          const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
           if (!audioState.isMuted) {
             audioState.playStinger('arcade_powerup');
           }
@@ -493,7 +498,7 @@ export class PongGame extends BaseGame {
         
         // Powerup collection sound
         try {
-          const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+          const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
           if (!audioState.isMuted) {
             audioState.playStinger('arcade_powerup');
           }
@@ -509,12 +514,12 @@ export class PongGame extends BaseGame {
     });
   }
 
-  private updateParticles(deltaTime: number) {
-    this.particles.update();
+  private updateParticles(_deltaTime: number) {
+    this.particles?.update();
   }
 
-  private updateVisuals(deltaTime: number) {
-    this.visualFeedback?.update(deltaTime);
+  private updateVisuals(_deltaTime: number) {
+    this.visualFeedback?.update(_deltaTime);
     if (this.player1.damage >= this.player1.maxDamage) {
       this.explodePaddle(this.player1);
       this.onGameOver?.();
@@ -523,7 +528,7 @@ export class PongGame extends BaseGame {
 
   private explodePaddle(paddle: Paddle) {
     // Create explosion particles with dramatic effect
-    const quality = (window as any).__CULTURAL_ARCADE_QUALITY__ || 'medium';
+    const quality = (window as unknown as GameSettings).__CULTURAL_ARCADE_QUALITY__ || 'medium';
     const count = quality === 'high' ? 25 : quality === 'low' ? 12 : 18;
     
     this.particles.addExplosion(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, count, '#FFD700', 'dramatic');
@@ -546,14 +551,32 @@ export class PongGame extends BaseGame {
 
   render() {
     this.clearCanvas();
-    
+
+    // Draw background
+    this.drawGreekBackground();
+
+    // Draw paddles
+    this.drawGreekPaddle(this.player1);
+    this.drawGreekPaddle(this.player2);
+
+    // Draw ball
+    this.drawBall();
+
+    // Draw powerups
+    this.drawPowerups();
+
+    // Draw score
+    this.drawScore();
+
+    // Draw center line
+    this.drawCenterLine();
+
     // Render particles
-    this.particles.render();
-    this.visualFeedback.render();
-    
+    this.particles?.render();
+
     // Render visual feedback
     this.visualFeedback?.render();
-    
+
     this.ctx.restore();
   }
 
@@ -615,11 +638,11 @@ export class PongGame extends BaseGame {
     // Calculate damage effects
     const damagePercent = paddle.damage / paddle.maxDamage;
     const timeSinceHit = Date.now() - paddle.lastHitTime;
-    const hitFlash = timeSinceHit < 200 ? Math.sin(timeSinceHit * 0.1) * 0.3 + 0.7 : 1;
+    const _hitFlash = timeSinceHit < 200 ? Math.sin(timeSinceHit * 0.1) * 0.3 + 0.7 : 1;
     
     // Calculate pulsing for AI paddle
     const pulseIntensity = isHuman ? 1 : paddle.pulsateIntensity;
-    const pulse = isHuman ? 1 : Math.sin(Date.now() * 0.01) * pulseIntensity * 0.2 + 1;
+    const _pulse = isHuman ? 1 : Math.sin(Date.now() * 0.01) * pulseIntensity * 0.2 + 1;
     
     if (isHuman) {
       // Human paddle - damaged and beaten up
@@ -744,9 +767,9 @@ export class PongGame extends BaseGame {
 
   private playStinger(stinger: string) {
     try {
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
-            audioState.playStinger(stinger as any);
+            audioState.playStinger(stinger);
         }
     } catch (e) {
         console.warn(`${stinger} sound failed:`, e);
@@ -775,11 +798,11 @@ export class PongGame extends BaseGame {
     };
   }
 
-  private playAIVoice(message: string, options: any) {
+  private playAIVoice(message: string, options: AudioOptions) {
     this.currentTaunt = message;
     this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
     try {
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
             audioState.playVO(message, options);
         }
@@ -925,6 +948,61 @@ export class PongGame extends BaseGame {
     
     // Audio
     this.playStinger('starwars_explosion');
+  }
+
+  private drawBall() {
+    this.ctx.save();
+
+    // Ball spinning effect
+    this.ctx.translate(this.ball.x, this.ball.y);
+    this.ctx.rotate(this.ball.angle);
+
+    // Draw ball with glow effect
+    const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, this.ball.radius);
+    gradient.addColorStop(0, '#FFFFFF');
+    gradient.addColorStop(0.7, '#00FFFF');
+    gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+
+    this.ctx.fillStyle = gradient;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, this.ball.radius, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Draw ball outline
+    this.ctx.strokeStyle = '#00FFFF';
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  private drawScore() {
+    this.ctx.save();
+    this.ctx.fillStyle = '#00FFFF';
+    this.ctx.font = 'bold 48px Inter, sans-serif';
+    this.ctx.textAlign = 'center';
+
+    // Player 1 score (left)
+    this.ctx.fillText(this.player1.score.toString(), this.width * 0.25, 60);
+
+    // Player 2 score (right)
+    this.ctx.fillText(this.player2.score.toString(), this.width * 0.75, 60);
+
+    this.ctx.restore();
+  }
+
+  private drawCenterLine() {
+    this.ctx.save();
+    this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+    this.ctx.lineWidth = 2;
+    this.ctx.setLineDash([10, 10]);
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.width / 2, 0);
+    this.ctx.lineTo(this.width / 2, this.height);
+    this.ctx.stroke();
+
+    this.ctx.restore();
   }
 
   private drawPowerups() {

@@ -11,11 +11,13 @@ interface GameStore {
   currentStage: number;
   gameState: GameState;
   unlockedStages: number;
-  
+  showDemo: boolean;
+
   // Actions
   setCurrentScreen: (screen: GameScreen) => void;
   setCurrentStage: (stage: number) => void;
   setGameState: (state: GameState) => void;
+  setShowDemo: (show: boolean) => void;
   unlockNextStage: () => void;
   goToNextStage: () => void;
   resetProgress: () => void;
@@ -30,6 +32,7 @@ export const useGameStore = create<GameStore>()(
       currentStage: 1,
       gameState: 'playing',
       unlockedStages: 1,
+      showDemo: true,
       
       setCurrentScreen: (screen) => set({ currentScreen: screen }),
       
@@ -40,7 +43,9 @@ export const useGameStore = create<GameStore>()(
       }),
       
       setGameState: (state) => set({ gameState: state }),
-      
+
+      setShowDemo: (show) => set({ showDemo: show }),
+
       unlockNextStage: () => set((state) => ({
         unlockedStages: Math.max(state.unlockedStages, state.currentStage + 1)
       })),
@@ -63,7 +68,8 @@ export const useGameStore = create<GameStore>()(
         unlockedStages: 1,
         currentStage: 1,
         gameState: 'playing',
-        currentScreen: 'menu'
+        currentScreen: 'menu',
+        stageAttempts: {}
       }),
       stageAttempts: {},
       incrementAttempt: (stage: number) => set((s) => ({ stageAttempts: { ...s.stageAttempts, [stage]: (s.stageAttempts[stage] ?? 0) + 1 } })),

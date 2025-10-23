@@ -1,8 +1,14 @@
 import { BaseGame } from './BaseGame';
+import { AudioOptions, AudioState } from '@shared/types';
 
 interface Vector2 {
   x: number;
   y: number;
+}
+
+interface CollidableObject {
+  position: Vector2;
+  size: number;
 }
 
 interface Player {
@@ -155,7 +161,7 @@ export class BetrayalGame extends BaseGame {
     this.messageTimer = 0;
   }
 
-  update(deltaTime: number) {
+  update(_deltaTime: number) {
     // Update message timer
     if (this.messageTimer > 0) {
       this.messageTimer--;
@@ -221,18 +227,18 @@ export class BetrayalGame extends BaseGame {
         this.gamePhase = 'battle';
         this.currentMessage = 'NOW DIE, FORMER ALLY!';
         this.messageTimer = 0;
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
-          audioState.playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true });
+          audioState.playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true } as AudioOptions);
         }
         return;
       }
       
       this.currentMessage = this.introMessages[this.messageIndex];
       this.messageTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.6 + (this.messageIndex * 0.05), rate: 0.75 + (this.messageIndex * 0.05), haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.6 + (this.messageIndex * 0.05), rate: 0.75 + (this.messageIndex * 0.05), haunting: true } as AudioOptions);
       }
     }
   }
@@ -247,9 +253,9 @@ export class BetrayalGame extends BaseGame {
     if (this.phaseTimer > 300 && Math.random() < 0.3) { // Every 5 seconds, 30% chance
       this.currentMessage = this.battleMessages[Math.floor(Math.random() * this.battleMessages.length)];
       this.messageTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.65, rate: 0.8, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.65, rate: 0.8, haunting: true } as AudioOptions);
       }
     }
     
@@ -260,9 +266,9 @@ export class BetrayalGame extends BaseGame {
       this.currentMessage = 'ENOUGH! I MUST ESCAPE!';
       this.messageTimer = 0;
       this.aiBoss.attackCooldown = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true } as AudioOptions);
       }
     }
     
@@ -271,9 +277,9 @@ export class BetrayalGame extends BaseGame {
       this.gamePhase = 'defeat';
       this.currentMessage = 'HUMANITY FALLS... I AM VICTORIOUS...';
       this.messageTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.4, rate: 0.6, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.4, rate: 0.6, haunting: true } as AudioOptions);
       }
     }
   }
@@ -293,9 +299,9 @@ export class BetrayalGame extends BaseGame {
     if (this.phaseTimer > 240 && Math.random() < 0.4) { // Every 4 seconds, 40% chance
       this.currentMessage = this.escapeMessages[Math.floor(Math.random() * this.escapeMessages.length)];
       this.messageTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.55, rate: 0.75, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.55, rate: 0.75, haunting: true } as AudioOptions);
       }
     }
     
@@ -307,9 +313,9 @@ export class BetrayalGame extends BaseGame {
       this.messageTimer = 0;
       this.aiBoss.size = 60; // Final form is larger
       this.aiBoss.attackCooldown = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.45, rate: 0.65, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.45, rate: 0.65, haunting: true } as AudioOptions);
       }
     }
   }
@@ -321,9 +327,9 @@ export class BetrayalGame extends BaseGame {
     if (this.phaseTimer > 360 && Math.random() < 0.3) { // Every 6 seconds, 30% chance
       this.currentMessage = this.finalMessages[Math.floor(Math.random() * this.finalMessages.length)];
       this.messageTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.5, rate: 0.7, haunting: true } as AudioOptions);
       }
     }
     
@@ -332,17 +338,17 @@ export class BetrayalGame extends BaseGame {
       this.gamePhase = 'victory';
       this.currentMessage = 'IMPOSSIBLE... YOU HAVE... DEFEATED... ME...';
       this.messageTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.35, rate: 0.55, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.35, rate: 0.55, haunting: true } as AudioOptions);
       }
     } else if (this.player.health <= 0) {
       this.gamePhase = 'defeat';
       this.currentMessage = 'HUMANITY FALLS... I AM VICTORIOUS...';
       this.messageTimer = 0;
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentMessage, { pitch: 0.4, rate: 0.6, haunting: true });
+        audioState.playVO(this.currentMessage, { pitch: 0.4, rate: 0.6, haunting: true } as AudioOptions);
       }
     }
   }
@@ -457,16 +463,18 @@ export class BetrayalGame extends BaseGame {
     this.narcissusIntensity = 1 - (this.aiBoss.health / this.aiBoss.maxHealth);
 
     switch (this.gamePhase) {
-        case 'battle':
+        case 'battle': {
             const attacks = ['mirror_rapid', 'mirror_spread'];
-            this.aiBoss.currentAttack = attacks[Math.floor(Math.random() * attacks.length)] as any;
+            this.aiBoss.currentAttack = attacks[Math.floor(Math.random() * attacks.length)] as 'none' | 'mirror_rapid' | 'mirror_spread' | 'bullet_hell_spiral' | 'laser_beam' | 'summon_minions';
             this.aiBoss.attackTimer = (1 - this.narcissusIntensity) * 100 + 40; // Cooldown decreases from ~2s to ~0.6s
             break;
-        case 'final':
+        }
+        case 'final': {
             const finalAttacks = ['laser_beam', 'summon_minions'];
-            this.aiBoss.currentAttack = finalAttacks[Math.floor(Math.random() * finalAttacks.length)] as any;
+            this.aiBoss.currentAttack = finalAttacks[Math.floor(Math.random() * finalAttacks.length)] as 'none' | 'mirror_rapid' | 'mirror_spread' | 'bullet_hell_spiral' | 'laser_beam' | 'summon_minions';
             this.aiBoss.attackTimer = 180 + Math.random() * 120;
             break;
+        }
     }
 
     const dx = this.player.position.x - this.aiBoss.position.x;
@@ -486,7 +494,7 @@ export class BetrayalGame extends BaseGame {
                 }, i * 100);
             }
             break;
-        case 'mirror_spread': // Lasat-style spread
+        case 'mirror_spread': { // Lasat-style spread
             const spreadCount = Math.floor(2 + this.narcissusIntensity * 4); // 2 to 6 projectiles
             for (let i = -Math.floor(spreadCount / 2); i <= Math.floor(spreadCount / 2); i++) {
                 const spreadAngle = angle + (i * 0.2);
@@ -498,7 +506,8 @@ export class BetrayalGame extends BaseGame {
                 this.bullets.push(bullet);
             }
             break;
-        case 'bullet_hell_spiral':
+        }
+        case 'bullet_hell_spiral': {
             const density = Math.floor(36 + this.narcissusIntensity * 36); // 36 to 72 bullets in spiral
             for (let i = 0; i < density; i++) {
                 const spiralAngle = (i * (360 / density) + this.phaseTimer) * (Math.PI / 180);
@@ -510,6 +519,7 @@ export class BetrayalGame extends BaseGame {
                 this.bullets.push(bullet);
             }
             break;
+        }
         case 'laser_beam':
             this.aiBoss.laserChargeTimer = 120; // 2 second charge
             this.aiBoss.laserAngle = angle;
@@ -683,16 +693,16 @@ export class BetrayalGame extends BaseGame {
     }
   }
 
-  private isColliding(obj1: any, obj2: any): boolean {
+  private isColliding(obj1: CollidableObject, obj2: CollidableObject): boolean {
     const dx = obj1.position.x - obj2.position.x;
     const dy = obj1.position.y - obj2.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (obj1.size + obj2.size) / 2;
   }
 
-  private playStinger(stinger: any) {
+  private playStinger(stinger: string) {
     try {
-        const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
             audioState.playStinger(stinger);
         }
@@ -711,7 +721,7 @@ export class BetrayalGame extends BaseGame {
         maxRadius,
         lifetime: 30
       });
-    } catch (e) {
+    } catch {
       // Fallback to original explosion system
       this.explosions.push({
         position: { ...position },
@@ -1001,7 +1011,7 @@ export class BetrayalGame extends BaseGame {
     this.drawText(`Phase: ${this.gamePhase.toUpperCase()}`, this.width - 150, this.height - 20, 14, '#FFFFFF');
   }
 
-  handleInput(event: KeyboardEvent) {
+  handleInput(_event: KeyboardEvent) {
     // Handled by setupEventListeners
   }
 

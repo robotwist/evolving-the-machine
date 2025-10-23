@@ -1,5 +1,5 @@
 import { BaseGame } from './BaseGame';
-import { useAudio } from '../stores/useAudio';
+import { WindowExtensions } from '@shared/types';
 
 interface Player {
   position: { x: number; y: number };
@@ -176,7 +176,7 @@ export class StarWarsGame extends BaseGame {
     });
   }
 
-  update(deltaTime: number) {
+  update(_deltaTime: number) {
     if (this.transitioning) {
       this.updateTransition();
       return;
@@ -243,12 +243,13 @@ export class StarWarsGame extends BaseGame {
           enemy.velocity.x = Math.sin(enemy.patternTimer * 0.02) * 2;
           enemy.velocity.y = 1;
           break;
-        case 1: // Circular pattern
-          const radius = 60;
+        case 1: { // Circular pattern
+          const _radius = 60;
           enemy.velocity.x = Math.cos(enemy.patternTimer * 0.03) * 1.5;
           enemy.velocity.y = Math.sin(enemy.patternTimer * 0.03) * 1.5 + 0.5;
           break;
-        case 2: // Aggressive dive
+        }
+        case 2: { // Aggressive dive
           const dx = this.player.position.x - enemy.position.x;
           const dy = this.player.position.y - enemy.position.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
@@ -257,6 +258,7 @@ export class StarWarsGame extends BaseGame {
             enemy.velocity.y = (dy / distance) * 1.5;
           }
           break;
+        }
       }
       
       enemy.position.x += enemy.velocity.x;
@@ -891,7 +893,7 @@ export class StarWarsGame extends BaseGame {
 
   private playLaserSound() {
     try {
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
       if (!audioState.isMuted) {
         audioState.playStinger('starwars_laser');
@@ -904,7 +906,7 @@ export class StarWarsGame extends BaseGame {
 
   private playExplosionSound() {
     try {
-      const audioState = (window as any).__CULTURAL_ARCADE_AUDIO__;
+      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
       if (audioState && !audioState.isMuted) {
         audioState.playStinger('starwars_explosion');
       }

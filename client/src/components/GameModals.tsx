@@ -4,13 +4,12 @@ import { useScoreStore } from '../lib/stores/useScoreStore';
 import { useAudio } from '../lib/stores/useAudio';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { useSettingsStore } from '../lib/stores/useSettingsStore';
 import { SettingsForm } from './SettingsForm';
 
 // A generic modal wrapper
 function Modal({ children, onKeyDown, modalRef, className }: { children: React.ReactNode, onKeyDown: (e: React.KeyboardEvent) => void, modalRef: React.RefObject<HTMLDivElement>, className?: string }) {
   return (
-    <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onKeyDown={onKeyDown}>
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onKeyDown={onKeyDown} role="dialog" tabIndex={-1} aria-hidden="true">
       <Card className={`bg-black/90 border-white/20 ${className}`} ref={modalRef}>
         <CardContent className="p-6 text-center">
           {children}
@@ -81,7 +80,7 @@ function StageCompleteMenu({ handleMainMenu, handleRestart, handleNextStage }: {
 
 
 export function GameModals() {
-  const { gameState, setGameState, setCurrentScreen, goToNextStage, currentStage } = useGameStore();
+  const { gameState, setGameState, setCurrentScreen, goToNextStage } = useGameStore();
   const modalRef = useRef<HTMLDivElement>(null);
 
   const handlePause = () => setGameState(gameState === 'paused' ? 'playing' : 'paused');
