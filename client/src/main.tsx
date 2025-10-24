@@ -19,6 +19,7 @@ declare global {
     __CULTURAL_ARCADE_COMBO_COUNTERS__: boolean;
     __CULTURAL_ARCADE_AUDIO__: unknown;
     __CULTURAL_ARCADE_HAPTICS__: unknown;
+    gameInstance: any; // Game instance for mobile controls
   }
 }
 

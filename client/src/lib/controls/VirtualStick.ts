@@ -71,7 +71,15 @@ export class VirtualStick {
       // decay toward 0
       this.smoothedX *= 1 - this.smoothing;
       this.smoothedY *= 1 - this.smoothing;
-      return { x: this.smoothedX, y: this.smoothedY, magnitude: Math.hypot(this.smoothedX, this.smoothedY) };
+      const magnitude = Math.hypot(this.smoothedX, this.smoothedY);
+      return {
+        x: this.smoothedX,
+        y: this.smoothedY,
+        magnitude,
+        angle: Math.atan2(this.smoothedY, this.smoothedX),
+        rawX: this.curX,
+        rawY: this.curY
+      };
     }
     let dx = this.curX - this.startX;
     let dy = this.curY - this.startY;

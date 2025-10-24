@@ -70,7 +70,6 @@ export const OptimizedGameCanvas = memo<OptimizedGameCanvasProps>(({
 
   return (
     <GameCanvas
-      ref={canvasRef}
       currentGame={currentGame}
       stage={stage}
       gameState={gameState}

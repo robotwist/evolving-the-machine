@@ -13,7 +13,7 @@ import { nanoid } from "nanoid";
 interface ViteServerOptions {
   middlewareMode: boolean;
   hmr: { server: Server };
-  allowedHosts: boolean | string[];
+  allowedHosts: string[];
 }
 
 const viteLogger = createLogger();
@@ -33,7 +33,7 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions: ViteServerOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true,
+    allowedHosts: ['localhost', '127.0.0.1'],
   };
 
   const vite = await createViteServer({
