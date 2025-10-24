@@ -415,13 +415,20 @@ export class BreakoutGame extends BaseGame {
               ball.speed = Math.min(ball.speed * 2.0, 12.0); // 2X speed with cap
               // Create punch effect particles
               this.particles?.addExplosion(ball.x, ball.y, 25, '#FF6B35', 'dramatic');
+              // Add screen shake for punch impact
+              this.shakeTimer = 10;
             } else {
               // Normal speed boost
               ball.speed = Math.min(ball.speed + 0.2, 7.0);
+              // Create normal hit particles
+              this.particles?.addExplosion(ball.x, ball.y, 15, '#FFD700', 'subtle');
             }
             
             // Ensure minimum speed to prevent slow balls
             ball.speed = Math.max(ball.speed, 3.0);
+            
+            // Position ball slightly above paddle to prevent multiple collisions
+            ball.y = this.paddle.y - ball.radius - 1;
             
             this.playHitSound();
           }
@@ -507,7 +514,7 @@ export class BreakoutGame extends BaseGame {
   }
 
   private checkPaddleCollisionWith(ball: Ball): boolean {
-    // More precise collision detection with better ball-paddle interaction
+    // Enhanced collision detection that accounts for paddle movement
     const ballLeft = ball.x - ball.radius;
     const ballRight = ball.x + ball.radius;
     const ballTop = ball.y - ball.radius;
@@ -518,14 +525,16 @@ export class BreakoutGame extends BaseGame {
     const paddleTop = this.paddle.y;
     const paddleBottom = this.paddle.y + this.paddle.height;
     
+    // Enhanced collision detection with better bounds checking
+    const horizontalOverlap = ballRight >= paddleLeft && ballLeft <= paddleRight;
+    const verticalOverlap = ballBottom >= paddleTop && ballTop <= paddleBottom;
+    
     // Check if ball is moving downward and colliding with paddle
-    return (
-      ballBottom >= paddleTop &&
-      ballTop <= paddleBottom &&
-      ballRight >= paddleLeft &&
-      ballLeft <= paddleRight &&
-      ball.dy > 0
-    );
+    // Also check if ball is close to paddle (within 5 pixels) to catch fast-moving balls
+    const closeToPaddle = Math.abs(ball.y - (this.paddle.y + this.paddle.height / 2)) < 10;
+    
+    return (horizontalOverlap && verticalOverlap && ball.dy > 0) || 
+           (horizontalOverlap && closeToPaddle && ball.dy > 0);
   }
 
   private checkBrickCollisions(ball: Ball) {
@@ -1389,6 +1398,11 @@ export class BreakoutGame extends BaseGame {
     // Show paddle speed and position
     this.drawText(`Speed: ${this.paddle.speed}`, this.width - 150, 50, 12, '#FFD700');
     this.drawText(`Pos: ${Math.round(this.paddle.x)}, ${Math.round(this.paddle.y)}`, this.width - 150, 70, 12, '#FFD700');
+    
+    // Show punch arms status
+    if (this.paddle.punchArms) {
+      this.drawText('👊 Punch Arms Active', this.width - 150, 90, 12, '#FF6B35');
+    }
     
     if (!this.transitioning) {
       if (this.paddleEvolved) {
