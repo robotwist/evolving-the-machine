@@ -3,6 +3,8 @@ import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
 import { BaseGame } from '../lib/games/BaseGame';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
+import { useIsMobile } from '../hooks/use-is-mobile';
+import { MobileControlsManager } from '../lib/controls/MobileControls';
 import { assetLoader } from '../lib/utils/AssetLoader';
 
 // Lazy load game classes for code splitting
@@ -170,6 +172,8 @@ export function GameCanvas() {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
   const { gameState } = useGameStore();
+  const isMobile = useIsMobile();
+  const mobileControlsRef = useRef<MobileControlsManager | null>(null);
 
   const applyCanvasSize = useCallback(() => {
     const canvas = canvasRef.current;
@@ -214,6 +218,41 @@ export function GameCanvas() {
     const unsubscribe = useSettingsStore.subscribe(applyCanvasSize);
     return unsubscribe;
   }, [applyCanvasSize]);
+
+  // Mobile controls integration
+  useEffect(() => {
+    if (!canvasRef.current || !ctx || !isMobile) return;
+
+    // Initialize mobile controls
+    mobileControlsRef.current = new MobileControlsManager(canvasRef.current, {
+      onMove: (x, y) => {
+        // Handle movement input
+        if (window.gameInstance) {
+          window.gameInstance.handleMobileMove?.(x, y);
+        }
+      },
+      onShoot: (x, y) => {
+        // Handle shooting input
+        if (window.gameInstance) {
+          window.gameInstance.handleMobileShoot?.(x, y);
+        }
+      },
+      onPause: () => {
+        useGameStore.getState().setGameState(gameState === 'paused' ? 'playing' : 'paused');
+      },
+      onAction: () => {
+        // Handle primary action (varies by game)
+        if (window.gameInstance) {
+          window.gameInstance.handleMobileAction?.();
+        }
+      }
+    });
+
+    return () => {
+      mobileControlsRef.current?.destroy();
+      mobileControlsRef.current = null;
+    };
+  }, [ctx, isMobile, gameState]);
 
   useEffect(() => {
     if (gameRef.current) {

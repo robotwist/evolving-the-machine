@@ -27,6 +27,71 @@ canvas {
   width: 100% !important;
   height: 100% !important;
   touch-action: none;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Mobile-specific styles */
+.mobile-game {
+  @apply min-h-screen bg-black;
+  touch-action: manipulation;
+}
+
+.mobile-game canvas {
+  touch-action: none;
+  max-height: 70vh;
+  aspect-ratio: 4/3;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+/* PWA styles */
+@media all and (display-mode: standalone) {
+  body {
+    background-color: #000;
+  }
+
+  .mobile-game {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Touch control indicators */
+.touch-indicator {
+  @apply pointer-events-none border-2 border-opacity-30 rounded-full;
+  transition: all 0.2s ease;
+}
+
+.touch-indicator.active {
+  @apply border-opacity-70 scale-110;
+}
+
+/* Mobile UI overlay */
+.mobile-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mobile-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+/* Safe area adjustments for mobile */
+@supports (padding: max(0px)) {
+  .mobile-game {
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
 }
 
 /* 80s Arcade Demo Effects */

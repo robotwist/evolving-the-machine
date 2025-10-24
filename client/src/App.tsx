@@ -7,18 +7,37 @@ import { GameCanvas } from './components/GameCanvas';
 import { GameUI } from './components/GameUI';
 import { ScreenTransition } from './components/ScreenTransition';
 import { UpdatePrompt } from './components/UpdatePrompt';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { MobileGameUI } from './components/MobileGameUI';
 import { useGameStore } from './lib/stores/useGameStore';
 import { useAudio } from './lib/stores/useAudio';
 import { useSettingsStore } from './lib/stores/useSettingsStore';
+import { useIsMobile } from './hooks/use-is-mobile';
 import { assetLoader } from './lib/utils/AssetLoader';
 import './index.css';
 
 const queryClient = new QueryClient();
 
+// Helper function to get game name from stage
+function getGameName(stage: number): string {
+  const gameNames = [
+    'Pong',
+    'Breakout',
+    'Asteroids',
+    'Defender',
+    'Lasat',
+    'Dance Interlude',
+    'Star Wars',
+    'Betrayal'
+  ];
+  return gameNames[stage - 1] || 'Unknown';
+}
+
 export default function App() {
   const { currentScreen, currentStage } = useGameStore();
   const { setBackgroundMusic, setHitSound, setSuccessSound, setUIClickSound } = useAudio();
   const { showDemo, setShowDemo } = useGameStore();
+  const isMobile = useIsMobile();
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [showTransition, setShowTransition] = useState(false);
   const [transitionMessage, setTransitionMessage] = useState('');
@@ -277,21 +296,34 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="game-container">
+      <div className={`game-container ${isMobile ? 'mobile-game' : 'desktop-game'}`}>
         <UpdatePrompt />
+        <PWAInstallPrompt />
         {currentScreen === 'menu' && <MainMenu />}
         {currentScreen === 'stage-select' && <StageSelect />}
         {currentScreen === 'game' && (
           <>
-            <GameCanvas />
-            <div className="ui-overlay">
-              <GameUI />
-            </div>
+            {isMobile ? (
+              <MobileGameUI
+                currentGame={getGameName(currentStage)}
+                stage={currentStage}
+                gameState="playing"
+                onGameComplete={() => {/* TODO: Implement mobile game completion */}}
+                onScoreUpdate={(_score) => {/* TODO: Implement mobile score updates */}}
+              />
+            ) : (
+              <>
+                <GameCanvas />
+                <div className="ui-overlay">
+                  <GameUI />
+                </div>
+              </>
+            )}
           </>
         )}
         {showTransition && (
-          <ScreenTransition 
-            message={transitionMessage} 
+          <ScreenTransition
+            message={transitionMessage}
             onComplete={handleTransitionComplete}
           />
         )}

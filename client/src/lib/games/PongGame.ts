@@ -761,6 +761,36 @@ export class PongGame extends BaseGame {
     }
   }
 
+  // Mobile input handlers
+  handleMobileMove(x: number, y: number) {
+    // Convert stick input to paddle movement
+    const centerY = this.height / 2;
+    const targetY = centerY + (y * this.height * 0.4); // Scale movement
+    const paddleCenter = this.player1.y + this.player1.height / 2;
+
+    if (Math.abs(targetY - paddleCenter) > 5) {
+      if (targetY < paddleCenter) {
+        this.player1.y = Math.max(0, this.player1.y - this.player1.speed);
+      } else {
+        this.player1.y = Math.min(this.height - this.player1.height, this.player1.y + this.player1.speed);
+      }
+    }
+  }
+
+  handleMobileShoot(_x: number, _y: number) {
+    // In Pong, shooting could trigger special abilities
+    // For now, just add some visual feedback
+    this.visualFeedback?.addHitMarker(this.player1.x + this.player1.width / 2, this.player1.y, 10, 'hit');
+  }
+
+  handleMobileAction() {
+    // Activate shield or special ability
+    if (!this.player1.shielded && this.shieldTimer <= 0) {
+      this.player1.shielded = true;
+      this.shieldTimer = 180; // 3 seconds of shield
+    }
+  }
+
   private playHitSound() {
     this.playStinger('arcade_hit');
   }

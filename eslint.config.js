@@ -90,6 +90,17 @@ export default [
         jest: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
+        // Web APIs for security and validation utilities
+        URL: 'readonly',
+        crypto: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        DOMPurify: 'readonly',
+        // Event types
+        Event: 'readonly',
+        MouseEvent: 'readonly',
+        TouchEvent: 'readonly',
+        KeyboardEvent: 'readonly',
       },
     },
     plugins: {

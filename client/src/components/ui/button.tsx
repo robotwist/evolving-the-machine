@@ -42,24 +42,41 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, onClick, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, loading = false, onClick, disabled, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     const { playUIClick } = useAudio();
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (loading || disabled) return;
+
       playUIClick();
       if (onClick) {
         onClick(e);
       }
     };
 
+    const isDisabled = disabled || loading;
+    const buttonContent = loading ? (
+      <>
+        <span className="animate-spin mr-2">⟳</span>
+        {children}
+      </>
+    ) : children;
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         onClick={handleClick}
+        disabled={isDisabled}
+        aria-disabled={isDisabled}
+        aria-busy={loading}
+        role="button"
+        tabIndex={isDisabled ? -1 : 0}
         {...props}
-      />
+      >
+        {buttonContent}
+      </Comp>
     )
   }
 )

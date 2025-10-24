@@ -3,14 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cultural Arcade Evolution</title>
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-title" content="Cultural Arcade" />
+    <meta name="application-name" content="Cultural Arcade Evolution" />
+    <meta name="msapplication-TileColor" content="#000000" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- PWA and Mobile Meta Tags -->
+    <meta name="description" content="An immersive retro-futuristic game experience that evolves through cultural themes and progressively challenging gameplay" />
+    <meta name="keywords" content="arcade, game, retro, evolution, cultural, mobile, pwa" />
+    <meta name="author" content="Cultural Arcade Team" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Theme and Icons -->
+    <meta name="theme-color" content="#00ff00" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/generated-icon.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/generated-icon.png" />
+
+    <!-- Preload critical assets for faster mobile loading -->
+    <link rel="preload" href="/textures/asphalt.png" as="image" />
+    <link rel="preload" href="/sounds/hit.mp3" as="audio" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <title>Cultural Arcade Evolution</title>
     <style>
       body {
         margin: 0;
@@ -35,7 +56,19 @@
         justify-content: center;
         align-items: center;
       }
-      
+
+      .mobile-game {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        touch-action: manipulation;
+      }
+
+      .mobile-game canvas {
+        max-height: 70vh;
+        aspect-ratio: 4/3;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+      }
+
       .ui-overlay {
         position: absolute;
         top: 0;
@@ -45,9 +78,73 @@
         pointer-events: none;
         z-index: 10;
       }
-      
+
       .ui-overlay > * {
         pointer-events: auto;
+      }
+
+      /* Touch controls styling */
+      .touch-indicator {
+        pointer-events: none;
+        border: 2px solid rgba(0, 255, 255, 0.3);
+        border-radius: 50%;
+        transition: all 0.2s ease;
+      }
+
+      .touch-indicator.active {
+        border-color: rgba(0, 255, 255, 0.7);
+        transform: scale(1.1);
+      }
+
+      /* Mobile status bar */
+      .mobile-status {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 8px 16px;
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 20;
+      }
+
+      /* PWA install prompt */
+      .pwa-prompt {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(0, 255, 0, 0.5);
+        border-radius: 8px;
+        padding: 16px;
+        z-index: 1000;
+        animation: slideInUp 0.3s ease;
+      }
+
+      @keyframes slideInUp {
+        from {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      /* Safe area support */
+      @supports (padding: max(0px)) {
+        .mobile-game {
+          padding-top: max(0px, env(safe-area-inset-top));
+          padding-bottom: max(0px, env(safe-area-inset-bottom));
+          padding-left: max(0px, env(safe-area-inset-left));
+          padding-right: max(0px, env(safe-area-inset-right));
+        }
       }
     </style>
   </head>

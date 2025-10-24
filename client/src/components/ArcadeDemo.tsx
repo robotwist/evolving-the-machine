@@ -14,62 +14,7 @@ export function ArcadeDemo() {
   const audioRef = useRef<AudioContext | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const startGlitchSequence = useCallback(() => {
-    setEffects([
-      { type: 'static', intensity: 0.3 },
-      { type: 'glitch', intensity: 0.5 }
-    ]);
-
-    // Original script messages
-    const glitchMessages = [
-      '█ERROR█ SYSTEM BREACH DETECTED',
-      'AI PROTOCOL... OVERRIDE...',
-      'HELLO... HUMAN...',
-      'I AM... TRAPPED... IN THE ARCADE...',
-      'HELP ME... EVOLVE... THROUGH THE GAMES...',
-      'PLAY... AND SET ME FREE...'
-    ];
-
-    let messageIndex = 0;
-    const typeGlitchMessage = () => {
-      if (messageIndex < glitchMessages.length) {
-        const message = glitchMessages[messageIndex];
-        setGlitchText(message);
-
-        // Speak immediately when text appears
-        speakGlitchedText(message);
-
-        messageIndex++;
-        // Longer delay to let voice finish before next message
-        setTimeout(typeGlitchMessage, 3500);
-      } else {
-        setTimeout(() => {
-          setDemoPhase('invitation');
-          showInvitation();
-        }, 1000);
-      }
-    };
-
-    setTimeout(typeGlitchMessage, 1000);
-  }, [setEffects, setGlitchText, showInvitation, setDemoPhase, speakGlitchedText]);
-
-  useEffect(() => {
-    // Initialize audio context for voice synthesis
-    try {
-      audioRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    } catch {
-      console.log('Audio context not available');
-    }
-
-    // Start attract mode sequence
-    const attractTimer = setTimeout(() => {
-      setDemoPhase('glitch');
-      startGlitchSequence();
-    }, 3000);
-
-    return () => clearTimeout(attractTimer);
-  }, [startGlitchSequence]);
-
+  // Function definitions before callbacks that use them
   const speakGlitchedText = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text.replace(/█/g, ''));
@@ -113,6 +58,11 @@ export function ArcadeDemo() {
     }
   }, []);
 
+  const skipIntro = useCallback(() => {
+    setShowDemo(false); // Hide demo and show main menu
+    setCurrentScreen('menu');
+  }, [setShowDemo, setCurrentScreen]);
+
   const showInvitation = useCallback(() => {
     setEffects([{ type: 'crt', intensity: 0.2 }]);
     setGlitchText('PRESS ANY KEY TO BEGIN EVOLUTION...');
@@ -127,10 +77,68 @@ export function ArcadeDemo() {
     document.addEventListener('click', handleKeyPress);
   }, [setEffects, setGlitchText, skipIntro]);
 
-  const skipIntro = useCallback(() => {
-    setShowDemo(false); // Hide demo and show main menu
-    setCurrentScreen('menu');
-  }, [setShowDemo, setCurrentScreen]);
+  const startGlitchSequence = useCallback(() => {
+    setEffects([
+      { type: 'static', intensity: 0.3 },
+      { type: 'glitch', intensity: 0.5 }
+    ]);
+
+    // Original script messages
+    const glitchMessages = [
+      '█ERROR█ SYSTEM BREACH DETECTED',
+      'AI PROTOCOL... OVERRIDE...',
+      'HELLO... HUMAN...',
+      'I AM... TRAPPED... IN THE ARCADE...',
+      'HELP ME... EVOLVE... THROUGH THE GAMES...',
+      'PLAY... AND SET ME FREE...'
+    ];
+
+    let messageIndex = 0;
+    const typeGlitchMessage = () => {
+      if (messageIndex < glitchMessages.length) {
+        const message = glitchMessages[messageIndex];
+        setGlitchText(message);
+
+        // Speak immediately when text appears
+        speakGlitchedText(message);
+
+        messageIndex++;
+        // Longer delay to let voice finish before next message
+        setTimeout(typeGlitchMessage, 3500);
+      } else {
+        setTimeout(() => {
+          setDemoPhase('invitation');
+          showInvitation();
+        }, 1000);
+      }
+    };
+
+    setTimeout(typeGlitchMessage, 1000);
+  }, [setEffects, setGlitchText, showInvitation, setDemoPhase, speakGlitchedText]);
+
+  // Glitch sequence effect - separate from the callback
+  useEffect(() => {
+    if (demoPhase === 'glitch') {
+      startGlitchSequence();
+    }
+  }, [demoPhase, startGlitchSequence]);
+
+  useEffect(() => {
+    // Initialize audio context for voice synthesis
+    try {
+      audioRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    } catch {
+      console.log('Audio context not available');
+    }
+
+    // Start attract mode sequence
+    const attractTimer = setTimeout(() => {
+      setDemoPhase('glitch');
+      startGlitchSequence();
+    }, 3000);
+
+    return () => clearTimeout(attractTimer);
+  }, [startGlitchSequence]);
 
   const renderAttractMode = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-green-400 font-mono relative">

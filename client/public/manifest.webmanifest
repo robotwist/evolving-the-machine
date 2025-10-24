@@ -1,13 +1,70 @@
 {
   "name": "Cultural Arcade Evolution",
   "short_name": "Arcade",
+  "description": "An immersive retro-futuristic game experience that evolves through cultural themes and progressively challenging gameplay",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#000000",
-  "theme_color": "#000000",
+  "theme_color": "#00ff00",
+  "scope": "/",
+  "categories": ["games", "entertainment", "education"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "/generated-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
+    {
+      "src": "/generated-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/generated-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/generated-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Cultural Arcade Evolution gameplay"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Start New Game",
+      "short_name": "Play",
+      "description": "Start a new game journey",
+      "url": "/?action=play",
+      "icons": [
+        {
+          "src": "/generated-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Stage Select",
+      "short_name": "Stages",
+      "description": "Choose your cultural journey",
+      "url": "/?action=stages",
+      "icons": [
+        {
+          "src": "/generated-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }
 
 

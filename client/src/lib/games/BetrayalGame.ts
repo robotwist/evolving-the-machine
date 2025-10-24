@@ -354,7 +354,7 @@ export class BetrayalGame extends BaseGame {
   }
 
   private updatePlayer() {
-    // Player controls
+    // Player controls - keyboard (desktop)
     if (this.keys.has('KeyA')) {
       this.player.rotation -= 0.1;
     }
@@ -371,11 +371,14 @@ export class BetrayalGame extends BaseGame {
       this.player.velocity.y *= 0.9;
     }
 
-    // Shooting
+    // Shooting - keyboard
     if (this.keys.has('Space') && this.player.weaponCooldown <= 0) {
       this.playerShoot();
       this.player.weaponCooldown = 15;
     }
+
+    // Mobile controls - apply continuous movement
+    // Note: Mobile input is handled in handleMobileMove and handleMobileShoot
 
     if (this.player.weaponCooldown > 0) {
       this.player.weaponCooldown--;
@@ -1015,7 +1018,42 @@ export class BetrayalGame extends BaseGame {
     // Handled by setupEventListeners
   }
 
+  // Mobile input handlers
+  handleMobileMove(x: number, y: number) {
+    // Convert stick input to player movement
+    const speed = 8;
+    this.player.velocity.x = x * speed;
+    this.player.velocity.y = y * speed;
+
+    // Update player rotation based on movement direction
+    if (x !== 0 || y !== 0) {
+      this.player.rotation = Math.atan2(y, x);
+    }
+  }
+
+  handleMobileShoot(x: number, y: number) {
+    // Shoot towards touch position
+    const targetX = (x + 1) * this.width / 2;
+    const targetY = (y + 1) * this.height / 2;
+
+    const dx = targetX - this.player.position.x;
+    const dy = targetY - this.player.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 50) { // Minimum distance for shooting
+      this.playerShoot();
+    }
+  }
+
+  handleMobileAction() {
+    // Primary action - could be shield, special ability, etc.
+    if (this.player.shield < this.player.maxHealth * 0.8) {
+      this.player.shield = Math.min(this.player.maxHealth, this.player.shield + 20);
+    }
+  }
+
   protected setupEventListeners() {
+    // Keyboard event handlers (desktop)
     const handleKeyDown = (e: KeyboardEvent) => {
       this.keys.add(e.code);
       if (e.code === 'Space') {
@@ -1027,12 +1065,56 @@ export class BetrayalGame extends BaseGame {
       this.keys.delete(e.code);
     };
 
+    // Mobile touch event handlers
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      // Handle touch-based shooting
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        const x = ((touch.clientX - rect.left) / rect.width - 0.5) * 2;
+        const y = ((touch.clientY - rect.top) / rect.height - 0.5) * 2;
+        this.handleMobileShoot(x, y);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        const x = ((touch.clientX - rect.left) / rect.width - 0.5) * 2;
+        const y = ((touch.clientY - rect.top) / rect.height - 0.5) * 2;
+        this.handleMobileMove(x, y);
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      // Stop movement when touch ends
+      this.player.velocity.x = 0;
+      this.player.velocity.y = 0;
+    };
+
+    // Add event listeners
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
+
+    // Only add touch listeners if touch is available
+    if ('ontouchstart' in window) {
+      document.addEventListener('touchstart', handleTouchStart, { passive: false });
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    }
 
     this.cleanup = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+      if ('ontouchstart' in window) {
+        document.removeEventListener('touchstart', handleTouchStart);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      }
     };
   }
 }

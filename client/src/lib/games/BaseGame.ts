@@ -18,6 +18,11 @@ export abstract class BaseGame {
   onGameOver?: () => void;
   onStageComplete?: () => void;
 
+  // Mobile input handlers (optional, for mobile support)
+  handleMobileMove?(x: number, y: number): void;
+  handleMobileShoot?(x: number, y: number): void;
+  handleMobileAction?(): void;
+
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
     this.ctx = ctx;
     this.width = width;

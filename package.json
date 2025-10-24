@@ -17,6 +17,8 @@
     "lint:fix": "eslint client/src server --ext .ts,.tsx,.js --fix",
     "lint:client": "eslint client/src --ext .ts,.tsx --max-warnings 200",
     "lint:server": "eslint server --ext .ts,.js --max-warnings 200",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -126,7 +128,7 @@
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.46.1",
-    "@typescript-eslint/parser": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.2",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.30.4",
@@ -139,6 +141,7 @@
     "jest-environment-jsdom": "^30.2.0",
     "jsdom": "^27.0.0",
     "postcss": "^8.4.47",
+    "prettier": "^3.6.2",
     "rollup-plugin-visualizer": "^6.0.5",
     "tailwindcss": "^3.4.14",
     "ts-jest": "^29.4.5",
