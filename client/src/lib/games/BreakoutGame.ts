@@ -16,6 +16,16 @@ interface Paddle {
   iceEffect?: boolean;
   thickness?: number;
   spaceshipMode?: boolean;
+  // Punch arms and spikes
+  punchArms?: boolean;
+  spikeCount?: number;
+  spikes?: Array<{
+    x: number;
+    y: number;
+    angle: number;
+    active: boolean;
+    timer: number;
+  }>;
 }
 
 interface Ball {
@@ -38,6 +48,10 @@ interface Brick {
   explosive?: boolean;
   explosionRadius?: number;
   powerupType?: 'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship';
+  // Spike system
+  spikeLodged?: boolean;
+  spikeTimer?: number;
+  spikeExplosion?: boolean;
 }
 
 export class BreakoutGame extends BaseGame {
@@ -107,7 +121,7 @@ export class BreakoutGame extends BaseGame {
   private spaceshipFlyProgress = 0;
   
   async init() {
-    // Initialize paddle with evolution properties
+    // Initialize paddle with evolution properties and combat systems
     this.paddle = {
       x: this.width / 2 - 50,
       y: this.height - 50,
@@ -119,7 +133,11 @@ export class BreakoutGame extends BaseGame {
       fireEffect: false,
       iceEffect: false,
       thickness: 1,
-      spaceshipMode: false
+      spaceshipMode: false,
+      // Combat systems
+      punchArms: true,
+      spikeCount: 0,
+      spikes: []
     };
 
     // Initialize ball
@@ -168,8 +186,8 @@ export class BreakoutGame extends BaseGame {
     const offsetY = 80;
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
-    const powerupTypes: Array<'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship'> = 
-      ['bigger', 'thicker', 'fire', 'ice', 'explosion', 'pulse', 'spaceship'];
+    const powerupTypes: Array<'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship' | 'spikes'> = 
+      ['bigger', 'thicker', 'fire', 'ice', 'explosion', 'pulse', 'spaceship', 'spikes'];
 
     for (let row = 0; row < rows; row++) {
       const rowBricks: Brick[] = [];
@@ -350,7 +368,7 @@ export class BreakoutGame extends BaseGame {
             this.playHitSound();
           }
 
-          // Paddle collision with improved physics
+          // Paddle collision with punch arms and enhanced physics
           if (this.checkPaddleCollisionWith(ball)) {
             // Ensure ball bounces upward
             ball.dy = -Math.abs(ball.dy);
@@ -371,8 +389,15 @@ export class BreakoutGame extends BaseGame {
             ball.dx /= len;
             ball.dy /= len;
             
-            // Add speed boost but cap it
-            ball.speed = Math.min(ball.speed + 0.2, 7.0);
+            // PUNCH ARMS: 2X speed boost!
+            if (this.paddle.punchArms) {
+              ball.speed = Math.min(ball.speed * 2.0, 12.0); // 2X speed with cap
+              // Create punch effect particles
+              this.particles?.addExplosion(ball.x, ball.y, 25, '#FF6B35', 'dramatic');
+            } else {
+              // Normal speed boost
+              ball.speed = Math.min(ball.speed + 0.2, 7.0);
+            }
             
             // Ensure minimum speed to prevent slow balls
             ball.speed = Math.max(ball.speed, 3.0);
@@ -476,6 +501,11 @@ export class BreakoutGame extends BaseGame {
           ball.y + ball.radius > brick.y &&
           ball.y - ball.radius < brick.y + brick.height
         ) {
+          // SPIKE SYSTEM: Lodge spikes in blocks
+          if (this.paddle.spikeCount && this.paddle.spikeCount > 0 && Math.random() < 0.3) {
+            this.lodgeSpikeInBrick(brick);
+          }
+          
           brick.health--;
           if (brick.health <= 0) {
             brick.destroyed = true;
@@ -793,6 +823,9 @@ export class BreakoutGame extends BaseGame {
     
     // Update spaceship transformation
     this.updateSpaceshipTransformation();
+    
+    // Update spike system
+    this.updateSpikeSystem();
   }
 
   render() {
@@ -1216,6 +1249,71 @@ export class BreakoutGame extends BaseGame {
     this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
     this.ctx.strokeRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
     
+    // PUNCH ARMS: Geometric extensions
+    if (this.paddle.punchArms) {
+      const centerX = this.paddle.x + this.paddle.width / 2;
+      const centerY = this.paddle.y + this.paddle.height / 2;
+      
+      // Left punch arm
+      this.ctx.fillStyle = '#FF6B35';
+      this.ctx.strokeStyle = '#FF4500';
+      this.ctx.lineWidth = 3;
+      
+      // Geometric punch arm shape
+      this.ctx.beginPath();
+      this.ctx.moveTo(this.paddle.x - 20, centerY);
+      this.ctx.lineTo(this.paddle.x - 35, centerY - 10);
+      this.ctx.lineTo(this.paddle.x - 30, centerY);
+      this.ctx.lineTo(this.paddle.x - 35, centerY + 10);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Right punch arm
+      this.ctx.beginPath();
+      this.ctx.moveTo(this.paddle.x + this.paddle.width + 20, centerY);
+      this.ctx.lineTo(this.paddle.x + this.paddle.width + 35, centerY - 10);
+      this.ctx.lineTo(this.paddle.x + this.paddle.width + 30, centerY);
+      this.ctx.lineTo(this.paddle.x + this.paddle.width + 35, centerY + 10);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Punch arm energy effect
+      this.particles?.addExplosion(this.paddle.x - 25, centerY, 8, '#FF6B35', 'subtle');
+      this.particles?.addExplosion(this.paddle.x + this.paddle.width + 25, centerY, 8, '#FF6B35', 'subtle');
+    }
+    
+    // SPIKES: Show spike count
+    if (this.paddle.spikeCount && this.paddle.spikeCount > 0) {
+      const spikeCount = this.paddle.spikeCount;
+      const spikeY = this.paddle.y - 15;
+      
+      for (let i = 0; i < Math.min(spikeCount, 5); i++) {
+        const spikeX = this.paddle.x + (i * 15) + 10;
+        
+        // Draw spike
+        this.ctx.fillStyle = '#8B0000';
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 2;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(spikeX, spikeY);
+        this.ctx.lineTo(spikeX - 3, spikeY - 8);
+        this.ctx.lineTo(spikeX + 3, spikeY - 8);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+      }
+      
+      // Show remaining spike count
+      if (spikeCount > 5) {
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = 'bold 12px Arial';
+        this.ctx.fillText(`+${spikeCount - 5}`, this.paddle.x + this.paddle.width + 5, this.paddle.y - 5);
+      }
+    }
+    
     // Spaceship transformation effects
     if (this.paddle.spaceshipMode) {
       const centerX = this.paddle.x + this.paddle.width / 2;
@@ -1325,6 +1423,11 @@ export class BreakoutGame extends BaseGame {
         this.spaceshipTransformation = true;
         this.paddle.spaceshipMode = true;
         break;
+        
+      case 'spikes':
+        this.paddle.spikeCount = (this.paddle.spikeCount || 0) + 3;
+        console.log(`🗡️ Spikes acquired! Total spikes: ${this.paddle.spikeCount}`);
+        break;
     }
   }
 
@@ -1424,5 +1527,78 @@ export class BreakoutGame extends BaseGame {
         this.onStageComplete?.();
       }
     }
+  }
+
+  // SPIKE SYSTEM METHODS
+  private lodgeSpikeInBrick(brick: Brick) {
+    if (!brick.spikeLodged && this.paddle.spikeCount && this.paddle.spikeCount > 0) {
+      brick.spikeLodged = true;
+      brick.spikeTimer = 180; // 3 seconds at 60fps
+      brick.spikeExplosion = false;
+      
+      // Reduce spike count
+      this.paddle.spikeCount = Math.max(0, this.paddle.spikeCount - 1);
+      
+      // Add spike visual effect
+      this.particles?.addExplosion(brick.x + brick.width/2, brick.y + brick.height/2, 15, '#8B0000', 'subtle');
+      
+      console.log(`🗡️ Spike lodged in brick! ${this.paddle.spikeCount} spikes remaining`);
+    }
+  }
+
+  private updateSpikeSystem() {
+    // Update spike timers and handle explosions
+    for (const brick of this.bricks) {
+      if (brick.spikeLodged && brick.spikeTimer !== undefined) {
+        brick.spikeTimer--;
+        
+        // Add warning effect when timer is low
+        if (brick.spikeTimer <= 60 && brick.spikeTimer > 0) {
+          // Flash warning effect
+          if (brick.spikeTimer % 10 < 5) {
+            this.particles?.addExplosion(brick.x + brick.width/2, brick.y + brick.height/2, 8, '#FF4500', 'subtle');
+          }
+        }
+        
+        // Explode when timer reaches 0
+        if (brick.spikeTimer <= 0 && !brick.spikeExplosion) {
+          this.explodeSpikeInBrick(brick);
+        }
+      }
+    }
+  }
+
+  private explodeSpikeInBrick(brick: Brick) {
+    if (brick.spikeExplosion) return;
+    
+    brick.spikeExplosion = true;
+    brick.destroyed = true;
+    
+    // Create massive explosion effect
+    this.particles?.addExplosion(brick.x + brick.width/2, brick.y + brick.height/2, 40, '#FF0000', 'dramatic');
+    
+    // Damage nearby bricks
+    const explosionRadius = 60;
+    for (const nearbyBrick of this.bricks) {
+      if (nearbyBrick === brick || nearbyBrick.destroyed) continue;
+      
+      const distance = Math.hypot(
+        (nearbyBrick.x + nearbyBrick.width/2) - (brick.x + brick.width/2),
+        (nearbyBrick.y + nearbyBrick.height/2) - (brick.y + brick.height/2)
+      );
+      
+      if (distance <= explosionRadius) {
+        nearbyBrick.health = Math.max(0, nearbyBrick.health - 1);
+        if (nearbyBrick.health <= 0) {
+          nearbyBrick.destroyed = true;
+        }
+        
+        // Add damage effect
+        this.particles?.addExplosion(nearbyBrick.x + nearbyBrick.width/2, nearbyBrick.y + nearbyBrick.height/2, 20, '#FF6B35', 'dramatic');
+      }
+    }
+    
+    this.score += 25; // Bonus points for spike explosion
+    console.log('💥 Spike explosion! Massive damage dealt!');
   }
 }
