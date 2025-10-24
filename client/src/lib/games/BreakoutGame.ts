@@ -317,17 +317,20 @@ export class BreakoutGame extends BaseGame {
         }
       }
       
-      // Enhanced paddle movement - all directions
-      if (this.keys.has('KeyA')) {
+      // Enhanced paddle movement - all directions with arrow keys and WASD
+      // Horizontal movement (A/D and Left/Right arrows)
+      if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
         this.paddle.x = Math.max(0, this.paddle.x - paddleSpeed);
       }
-      if (this.keys.has('KeyD')) {
+      if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) {
         this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + paddleSpeed);
       }
-      if (this.keys.has('KeyW')) {
+      
+      // Vertical movement (W/S and Up/Down arrows)
+      if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
         this.paddle.y = Math.max(this.height * 0.6, this.paddle.y - paddleSpeed);
       }
-      if (this.keys.has('KeyS')) {
+      if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) {
         this.paddle.y = Math.min(this.height - 20, this.paddle.y + paddleSpeed);
       }
 
@@ -347,16 +350,33 @@ export class BreakoutGame extends BaseGame {
             this.playHitSound();
           }
 
-          // Paddle
+          // Paddle collision with improved physics
           if (this.checkPaddleCollisionWith(ball)) {
+            // Ensure ball bounces upward
             ball.dy = -Math.abs(ball.dy);
+            
+            // Calculate hit position relative to paddle center (-1 to 1)
             const hitPos = (ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
-            // steer and add slight speed-up
-            ball.dx = hitPos;
+            
+            // Apply angle based on hit position (more realistic physics)
+            const maxAngle = Math.PI / 3; // 60 degrees max angle
+            const angle = hitPos * maxAngle;
+            
+            // Set new direction with proper physics
+            ball.dx = Math.sin(angle);
+            ball.dy = -Math.cos(angle);
+            
+            // Normalize and apply speed
             const len = Math.hypot(ball.dx, ball.dy) || 1;
             ball.dx /= len;
             ball.dy /= len;
-            ball.speed = Math.min(ball.speed + 0.15, 6.5);
+            
+            // Add speed boost but cap it
+            ball.speed = Math.min(ball.speed + 0.2, 7.0);
+            
+            // Ensure minimum speed to prevent slow balls
+            ball.speed = Math.max(ball.speed, 3.0);
+            
             this.playHitSound();
           }
 
@@ -425,11 +445,23 @@ export class BreakoutGame extends BaseGame {
   }
 
   private checkPaddleCollisionWith(ball: Ball): boolean {
+    // More precise collision detection with better ball-paddle interaction
+    const ballLeft = ball.x - ball.radius;
+    const ballRight = ball.x + ball.radius;
+    const ballTop = ball.y - ball.radius;
+    const ballBottom = ball.y + ball.radius;
+    
+    const paddleLeft = this.paddle.x;
+    const paddleRight = this.paddle.x + this.paddle.width;
+    const paddleTop = this.paddle.y;
+    const paddleBottom = this.paddle.y + this.paddle.height;
+    
+    // Check if ball is moving downward and colliding with paddle
     return (
-      ball.x + ball.radius > this.paddle.x &&
-      ball.x - ball.radius < this.paddle.x + this.paddle.width &&
-      ball.y + ball.radius > this.paddle.y &&
-      ball.y - ball.radius < this.paddle.y + this.paddle.height &&
+      ballBottom >= paddleTop &&
+      ballTop <= paddleBottom &&
+      ballRight >= paddleLeft &&
+      ballLeft <= paddleRight &&
       ball.dy > 0
     );
   }
