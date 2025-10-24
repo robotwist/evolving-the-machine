@@ -9,6 +9,13 @@ interface Paddle {
   width: number;
   height: number;
   speed: number;
+  // Evolution properties
+  evolved?: boolean;
+  pulseIntensity?: number;
+  fireEffect?: boolean;
+  iceEffect?: boolean;
+  thickness?: number;
+  spaceshipMode?: boolean;
 }
 
 interface Ball {
@@ -30,6 +37,7 @@ interface Brick {
   health: number;
   explosive?: boolean;
   explosionRadius?: number;
+  powerupType?: 'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship';
 }
 
 export class BreakoutGame extends BaseGame {
@@ -79,15 +87,39 @@ export class BreakoutGame extends BaseGame {
   private activeLongPaddleTimer = 0;
   private shieldActive = false;
   private shieldTimer = 0;
+  private powerupEffects: {
+    bigger: number;
+    thicker: number;
+    fire: number;
+    ice: number;
+    pulse: number;
+    explosion: number;
+  } = {
+    bigger: 0,
+    thicker: 0,
+    fire: 0,
+    ice: 0,
+    pulse: 0,
+    explosion: 0
+  };
+  private spaceshipTransformation = false;
+  private spaceshipFlyOff = false;
+  private spaceshipFlyProgress = 0;
   
   async init() {
-    // Initialize paddle
+    // Initialize paddle with evolution properties
     this.paddle = {
       x: this.width / 2 - 50,
       y: this.height - 50,
       width: 100,
       height: 15,
-      speed: 8
+      speed: 8,
+      evolved: false,
+      pulseIntensity: 0,
+      fireEffect: false,
+      iceEffect: false,
+      thickness: 1,
+      spaceshipMode: false
     };
 
     // Initialize ball
@@ -136,10 +168,16 @@ export class BreakoutGame extends BaseGame {
     const offsetY = 80;
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+    const powerupTypes: Array<'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship'> = 
+      ['bigger', 'thicker', 'fire', 'ice', 'explosion', 'pulse', 'spaceship'];
 
     for (let row = 0; row < rows; row++) {
       const rowBricks: Brick[] = [];
       for (let col = 0; col < cols; col++) {
+        // 30% chance for powerup brick
+        const hasPowerup = Math.random() < 0.3;
+        const powerupType = hasPowerup ? powerupTypes[Math.floor(Math.random() * powerupTypes.length)] : undefined;
+        
         const brick: Brick = {
           x: offsetX + col * (brickWidth + padding),
           y: offsetY + row * (brickHeight + padding),
@@ -147,7 +185,10 @@ export class BreakoutGame extends BaseGame {
           height: brickHeight,
           destroyed: false,
           color: colors[row % colors.length],
-          health: row < 2 ? 1 : Math.floor(row / 2) + 1
+          health: row < 2 ? 1 : Math.floor(row / 2) + 1,
+          powerupType: powerupType,
+          explosive: powerupType === 'explosion',
+          explosionRadius: powerupType === 'explosion' ? 60 : undefined
         };
         rowBricks.push(brick);
       }
@@ -276,11 +317,18 @@ export class BreakoutGame extends BaseGame {
         }
       }
       
+      // Enhanced paddle movement - all directions
       if (this.keys.has('KeyA')) {
         this.paddle.x = Math.max(0, this.paddle.x - paddleSpeed);
       }
       if (this.keys.has('KeyD')) {
         this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + paddleSpeed);
+      }
+      if (this.keys.has('KeyW')) {
+        this.paddle.y = Math.max(this.height * 0.6, this.paddle.y - paddleSpeed);
+      }
+      if (this.keys.has('KeyS')) {
+        this.paddle.y = Math.min(this.height - 20, this.paddle.y + paddleSpeed);
       }
 
       // Update balls only if not eaten
@@ -399,6 +447,16 @@ export class BreakoutGame extends BaseGame {
           brick.health--;
           if (brick.health <= 0) {
             brick.destroyed = true;
+            
+            // Activate powerup if brick has one
+            if (brick.powerupType) {
+              this.activatePowerup(brick.powerupType, brick.x + brick.width/2, brick.y + brick.height/2);
+            }
+            
+            // Handle explosive bricks
+            if (brick.explosive && brick.explosionRadius) {
+              this.createExplosion(brick.x + brick.width/2, brick.y + brick.height/2, brick.explosionRadius);
+            }
             this.score += 10;
             
             // Check if this is an explosive brick
@@ -697,6 +755,12 @@ export class BreakoutGame extends BaseGame {
       // Transition complete - trigger stage completion
       this.onStageComplete?.();
     }
+    
+    // Update powerup effects
+    this.updatePowerupEffects();
+    
+    // Update spaceship transformation
+    this.updateSpaceshipTransformation();
   }
 
   render() {
@@ -754,13 +818,13 @@ export class BreakoutGame extends BaseGame {
       }
     }
 
-    // Draw paddle/evolved creature
+    // Draw paddle/evolved creature with powerup effects
     if (this.paddleEvolved) {
       this.drawEvolvedPaddle();
     } else if (this.evolutionStarted) {
       this.drawEvolutionProgress();
     } else {
-      this.drawEvolvingPaddle();
+      this.drawEnhancedPaddle();
     }
 
     // Draw balls only if not eaten
@@ -1083,6 +1147,62 @@ export class BreakoutGame extends BaseGame {
     this.ctx.restore();
   }
 
+  private drawEnhancedPaddle() {
+    this.ctx.save();
+    
+    // Apply powerup effects
+    const thickness = this.paddle.thickness || 1;
+    const pulseIntensity = this.paddle.pulseIntensity || 0;
+    
+    // Pulse effect
+    if (pulseIntensity > 0) {
+      const pulseScale = 1 + pulseIntensity * 0.3;
+      this.ctx.scale(pulseScale, pulseScale);
+      this.ctx.translate(-this.paddle.x * (pulseScale - 1), -this.paddle.y * (pulseScale - 1));
+    }
+    
+    // Fire effect
+    if (this.paddle.fireEffect) {
+      this.ctx.fillStyle = '#FF4500';
+      this.ctx.fillRect(this.paddle.x - 5, this.paddle.y - 5, this.paddle.width + 10, this.paddle.height + 10);
+      
+      // Fire particles
+      this.particles?.addExplosion(this.paddle.x + this.paddle.width/2, this.paddle.y, 15, '#FF4500', 'subtle');
+    }
+    
+    // Ice effect
+    if (this.paddle.iceEffect) {
+      this.ctx.fillStyle = '#00BFFF';
+      this.ctx.fillRect(this.paddle.x - 3, this.paddle.y - 3, this.paddle.width + 6, this.paddle.height + 6);
+    }
+    
+    // Main paddle body
+    this.ctx.fillStyle = this.paddle.fireEffect ? '#FFD700' : this.paddle.iceEffect ? '#87CEEB' : '#FFFACD';
+    this.ctx.strokeStyle = this.paddle.fireEffect ? '#FF4500' : this.paddle.iceEffect ? '#00BFFF' : '#FFD700';
+    this.ctx.lineWidth = thickness * 2;
+    
+    this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
+    this.ctx.strokeRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
+    
+    // Spaceship transformation effects
+    if (this.paddle.spaceshipMode) {
+      const centerX = this.paddle.x + this.paddle.width / 2;
+      
+      // Spaceship wings
+      this.ctx.fillStyle = '#C0C0C0';
+      this.ctx.fillRect(centerX - 15, this.paddle.y - 8, 30, 8);
+      
+      // Engine glow
+      this.ctx.fillStyle = '#00FFFF';
+      this.ctx.fillRect(centerX - 10, this.paddle.y + this.paddle.height, 20, 5);
+      
+      // Engine particles
+      this.particles?.addExplosion(centerX, this.paddle.y + this.paddle.height + 2, 10, '#00FFFF', 'subtle');
+    }
+    
+    this.ctx.restore();
+  }
+
   private drawUI() {
     this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
     this.drawText(`Lives: ${this.lives}`, 20, 60, 20, '#FFD700');
@@ -1130,5 +1250,147 @@ export class BreakoutGame extends BaseGame {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
+  }
+
+  private activatePowerup(type: string, x: number, y: number) {
+    console.log(`🎁 Powerup activated: ${type}`);
+    
+    // Create powerup collection effect
+    this.particles?.addExplosion(x, y, 30, '#FFD700', 'dramatic');
+    
+    switch (type) {
+      case 'bigger':
+        this.powerupEffects.bigger = 300; // 5 seconds
+        this.paddle.width = Math.min(200, this.paddle.width + 30);
+        break;
+        
+      case 'thicker':
+        this.powerupEffects.thicker = 300;
+        this.paddle.thickness = Math.min(3, (this.paddle.thickness || 1) + 0.5);
+        break;
+        
+      case 'fire':
+        this.powerupEffects.fire = 300;
+        this.paddle.fireEffect = true;
+        break;
+        
+      case 'ice':
+        this.powerupEffects.ice = 300;
+        this.paddle.iceEffect = true;
+        break;
+        
+      case 'pulse':
+        this.powerupEffects.pulse = 300;
+        this.paddle.pulseIntensity = 1.0;
+        break;
+        
+      case 'explosion':
+        this.powerupEffects.explosion = 300;
+        this.createExplosion(x, y, 80);
+        break;
+        
+      case 'spaceship':
+        this.spaceshipTransformation = true;
+        this.paddle.spaceshipMode = true;
+        break;
+    }
+  }
+
+  private createExplosion(x: number, y: number, radius: number) {
+    // Create multiple explosion rings
+    for (let i = 0; i < 3; i++) {
+      const delay = i * 5;
+      setTimeout(() => {
+        this.particles?.addExplosion(x, y, radius - (i * 20), '#FF4500', 'epic');
+      }, delay);
+    }
+    
+    // Damage nearby bricks
+    for (const brick of this.bricks) {
+      if (brick.destroyed) continue;
+      
+      const dx = (brick.x + brick.width/2) - x;
+      const dy = (brick.y + brick.height/2) - y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < radius) {
+        brick.health = 0;
+        brick.destroyed = true;
+        this.score += 10;
+        this.particles?.addExplosion(brick.x + brick.width/2, brick.y + brick.height/2, 20, '#FF6B6B', 'dramatic');
+      }
+    }
+  }
+
+  private updatePowerupEffects() {
+    // Update powerup timers
+    Object.keys(this.powerupEffects).forEach(key => {
+      const typedKey = key as keyof typeof this.powerupEffects;
+      if (this.powerupEffects[typedKey] > 0) {
+        this.powerupEffects[typedKey]--;
+        if (this.powerupEffects[typedKey] <= 0) {
+          this.deactivatePowerup(typedKey);
+        }
+      }
+    });
+    
+    // Update pulse effect
+    if (this.paddle.pulseIntensity && this.paddle.pulseIntensity > 0) {
+      this.paddle.pulseIntensity = Math.max(0, this.paddle.pulseIntensity - 0.02);
+    }
+  }
+
+  private deactivatePowerup(type: keyof typeof this.powerupEffects) {
+    switch (type) {
+      case 'bigger':
+        this.paddle.width = Math.max(100, this.paddle.width - 30);
+        break;
+      case 'thicker':
+        this.paddle.thickness = Math.max(1, (this.paddle.thickness || 1) - 0.5);
+        break;
+      case 'fire':
+        this.paddle.fireEffect = false;
+        break;
+      case 'ice':
+        this.paddle.iceEffect = false;
+        break;
+      case 'pulse':
+        this.paddle.pulseIntensity = 0;
+        break;
+      case 'explosion':
+        // No deactivation needed
+        break;
+    }
+  }
+
+  private updateSpaceshipTransformation() {
+    if (this.spaceshipTransformation && !this.spaceshipFlyOff) {
+      // Gradually transform paddle into spaceship
+      this.paddle.width = Math.min(150, this.paddle.width + 2);
+      this.paddle.height = Math.min(25, this.paddle.height + 1);
+      
+      // Add spaceship effects
+      this.particles?.addExplosion(this.paddle.x + this.paddle.width/2, this.paddle.y, 15, '#00FFFF', 'subtle');
+      
+      // Check if transformation is complete
+      if (this.paddle.width >= 150 && this.paddle.height >= 25) {
+        this.spaceshipFlyOff = true;
+        this.spaceshipFlyProgress = 0;
+      }
+    }
+    
+    if (this.spaceshipFlyOff) {
+      this.spaceshipFlyProgress += 0.02;
+      
+      // Move spaceship upward and add trail
+      this.paddle.y -= 5;
+      this.particles?.addExplosion(this.paddle.x + this.paddle.width/2, this.paddle.y + this.paddle.height, 20, '#00FFFF', 'dramatic');
+      
+      // Check if spaceship has flown off screen
+      if (this.paddle.y < -50) {
+        // Trigger level completion
+        this.onStageComplete?.();
+      }
+    }
   }
 }
