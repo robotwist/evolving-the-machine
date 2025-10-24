@@ -34,7 +34,7 @@ export const useGameStore = create<GameStore>()(
       currentScreen: 'menu',
       currentStage: 1,
       gameState: 'playing',
-      unlockedStages: MAX_STAGE, // Unlock all stages in production
+      unlockedStages: 1, // Start with only stage 1 unlocked
       showDemo: process.env.NODE_ENV === 'production', // Show demo only in development
       productionMode: process.env.NODE_ENV === 'production',
       

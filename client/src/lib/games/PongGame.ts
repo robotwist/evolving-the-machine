@@ -203,7 +203,7 @@ export class PongGame extends BaseGame {
   update(_deltaTime: number) {
     this.updatePlayer(_deltaTime);
     this.updateAI(_deltaTime);
-    this.updateBall(_deltaTime);
+    this.updateBalls(_deltaTime);
     this.handleCollisions();
     this.checkScoring();
 
@@ -307,31 +307,29 @@ export class PongGame extends BaseGame {
   }
 
   private updateBalls(_deltaTime: number) {
-    this.balls.forEach(ball => {
-      // Update ball trail
-      ball.trail.push({x: ball.x, y: ball.y});
-      if (ball.trail.length > 10) {
-        ball.trail.shift();
-      }
+    // Update ball trail
+    this.ball.trail.push({x: this.ball.x, y: this.ball.y});
+    if (this.ball.trail.length > 10) {
+      this.ball.trail.shift();
+    }
 
-      // Calculate speed multiplier based on ball type
-      let speedMultiplier = 1;
-      if (ball.type === 'speed') speedMultiplier = 1.8;
-      else if (ball.type === 'fire') speedMultiplier = 1.4;
-      else if (ball.type === 'missile') speedMultiplier = 2.2;
+    // Calculate speed multiplier based on ball type
+    let speedMultiplier = 1;
+    if (this.ball.type === 'speed') speedMultiplier = 1.8;
+    else if (this.ball.type === 'fire') speedMultiplier = 1.4;
+    else if (this.ball.type === 'missile') speedMultiplier = 2.2;
 
-      // Update ball position
-      ball.x += ball.dx * speedMultiplier;
-      ball.y += ball.dy * speedMultiplier;
+    // Update ball position
+    this.ball.x += this.ball.dx * speedMultiplier;
+    this.ball.y += this.ball.dy * speedMultiplier;
 
-      // Handle wacky ball behavior
-      if (ball.type === 'wacky') {
-        ball.dx += (Math.random() - 0.5) * 0.5;
-        ball.dy += (Math.random() - 0.5) * 0.5;
-        ball.angle = (ball.angle ?? 0) + (ball.angleSpeed ?? 0.25);
-        if (ball.angle! > Math.PI * 2) ball.angle! -= Math.PI * 2;
-      }
-    });
+    // Handle wacky ball behavior
+    if (this.ball.type === 'wacky') {
+      this.ball.dx += (Math.random() - 0.5) * 0.5;
+      this.ball.dy += (Math.random() - 0.5) * 0.5;
+      this.ball.angle = (this.ball.angle ?? 0) + (this.ball.angleSpeed ?? 0.25);
+      if (this.ball.angle! > Math.PI * 2) this.ball.angle! -= Math.PI * 2;
+    }
   }
 
   private handleCollisions() {
