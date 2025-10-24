@@ -7,13 +7,18 @@ const PONG_CONSTANTS = {
   WIN_SCORE: 5,
   PADDLE_WIDTH: 15,
   PADDLE_HEIGHT: 100,
-  PADDLE_SPEED: 5,
+  PADDLE_SPEED: 8, // Increased for more intense gameplay
   BALL_RADIUS: 8,
-  BALL_SPEED: 4,
-  AI_BASE_AGGRESSION: 0.6,
-  POWERUP_SPAWN_TIME: 600, // 10 seconds
-  POWERUP_DURATION: 300, // 5 seconds
+  BALL_SPEED: 6, // Increased for faster gameplay
+  AI_BASE_AGGRESSION: 0.8, // More aggressive AI
+  POWERUP_SPAWN_TIME: 300, // More frequent powerups (5 seconds)
+  POWERUP_DURATION: 420, // Longer lasting powerups (7 seconds)
   AI_TAUNT_DURATION: 120,
+  // Enhanced effects
+  FIRE_DAMAGE: 2,
+  EXPLOSION_RADIUS: 50,
+  COMBO_MULTIPLIER: 1.5,
+  MAX_COMBO: 10,
 };
 
 interface Paddle {
@@ -48,9 +53,11 @@ interface Powerup {
   y: number;
   width: number;
   height: number;
-  type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield';
+  type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity';
   timer: number;
   collected: boolean;
+  intensity: number; // Power level (1-5)
+  effect: string; // Visual effect type
 }
 
 export class PongGame extends BaseGame {
@@ -299,26 +306,32 @@ export class PongGame extends BaseGame {
     }
   }
 
-  private updateBall(_deltaTime: number) {
-    this.ball.trail.push({x: this.ball.x, y: this.ball.y});
-    if (this.ball.trail.length > 10) {
-      this.ball.trail.shift();
-    }
+  private updateBalls(_deltaTime: number) {
+    this.balls.forEach(ball => {
+      // Update ball trail
+      ball.trail.push({x: ball.x, y: ball.y});
+      if (ball.trail.length > 10) {
+        ball.trail.shift();
+      }
 
-    let speedMultiplier = 1;
-    if (this.ball.type === 'speed') speedMultiplier = 1.8;
-    else if (this.ball.type === 'fire') speedMultiplier = 1.4;
-    else if (this.ball.type === 'missile') speedMultiplier = 2.2;
-    
-    this.ball.x += this.ball.dx * speedMultiplier;
-    this.ball.y += this.ball.dy * speedMultiplier;
-    
-    if (this.ball.type === 'wacky') {
-      this.ball.dx += (Math.random() - 0.5) * 0.5;
-      this.ball.dy += (Math.random() - 0.5) * 0.5;
-      this.ball.angle = (this.ball.angle ?? 0) + (this.ball.angleSpeed ?? 0.25);
-      if (this.ball.angle! > Math.PI * 2) this.ball.angle! -= Math.PI * 2;
-    }
+      // Calculate speed multiplier based on ball type
+      let speedMultiplier = 1;
+      if (ball.type === 'speed') speedMultiplier = 1.8;
+      else if (ball.type === 'fire') speedMultiplier = 1.4;
+      else if (ball.type === 'missile') speedMultiplier = 2.2;
+
+      // Update ball position
+      ball.x += ball.dx * speedMultiplier;
+      ball.y += ball.dy * speedMultiplier;
+
+      // Handle wacky ball behavior
+      if (ball.type === 'wacky') {
+        ball.dx += (Math.random() - 0.5) * 0.5;
+        ball.dy += (Math.random() - 0.5) * 0.5;
+        ball.angle = (ball.angle ?? 0) + (ball.angleSpeed ?? 0.25);
+        if (ball.angle! > Math.PI * 2) ball.angle! -= Math.PI * 2;
+      }
+    });
   }
 
   private handleCollisions() {
@@ -862,53 +875,91 @@ export class PongGame extends BaseGame {
     }
     
     // Spawn powerups very frequently to speed up the game dramatically
-    if (this.powerupSpawnTimer > 240 && this.powerups.length < 2) { // Every ~4 seconds, up to 2 at once
-      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield')[] = ['speed', 'fire', 'missile', 'wacky', 'shield'];
+    if (this.powerupSpawnTimer > 180 && this.powerups.length < 3) { // Every ~3 seconds, up to 3 at once
+      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity')[] =
+        ['speed', 'fire', 'missile', 'wacky', 'shield', 'explosion', 'chain', 'shockwave', 'multiball', 'gravity'];
       const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
-      
+      const intensity = Math.floor(Math.random() * 5) + 1; // 1-5 power level
+
+      // Enhanced powerup with visual effects
+      const powerupEffects = {
+        speed: 'glow-blue',
+        fire: 'glow-red',
+        missile: 'glow-yellow',
+        wacky: 'glow-purple',
+        shield: 'glow-cyan',
+        explosion: 'glow-orange',
+        chain: 'glow-pink',
+        shockwave: 'glow-green',
+        multiball: 'glow-magenta',
+        gravity: 'glow-indigo'
+      };
+
       this.powerups.push({
         x: Math.random() * (this.width - 60) + 30,
         y: Math.random() * (this.height - 60) + 30,
-        width: 40,
-        height: 40,
+        width: 50 + intensity * 5, // Larger for higher intensity
+        height: 50 + intensity * 5,
         type: randomType,
         timer: 0,
-        collected: false
+        collected: false,
+        intensity: intensity,
+        effect: powerupEffects[randomType]
       });
-      
+
       this.powerupSpawnTimer = 0;
     }
   }
 
-  private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield') {
-    this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // 5 seconds
-    
+  private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity') {
+    this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // 7 seconds
+
     // Apply immediate effects
-    if (type !== 'shield') {
+    if (type !== 'shield' && type !== 'explosion' && type !== 'chain' && type !== 'shockwave') {
       this.ball.type = type;
       this.activePowerupType = type;
     }
-    
+
     switch (type) {
       case 'speed':
-        this.ball.speed *= 1.2;
+        this.ball.speed *= 1.5; // More intense speed boost
         this.ball.angleSpeed = 0;
+        this.particles.addExplosion(this.ball.x, this.ball.y, 15, '#00FFFF', 'subtle');
         break;
       case 'fire':
-        this.ball.radius = 12; // Bigger fire ball
+        this.ball.radius = 15; // Much bigger fire ball
         this.ball.angleSpeed = 0;
+        this.particles.addExplosion(this.ball.x, this.ball.y, 20, '#FF4500', 'dramatic');
         break;
       case 'missile':
-        this.ball.speed *= 1.6;
+        this.ball.speed *= 2.0; // Super fast missile
         this.ball.angleSpeed = 0;
+        this.particles.addExplosion(this.ball.x, this.ball.y, 25, '#FFD700', 'epic');
         break;
       case 'wacky':
         // Unpredictable movement handled in update
-        this.ball.angleSpeed = 0.35;
+        this.ball.angleSpeed = 0.5; // More erratic
+        this.particles.addExplosion(this.ball.x, this.ball.y, 18, '#FF00FF', 'subtle');
         break;
       case 'shield':
         this.player1.shielded = true;
-        this.shieldTimer = 600; // 10 seconds
+        this.shieldTimer = 900; // 15 seconds of shield
+        this.particles.addExplosion(this.player1.x + this.player1.width/2, this.player1.y, 12, '#00FFFF', 'subtle');
+        break;
+      case 'explosion':
+        this.explodeBall();
+        break;
+      case 'chain':
+        this.activateChainReaction();
+        break;
+      case 'shockwave':
+        this.activateShockwave();
+        break;
+      case 'multiball':
+        this.activateMultiball();
+        break;
+      case 'gravity':
+        this.activateGravityWell();
         break;
     }
   }
@@ -978,6 +1029,56 @@ export class PongGame extends BaseGame {
     
     // Audio
     this.playStinger('starwars_explosion');
+  }
+
+  private activateMultiball() {
+    // Create explosion effect for multiball powerup
+    this.particles.addExplosion(this.ball.x, this.ball.y, 25, '#FF00FF', 'dramatic');
+
+    // Speed up the existing ball dramatically
+    this.ball.speed *= 2.0;
+    this.ball.type = 'speed';
+  }
+
+  private activateGravityWell() {
+    // Create gravity well effect that pulls ball toward center
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+
+    // Pull ball toward center
+    const ballDx = centerX - this.ball.x;
+    const ballDy = centerY - this.ball.y;
+    const ballDistance = Math.sqrt(ballDx * ballDx + ballDy * ballDy);
+
+    if (ballDistance > 0) {
+      const pullForce = 12; // Very strong pull toward center
+      this.ball.dx += (ballDx / ballDistance) * pullForce;
+      this.ball.dy += (ballDy / ballDistance) * pullForce;
+      this.ball.speed = Math.min(25, this.ball.speed + 3);
+    }
+
+    // Visual gravity well effect
+    this.particles.addExplosion(centerX, centerY, 35, '#800080', 'epic');
+
+    // Pull paddles toward center briefly
+    this.applyGravityToPaddle(this.player1, centerX, centerY);
+    this.applyGravityToPaddle(this.player2, centerX, centerY);
+  }
+
+  private applyGravityToPaddle(paddle: Paddle, centerX: number, centerY: number) {
+    const dx = centerX - (paddle.x + paddle.width/2);
+    const dy = centerY - (paddle.y + paddle.height/2);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 0 && distance < 150) {
+      const pullForce = (150 - distance) / 20;
+      paddle.x += (dx / distance) * pullForce;
+      paddle.y += (dy / distance) * pullForce;
+
+      // Keep paddle in bounds
+      paddle.x = Math.max(0, Math.min(this.width - paddle.width, paddle.x));
+      paddle.y = Math.max(0, Math.min(this.height - paddle.height, paddle.y));
+    }
   }
 
   private drawBall() {

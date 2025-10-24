@@ -12,12 +12,15 @@ interface GameStore {
   gameState: GameState;
   unlockedStages: number;
   showDemo: boolean;
+  // Production mode settings
+  productionMode: boolean;
 
   // Actions
   setCurrentScreen: (screen: GameScreen) => void;
   setCurrentStage: (stage: number) => void;
   setGameState: (state: GameState) => void;
   setShowDemo: (show: boolean) => void;
+  setProductionMode: (enabled: boolean) => void;
   unlockNextStage: () => void;
   goToNextStage: () => void;
   resetProgress: () => void;
@@ -31,20 +34,23 @@ export const useGameStore = create<GameStore>()(
       currentScreen: 'menu',
       currentStage: 1,
       gameState: 'playing',
-      unlockedStages: 1,
-      showDemo: true,
+      unlockedStages: MAX_STAGE, // Unlock all stages in production
+      showDemo: process.env.NODE_ENV === 'production', // Show demo only in development
+      productionMode: process.env.NODE_ENV === 'production',
       
       setCurrentScreen: (screen) => set({ currentScreen: screen }),
-      
+
       // Sets the current stage and resets game state to 'playing'
-      setCurrentStage: (stage) => set({ 
+      setCurrentStage: (stage) => set({
         currentStage: stage,
         gameState: 'playing'
       }),
-      
+
       setGameState: (state) => set({ gameState: state }),
 
       setShowDemo: (show) => set({ showDemo: show }),
+
+      setProductionMode: (enabled) => set({ productionMode: enabled }),
 
       unlockNextStage: () => set((state) => ({
         unlockedStages: Math.max(state.unlockedStages, state.currentStage + 1)
