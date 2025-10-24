@@ -47,7 +47,7 @@ interface Brick {
   health: number;
   explosive?: boolean;
   explosionRadius?: number;
-  powerupType?: 'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship';
+  powerupType?: 'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship' | 'spikes';
   // Spike system
   spikeLodged?: boolean;
   spikeTimer?: number;
@@ -127,7 +127,7 @@ export class BreakoutGame extends BaseGame {
       y: this.height - 50,
       width: 100,
       height: 15,
-      speed: 8,
+      speed: 12, // Increased paddle speed for better responsiveness
       evolved: false,
       pulseIntensity: 0,
       fireEffect: false,
@@ -215,10 +215,18 @@ export class BreakoutGame extends BaseGame {
   }
 
   update(_deltaTime: number) {
-    // Smooth paddle toward target for touch
-    if (!this.paddleEvolved && this.targetPaddleX != null) {
+    // Check if keyboard input is active (priority over touch)
+    const keyboardActive = this.keys.has('KeyA') || this.keys.has('KeyD') || 
+                          this.keys.has('KeyW') || this.keys.has('KeyS') ||
+                          this.keys.has('ArrowLeft') || this.keys.has('ArrowRight') ||
+                          this.keys.has('ArrowUp') || this.keys.has('ArrowDown');
+    
+    // Smooth paddle toward target for touch (only if no keyboard input)
+    if (!this.paddleEvolved && this.targetPaddleX != null && !keyboardActive) {
       const dx = this.targetPaddleX - this.paddle.x;
-      this.paddle.x += Math.sign(dx) * Math.min(Math.abs(dx), this.paddle.speed * 1.2);
+      // Improved touch responsiveness with faster movement
+      const touchSpeed = this.paddle.speed * 1.5; // Faster touch movement
+      this.paddle.x += Math.sign(dx) * Math.min(Math.abs(dx), touchSpeed);
       this.paddle.x = Math.max(0, Math.min(this.width - this.paddle.width, this.paddle.x));
     }
     if (this.transitioning) {
@@ -336,20 +344,33 @@ export class BreakoutGame extends BaseGame {
       }
       
       // Enhanced paddle movement - all directions with arrow keys and WASD
+      // Support diagonal movement and prevent conflicts
+      let moveX = 0;
+      let moveY = 0;
+      
       // Horizontal movement (A/D and Left/Right arrows)
       if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
-        this.paddle.x = Math.max(0, this.paddle.x - paddleSpeed);
+        moveX = -paddleSpeed;
       }
       if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) {
-        this.paddle.x = Math.min(this.width - this.paddle.width, this.paddle.x + paddleSpeed);
+        moveX = paddleSpeed;
       }
       
       // Vertical movement (W/S and Up/Down arrows)
       if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
-        this.paddle.y = Math.max(this.height * 0.6, this.paddle.y - paddleSpeed);
+        moveY = -paddleSpeed;
       }
       if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) {
-        this.paddle.y = Math.min(this.height - 20, this.paddle.y + paddleSpeed);
+        moveY = paddleSpeed;
+      }
+      
+      // Apply movement with bounds checking
+      if (moveX !== 0 || moveY !== 0) {
+        this.paddle.x = Math.max(0, Math.min(this.width - this.paddle.width, this.paddle.x + moveX));
+        this.paddle.y = Math.max(this.height * 0.6, Math.min(this.height - 20, this.paddle.y + moveY));
+        
+        // Clear touch target when keyboard is used
+        this.targetPaddleX = null;
       }
 
       // Update balls only if not eaten
@@ -458,10 +479,26 @@ export class BreakoutGame extends BaseGame {
       this.evolvedPaddleY = Math.max(this.height / 3, Math.min(this.height - 40, y));
       return;
     }
-    // Normal mode: map x to paddle position at bottom region
+    
+    // Normal mode: improved touch control with better responsiveness
     const vec = this.stick.getVector();
-    const targetX = (this.paddle.x + vec.x * 12) - 0 + (x - this.paddle.x) * 0.0; // primary by stick
-    this.targetPaddleX = Math.max(0, Math.min(this.width - this.paddle.width, targetX));
+    
+    // Calculate target position based on touch input
+    const touchX = x;
+    const touchY = y;
+    
+    // Map touch position to paddle position with better sensitivity
+    const _targetX = Math.max(0, Math.min(this.width - this.paddle.width, touchX - this.paddle.width / 2));
+    const _targetY = Math.max(this.height * 0.6, Math.min(this.height - 20, touchY - this.paddle.height / 2));
+    
+    // Use virtual stick for fine control
+    const stickX = this.paddle.x + vec.x * 20;
+    const stickY = this.paddle.y + vec.y * 20;
+    
+    // Combine touch and stick input for better control
+    this.targetPaddleX = Math.max(0, Math.min(this.width - this.paddle.width, stickX));
+    this.paddle.y = Math.max(this.height * 0.6, Math.min(this.height - 20, stickY));
+    
     this.indicatorPos = { x, y };
   }
 
@@ -528,7 +565,7 @@ export class BreakoutGame extends BaseGame {
               // Normal brick destruction
               const quality = (window as unknown as { __CULTURAL_ARCADE_QUALITY__?: string }).__CULTURAL_ARCADE_QUALITY__ || 'medium';
               const count = quality === 'high' ? 18 : quality === 'low' ? 8 : 12;
-              this.particles.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700', 'subtle');
+              this.particles?.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700', 'subtle');
             }
             
             const drop = Math.random();
@@ -570,7 +607,7 @@ export class BreakoutGame extends BaseGame {
     const explosionY = explodedBrick.y + explodedBrick.height / 2;
     
     // Create epic explosion
-    this.particles.addExplosion(explosionX, explosionY, 30, '#FF4500', 'epic');
+    this.particles?.addExplosion(explosionX, explosionY, 30, '#FF4500', 'epic');
     
     // Damage nearby bricks
     for (const brick of this.bricks) {
@@ -590,7 +627,7 @@ export class BreakoutGame extends BaseGame {
             this.score += 15; // Bonus points for explosion damage
             
             // Create smaller explosion for each destroyed brick
-            this.particles.addExplosion(brickCenterX, brickCenterY, 8, '#FFD700', 'subtle');
+            this.particles?.addExplosion(brickCenterX, brickCenterY, 8, '#FFD700', 'subtle');
           }
         }
       }
@@ -909,8 +946,8 @@ export class BreakoutGame extends BaseGame {
     // Render particles
     const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
     if (allowParticles) {
-      this.particles.update();
-      this.particles.render();
+      this.particles?.update();
+      this.particles?.render();
     }
   }
 
@@ -1251,7 +1288,7 @@ export class BreakoutGame extends BaseGame {
     
     // PUNCH ARMS: Geometric extensions
     if (this.paddle.punchArms) {
-      const centerX = this.paddle.x + this.paddle.width / 2;
+      const _centerX = this.paddle.x + this.paddle.width / 2;
       const centerY = this.paddle.y + this.paddle.height / 2;
       
       // Left punch arm
@@ -1336,6 +1373,22 @@ export class BreakoutGame extends BaseGame {
   private drawUI() {
     this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
     this.drawText(`Lives: ${this.lives}`, 20, 60, 20, '#FFD700');
+    
+    // Debug: Show control status
+    const keyboardActive = this.keys.has('KeyA') || this.keys.has('KeyD') || 
+                          this.keys.has('KeyW') || this.keys.has('KeyS') ||
+                          this.keys.has('ArrowLeft') || this.keys.has('ArrowRight') ||
+                          this.keys.has('ArrowUp') || this.keys.has('ArrowDown');
+    
+    if (keyboardActive) {
+      this.drawText('🎮 Keyboard Active', this.width - 150, 30, 14, '#00FF00');
+    } else if (this.targetPaddleX !== null) {
+      this.drawText('👆 Touch Active', this.width - 150, 30, 14, '#00BFFF');
+    }
+    
+    // Show paddle speed and position
+    this.drawText(`Speed: ${this.paddle.speed}`, this.width - 150, 50, 12, '#FFD700');
+    this.drawText(`Pos: ${Math.round(this.paddle.x)}, ${Math.round(this.paddle.y)}`, this.width - 150, 70, 12, '#FFD700');
     
     if (!this.transitioning) {
       if (this.paddleEvolved) {
