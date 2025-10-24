@@ -13,3 +13,5 @@ vite.config.ts.*
 *.key
 *.token
 config/local*
+# Local Netlify folder
+.netlify
