@@ -34,7 +34,7 @@ export const useGameStore = create<GameStore>()(
       currentScreen: 'menu',
       currentStage: 1,
       gameState: 'playing',
-      unlockedStages: MAX_STAGE, // Unlock all stages in production
+      unlockedStages: process.env.NODE_ENV === 'production' ? MAX_STAGE : 1, // Unlock all stages in production
       showDemo: process.env.NODE_ENV === 'production', // Show demo only in development
       productionMode: process.env.NODE_ENV === 'production',
       
@@ -87,7 +87,19 @@ export const useGameStore = create<GameStore>()(
         stageAttempts: state.stageAttempts
       }),
       // Version the storage to allow breaking changes
-      version: 1,
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        if (version < 2) {
+          // Force unlock all stages in production for version 2
+          if (process.env.NODE_ENV === 'production') {
+            return {
+              ...persistedState,
+              unlockedStages: MAX_STAGE
+            };
+          }
+        }
+        return persistedState;
+      },
     }
   )
 );
