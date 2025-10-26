@@ -33,6 +33,8 @@ interface Paddle {
   pulsateIntensity: number; // New: for AI paddle pulsing
   lastHitTime: number; // New: for damage timing
   shielded?: boolean;
+  destroyed?: boolean; // New: track if paddle is destroyed
+  regenerationTimer?: number; // New: timer for regeneration
 }
 
 interface Ball {
@@ -53,11 +55,24 @@ interface Powerup {
   y: number;
   width: number;
   height: number;
-  type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity';
+  type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity' | 'laser';
   timer: number;
   collected: boolean;
   intensity: number; // Power level (1-5)
   effect: string; // Visual effect type
+}
+
+interface Laser {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  speed: number;
+  width: number;
+  height: number;
+  active: boolean;
+  timer: number;
+  maxTimer: number;
 }
 
 export class PongGame extends BaseGame {
@@ -81,6 +96,11 @@ export class PongGame extends BaseGame {
   private shockwaveTimer = 0;
   private explosionPowerups: Array<{x: number, y: number, type: 'chain' | 'shockwave', timer: number}> = [];
   private visualFeedback: VisualFeedback | null = null;
+  // Laser system
+  private lasers: Laser[] = [];
+  private laserCooldown = 0;
+  private laserPowerupActive = false;
+  private laserPowerupDuration = 0;
   private player1Combo = 0;
   private totalDamageTaken = 0;
   private pointStartTime = 0;
@@ -163,7 +183,9 @@ export class PongGame extends BaseGame {
       damage: 0,
       maxDamage: 100,
       pulsateIntensity: 0,
-      lastHitTime: 0
+      lastHitTime: 0,
+      destroyed: false,
+      regenerationTimer: 0
     };
 
     this.player2 = {
@@ -176,7 +198,9 @@ export class PongGame extends BaseGame {
       damage: 0,
       maxDamage: 100,
       pulsateIntensity: 0,
-      lastHitTime: 0
+      lastHitTime: 0,
+      destroyed: false,
+      regenerationTimer: 0
     };
 
     // Initialize ball
@@ -208,9 +232,14 @@ export class PongGame extends BaseGame {
     this.checkScoring();
 
     this.updatePowerups(_deltaTime);
+    this.updateLasers(_deltaTime);
     this.updateParticles(_deltaTime);
     this.updateVisuals(_deltaTime);
     this.visualFeedback?.update(_deltaTime);
+    
+    // Regenerate destroyed paddles
+    this.regeneratePaddle(this.player1);
+    this.regeneratePaddle(this.player2);
   }
 
   private updatePlayer(_deltaTime: number) {
@@ -228,6 +257,11 @@ export class PongGame extends BaseGame {
       this.player1.x = Math.min(this.width / 3, this.player1.x + this.player1.speed);
     }
 
+    // Laser controls
+    if (this.keys.has('KeyZ') || this.keys.has('KeyX')) {
+      this.fireLaser();
+    }
+
     if (this.shieldTimer > 0) {
         this.shieldTimer--;
         if (this.shieldTimer <= 0) {
@@ -237,6 +271,9 @@ export class PongGame extends BaseGame {
   }
 
   private updateAI(_deltaTime: number) {
+    // Don't update AI if paddle is destroyed
+    if (this.player2.destroyed) return;
+    
     // AI Player 2 - Aggressive computer opponent
     const ballCenter = this.ball.y;
     const paddleCenter = this.player2.y + this.player2.height / 2;
@@ -552,6 +589,9 @@ export class PongGame extends BaseGame {
   }
 
   private checkPaddleCollision(paddle: Paddle): boolean {
+    // No collision if paddle is destroyed
+    if (paddle.destroyed) return false;
+    
     return (
       this.ball.x - this.ball.radius < paddle.x + paddle.width &&
       this.ball.x + this.ball.radius > paddle.x &&
@@ -572,6 +612,9 @@ export class PongGame extends BaseGame {
 
     // Draw ball
     this.drawBall();
+
+    // Draw lasers
+    this.drawLasers();
 
     // Draw powerups
     this.drawPowerups();
@@ -642,6 +685,22 @@ export class PongGame extends BaseGame {
 
   private drawGreekPaddle(paddle: Paddle) {
     this.ctx.save();
+    
+    // Don't draw destroyed paddles
+    if (paddle.destroyed) {
+      // Draw regeneration countdown
+      if (paddle.regenerationTimer && paddle.regenerationTimer > 0) {
+        this.ctx.save();
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = '16px monospace';
+        this.ctx.textAlign = 'center';
+        const seconds = Math.ceil(paddle.regenerationTimer! / 60);
+        this.ctx.fillText(`REGENERATING: ${seconds}s`, paddle.x + paddle.width/2, paddle.y - 20);
+        this.ctx.restore();
+      }
+      this.ctx.restore();
+      return;
+    }
     
     // Determine if this is human or AI paddle
     const isHuman = paddle === this.player1;
@@ -874,8 +933,8 @@ export class PongGame extends BaseGame {
     
     // Spawn powerups very frequently to speed up the game dramatically
     if (this.powerupSpawnTimer > 180 && this.powerups.length < 3) { // Every ~3 seconds, up to 3 at once
-      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity')[] =
-        ['speed', 'fire', 'missile', 'wacky', 'shield', 'explosion', 'chain', 'shockwave', 'multiball', 'gravity'];
+      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity' | 'laser')[] =
+        ['speed', 'fire', 'missile', 'wacky', 'shield', 'explosion', 'chain', 'shockwave', 'multiball', 'gravity', 'laser'];
       const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
       const intensity = Math.floor(Math.random() * 5) + 1; // 1-5 power level
 
@@ -890,7 +949,8 @@ export class PongGame extends BaseGame {
         chain: 'glow-pink',
         shockwave: 'glow-green',
         multiball: 'glow-magenta',
-        gravity: 'glow-indigo'
+        gravity: 'glow-indigo',
+        laser: 'glow-laser'
       };
 
       this.powerups.push({
@@ -909,7 +969,7 @@ export class PongGame extends BaseGame {
     }
   }
 
-  private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity') {
+  private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity' | 'laser') {
     this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // 7 seconds
 
     // Apply immediate effects
@@ -958,6 +1018,9 @@ export class PongGame extends BaseGame {
         break;
       case 'gravity':
         this.activateGravityWell();
+        break;
+      case 'laser':
+        this.activateLaserPowerup();
         break;
     }
   }
@@ -1076,6 +1139,140 @@ export class PongGame extends BaseGame {
       // Keep paddle in bounds
       paddle.x = Math.max(0, Math.min(this.width - paddle.width, paddle.x));
       paddle.y = Math.max(0, Math.min(this.height - paddle.height, paddle.y));
+    }
+  }
+
+  private activateLaserPowerup() {
+    // Activate laser powerup for 10 seconds
+    this.laserPowerupActive = true;
+    this.laserPowerupDuration = 600; // 10 seconds at 60fps
+    this.laserCooldown = 0; // Reset cooldown
+    
+    // Visual feedback
+    this.particles?.addExplosion(this.player1.x, this.player1.y, 30, '#FF00FF', 'dramatic');
+    this.playStinger('powerup');
+    
+    console.log('🔫 Laser powerup activated! Press Z or X to fire lasers!');
+  }
+
+  private fireLaser() {
+    if (!this.laserPowerupActive || this.laserCooldown > 0) return;
+    
+    // Create laser from player paddle center
+    const laserX = this.player1.x + this.player1.width;
+    const laserY = this.player1.y + this.player1.height / 2;
+    
+    // Aim laser at AI paddle
+    const targetX = this.player2.x;
+    const targetY = this.player2.y + this.player2.height / 2;
+    
+    const dx = targetX - laserX;
+    const dy = targetY - laserY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 0) {
+      const laser: Laser = {
+        x: laserX,
+        y: laserY,
+        dx: dx / distance,
+        dy: dy / distance,
+        speed: 15,
+        width: 4,
+        height: 2,
+        active: true,
+        timer: 0,
+        maxTimer: 120 // 2 seconds max lifetime
+      };
+      
+      this.lasers.push(laser);
+      this.laserCooldown = 30; // 0.5 second cooldown
+      
+      // Visual and audio feedback
+      this.particles?.addExplosion(laserX, laserY, 15, '#FF00FF', 'subtle');
+      this.playStinger('laser');
+    }
+  }
+
+  private updateLasers(_deltaTime: number) {
+    // Update laser cooldown
+    if (this.laserCooldown > 0) {
+      this.laserCooldown--;
+    }
+    
+    // Update laser powerup duration
+    if (this.laserPowerupDuration > 0) {
+      this.laserPowerupDuration--;
+      if (this.laserPowerupDuration <= 0) {
+        this.laserPowerupActive = false;
+        // Remove all active lasers
+        this.lasers = this.lasers.filter(laser => !laser.active);
+      }
+    }
+    
+    // Update lasers
+    for (let i = this.lasers.length - 1; i >= 0; i--) {
+      const laser = this.lasers[i];
+      
+      if (!laser.active) {
+        this.lasers.splice(i, 1);
+        continue;
+      }
+      
+      // Move laser
+      laser.x += laser.dx * laser.speed;
+      laser.y += laser.dy * laser.speed;
+      laser.timer++;
+      
+      // Check if laser hits AI paddle
+      if (this.checkLaserHitPaddle(laser, this.player2)) {
+        this.destroyPaddle(this.player2);
+        laser.active = false;
+        continue;
+      }
+      
+      // Remove laser if it goes off screen or times out
+      if (laser.x > this.width || laser.x < 0 || laser.y > this.height || laser.y < 0 || laser.timer >= laser.maxTimer) {
+        laser.active = false;
+      }
+    }
+  }
+
+  private checkLaserHitPaddle(laser: Laser, paddle: Paddle): boolean {
+    if (paddle.destroyed) return false;
+    
+    return laser.x >= paddle.x && 
+           laser.x <= paddle.x + paddle.width &&
+           laser.y >= paddle.y && 
+           laser.y <= paddle.y + paddle.height;
+  }
+
+  private destroyPaddle(paddle: Paddle) {
+    paddle.destroyed = true;
+    paddle.regenerationTimer = 300; // 5 seconds to regenerate
+    
+    // Massive explosion effect
+    this.particles?.addExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, 50, '#FF0000', 'epic');
+    this.shakeTimer = 20;
+    this.playStinger('explosion');
+    
+    console.log(`💥 ${paddle === this.player1 ? 'Player' : 'AI'} paddle destroyed!`);
+  }
+
+  private regeneratePaddle(paddle: Paddle) {
+    if (!paddle.destroyed) return;
+    
+    paddle.regenerationTimer!--;
+    
+    if (paddle.regenerationTimer! <= 0) {
+      paddle.destroyed = false;
+      paddle.damage = 0; // Reset damage
+      paddle.regenerationTimer = 0;
+      
+      // Regeneration effect
+      this.particles?.addExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, 30, '#00FF00', 'dramatic');
+      this.playStinger('powerup');
+      
+      console.log(`🔄 ${paddle === this.player1 ? 'Player' : 'AI'} paddle regenerated!`);
     }
   }
 
@@ -1215,6 +1412,44 @@ export class PongGame extends BaseGame {
       this.ctx.fillText('SHOCKWAVE!', this.width / 2, 50);
       this.ctx.restore();
       this.shockwaveTimer--;
+    }
+  }
+
+  private drawLasers() {
+    this.lasers.forEach(laser => {
+      if (!laser.active) return;
+      
+      this.ctx.save();
+      
+      // Laser glow effect
+      this.ctx.shadowColor = '#FF00FF';
+      this.ctx.shadowBlur = 10;
+      
+      // Main laser beam
+      this.ctx.fillStyle = '#FF00FF';
+      this.ctx.fillRect(laser.x - laser.width/2, laser.y - laser.height/2, laser.width, laser.height);
+      
+      // Bright core
+      this.ctx.fillStyle = '#FFFFFF';
+      this.ctx.fillRect(laser.x - 1, laser.y - laser.height/2, 2, laser.height);
+      
+      // Trail effect
+      this.ctx.globalAlpha = 0.3;
+      this.ctx.fillStyle = '#FF00FF';
+      this.ctx.fillRect(laser.x - laser.width, laser.y - laser.height, laser.width * 2, laser.height * 2);
+      
+      this.ctx.restore();
+    });
+    
+    // Draw laser powerup status
+    if (this.laserPowerupActive) {
+      this.ctx.save();
+      this.ctx.fillStyle = '#FF00FF';
+      this.ctx.font = '14px monospace';
+      this.ctx.textAlign = 'left';
+      this.ctx.fillText(`LASER ACTIVE: ${Math.ceil(this.laserPowerupDuration / 60)}s`, 10, this.height - 20);
+      this.ctx.fillText('Press Z or X to fire!', 10, this.height - 5);
+      this.ctx.restore();
     }
   }
 }
