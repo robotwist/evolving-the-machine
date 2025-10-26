@@ -35,6 +35,9 @@ interface Ball {
   dy: number;
   radius: number;
   speed: number;
+  heatseeking?: boolean;
+  targetBrick?: Brick | null;
+  heatseekingTimer?: number;
 }
 
 interface Brick {
@@ -47,7 +50,7 @@ interface Brick {
   health: number;
   explosive?: boolean;
   explosionRadius?: number;
-  powerupType?: 'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship' | 'spikes';
+  powerupType?: 'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship' | 'spikes' | 'heatseeking';
   // Spike system
   spikeLodged?: boolean;
   spikeTimer?: number;
@@ -186,8 +189,8 @@ export class BreakoutGame extends BaseGame {
     const offsetY = 80;
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
-    const powerupTypes: Array<'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship' | 'spikes'> = 
-      ['bigger', 'thicker', 'fire', 'ice', 'explosion', 'pulse', 'spaceship', 'spikes'];
+    const powerupTypes: Array<'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship' | 'spikes' | 'heatseeking'> = 
+      ['bigger', 'thicker', 'fire', 'ice', 'explosion', 'pulse', 'spaceship', 'spikes', 'heatseeking'];
 
     for (let row = 0; row < rows; row++) {
       const rowBricks: Brick[] = [];
@@ -373,6 +376,9 @@ export class BreakoutGame extends BaseGame {
         this.targetPaddleX = null;
       }
 
+      // Update heatseeking balls first
+      this.updateHeatseekingBalls();
+      
       // Update balls only if not eaten
       if (!this.ballEaten) {
         for (const ball of this.balls) {
@@ -942,9 +948,40 @@ export class BreakoutGame extends BaseGame {
     if (!this.ballEaten) {
       for (const ball of this.balls) {
         this.ctx.save();
-        this.ctx.fillStyle = '#FFD700';
-        this.ctx.strokeStyle = '#B8860B';
-        this.ctx.lineWidth = 2;
+        
+        if (ball.heatseeking) {
+          // Heatseeking ball - magenta with glow effect
+          this.ctx.shadowColor = '#FF00FF';
+          this.ctx.shadowBlur = 15;
+          this.ctx.fillStyle = '#FF00FF';
+          this.ctx.strokeStyle = '#FFFFFF';
+          this.ctx.lineWidth = 3;
+          
+          // Draw targeting line to target brick
+          if (ball.targetBrick && !ball.targetBrick.destroyed) {
+            this.ctx.strokeStyle = '#FF00FF';
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(ball.x, ball.y);
+            this.ctx.lineTo(
+              ball.targetBrick.x + ball.targetBrick.width / 2,
+              ball.targetBrick.y + ball.targetBrick.height / 2
+            );
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+          }
+          
+          // Draw pulsing effect
+          const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+          this.ctx.globalAlpha = pulse;
+        } else {
+          // Regular ball
+          this.ctx.fillStyle = '#FFD700';
+          this.ctx.strokeStyle = '#B8860B';
+          this.ctx.lineWidth = 2;
+        }
+        
         this.ctx.beginPath();
         this.ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
         this.ctx.fill();
@@ -1495,6 +1532,10 @@ export class BreakoutGame extends BaseGame {
         this.paddle.spikeCount = (this.paddle.spikeCount || 0) + 3;
         console.log(`🗡️ Spikes acquired! Total spikes: ${this.paddle.spikeCount}`);
         break;
+        
+      case 'heatseeking':
+        this.activateHeatseekingTripleBalls();
+        break;
     }
   }
 
@@ -1522,6 +1563,95 @@ export class BreakoutGame extends BaseGame {
         this.particles?.addExplosion(brick.x + brick.width/2, brick.y + brick.height/2, 20, '#FF6B6B', 'dramatic');
       }
     }
+  }
+
+  private activateHeatseekingTripleBalls() {
+    console.log('🎯 Heatseeking Triple Balls activated!');
+    
+    // Create 3 heatseeking balls
+    for (let i = 0; i < 3; i++) {
+      const ball: Ball = {
+        x: this.width / 2 + (i - 1) * 20, // Spread them out
+        y: this.height - 100,
+        dx: (Math.random() - 0.5) * 0.3, // Small random direction
+        dy: -0.8, // Upward movement
+        radius: 8,
+        speed: 6,
+        heatseeking: true,
+        targetBrick: null,
+        heatseekingTimer: 600 // 10 seconds duration
+      };
+      
+      this.balls.push(ball);
+    }
+    
+    // Visual effect
+    this.particles?.addExplosion(this.width / 2, this.height - 100, 40, '#FF00FF', 'epic');
+    this.shakeTimer = 15;
+  }
+
+  private updateHeatseekingBalls() {
+    this.balls.forEach(ball => {
+      if (!ball.heatseeking) return;
+      
+      // Decrease timer
+      if (ball.heatseekingTimer && ball.heatseekingTimer > 0) {
+        ball.heatseekingTimer--;
+        
+        // Find target brick if none exists
+        if (!ball.targetBrick || ball.targetBrick.destroyed) {
+          ball.targetBrick = this.findNearestBrick(ball);
+        }
+        
+        // Move towards target brick
+        if (ball.targetBrick && !ball.targetBrick.destroyed) {
+          const targetX = ball.targetBrick.x + ball.targetBrick.width / 2;
+          const targetY = ball.targetBrick.y + ball.targetBrick.height / 2;
+          
+          const dx = targetX - ball.x;
+          const dy = targetY - ball.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance > 0) {
+            // Heatseeking behavior - gradually steer towards target
+            const steeringForce = 0.1;
+            ball.dx += (dx / distance) * steeringForce;
+            ball.dy += (dy / distance) * steeringForce;
+            
+            // Normalize speed
+            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            if (speed > 0) {
+              ball.dx = (ball.dx / speed) * ball.speed;
+              ball.dy = (ball.dy / speed) * ball.speed;
+            }
+          }
+        }
+      } else {
+        // Timer expired - remove heatseeking
+        ball.heatseeking = false;
+        ball.targetBrick = null;
+      }
+    });
+  }
+
+  private findNearestBrick(ball: Ball): Brick | null {
+    let nearestBrick: Brick | null = null;
+    let minDistance = Infinity;
+    
+    for (const brick of this.bricks) {
+      if (brick.destroyed) continue;
+      
+      const dx = (brick.x + brick.width/2) - ball.x;
+      const dy = (brick.y + brick.height/2) - ball.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestBrick = brick;
+      }
+    }
+    
+    return nearestBrick;
   }
 
   private updatePowerupEffects() {
