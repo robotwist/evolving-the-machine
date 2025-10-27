@@ -191,15 +191,15 @@ export class LasatGame extends BaseGame {
     // Clear existing enemies
     this.enemies = [];
     
-    // Balanced difficulty - start with manageable numbers
-    const squadronCount = Math.min(1 + Math.floor(this.ragnarokPhase / 2), 3); // Max 3 squadrons
+    // Increased difficulty - 2X harder than before
+    const squadronCount = Math.min(2 + Math.floor(this.ragnarokPhase / 2), 4); // Max 4 squadrons
     
     for (let squadron = 0; squadron < squadronCount; squadron++) {
-      // Each squadron has different composition - much more reasonable numbers
+      // Each squadron has different composition - increased enemy count
       const squadronTypes = [
-        { type: 'fighter' as const, count: Math.min(2 + this.ragnarokPhase, 6) }, // Max 6 fighters per squadron
-        { type: 'destroyer' as const, count: this.ragnarokPhase >= 2 ? 1 : 0 }, // Destroyers only from wave 2+
-        { type: 'mothership' as const, count: this.ragnarokPhase >= 4 ? 1 : 0 } // Motherships only from wave 4+
+        { type: 'fighter' as const, count: Math.min(4 + this.ragnarokPhase * 2, 8) }, // Max 8 fighters per squadron
+        { type: 'destroyer' as const, count: this.ragnarokPhase >= 1 ? 1 + Math.floor(this.ragnarokPhase / 2) : 0 }, // Destroyers from wave 1+
+        { type: 'mothership' as const, count: this.ragnarokPhase >= 3 ? 1 : 0 } // Motherships from wave 3+
       ];
 
       squadronTypes.forEach(({ type, count }) => {
@@ -491,9 +491,8 @@ export class LasatGame extends BaseGame {
   }
 
   private updateTrenchElements() {
-    // Disable trench turrets initially for balanced gameplay
-    // Only activate turrets from wave 3+ to add challenge later
-    if (this.ragnarokPhase >= 3) {
+    // Increased difficulty - activate turrets from wave 2+
+    if (this.ragnarokPhase >= 2) {
       this.trenchElements.forEach(element => {
           if (element.type === 'tower') {
               element.shootCooldown = (element.shootCooldown ?? 0) - 1;
@@ -512,11 +511,11 @@ export class LasatGame extends BaseGame {
                           alive: true,
                           owner: 'enemy',
                           type: 'turret_shot',
-                          damage: 5, // Reduced damage
+                          damage: 10, // Increased damage for difficulty
                           lifetime: 120
                       };
                       this.enemyProjectiles.push(bullet);
-                      element.shootCooldown = 180 + Math.random() * 120; // Slower shooting
+                      element.shootCooldown = 90 + Math.random() * 60; // Faster shooting
                   }
               }
           }
@@ -557,11 +556,11 @@ export class LasatGame extends BaseGame {
         }
     }
 
-    // Shooting - much slower for balanced gameplay
+    // Shooting - increased difficulty, faster shooting
     enemy.shootTimer--;
     if (enemy.shootTimer <= 0) {
       this.enemyShoot(enemy);
-      enemy.shootTimer = 90 + Math.random() * (enemy.enraged ? 30 : 90); // 1.5-3 seconds
+      enemy.shootTimer = 45 + Math.random() * (enemy.enraged ? 15 : 45); // 0.75-1.5 seconds
     }
 
     // Special attacks
@@ -658,7 +657,7 @@ export class LasatGame extends BaseGame {
         alive: true,
         owner: 'enemy',
         type: enemy.type + '_shot',
-        damage: enemy.type === 'mothership' ? 12 : enemy.type === 'destroyer' ? 8 : 5,
+        damage: enemy.type === 'mothership' ? 24 : enemy.type === 'destroyer' ? 16 : 10,
         lifetime: 150
       };
       
@@ -958,8 +957,8 @@ export class LasatGame extends BaseGame {
     // Last Starfighter-style HUD with authentic elements
     this.ctx.save();
     
-    // Main HUD background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    // Main HUD background - much more transparent so game is visible
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     this.ctx.fillRect(0, 0, this.width, this.height);
     
     // Central targeting reticle (Last Starfighter style)
@@ -1336,7 +1335,10 @@ export class LasatGame extends BaseGame {
     }
 
     // Controls
-    this.drawText('WASD: Move | Space: Laser | X: Ion Cannon | Z: Death Blossom', this.width / 2, this.height - 40, 12, '#DDD', 'center');
+    this.drawText('WASD: Move | Space: Laser | X: Ion Cannon | Z: Death Blossom', this.width / 2, this.height - 60, 12, '#DDD', 'center');
+    
+    // Targeting explanation
+    this.drawText('CENTRAL TARGETING: Move ship to aim reticle at enemies for auto-lock', this.width / 2, this.height - 40, 10, '#00FF00', 'center');
     
     // Last Starfighter theme
     this.drawText('GUNSTAR FIGHTER: Defend Earth from the Ko-Dan Armada!', this.width / 2, this.height - 20, 12, '#FFD700', 'center');
