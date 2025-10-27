@@ -327,6 +327,7 @@ export class LasatGame extends BaseGame {
   }
 
   private spawnSinistarBoss() {
+    console.log('SpawnSinistarBoss called! Creating boss...');
     this.bossActive = true;
     this.bossPhase = 1;
     
@@ -355,6 +356,7 @@ export class LasatGame extends BaseGame {
     };
     
     this.enemies.push(boss);
+    console.log(`Boss created and added to enemies array. Total enemies: ${this.enemies.length}`);
     
     // Play boss spawn sound
     this.playStinger('boss_spawn');
@@ -425,10 +427,13 @@ export class LasatGame extends BaseGame {
     }
 
     // Check wave completion with proper delay
-    if (this.enemies.filter(e => e.alive).length === 0) {
+    const aliveEnemies = this.enemies.filter(e => e.alive);
+    if (aliveEnemies.length === 0) {
+      console.log(`All enemies defeated! Wave ${this.ragnarokPhase} complete. Starting completion timer...`);
       if (this.waveCompleteTimer === 0) {
         // Start wave completion sequence
         this.waveCompleteTimer = 180; // 3 seconds delay
+        console.log(`Wave completion timer started: ${this.waveCompleteTimer} frames`);
       } else {
         this.waveCompleteTimer--;
         if (this.waveCompleteTimer <= 0) {
@@ -436,12 +441,15 @@ export class LasatGame extends BaseGame {
           this.ragnarokPhase++;
           this.waveCompleteTimer = 0; // Reset timer
           
-          if (this.ragnarokPhase >= 5 && !this.bossActive) {
-            // Spawn Sinistar boss at wave 5
+          if (this.ragnarokPhase >= 4 && !this.bossActive) {
+            // Spawn Sinistar boss at wave 5 (ragnarokPhase 4 means we're starting wave 5)
+            console.log(`Wave ${this.ragnarokPhase} completed! Spawning Sinistar boss...`);
             this.spawnSinistarBoss();
-          } else if (this.ragnarokPhase > 5) {
+          } else if (this.ragnarokPhase > 4) {
+            console.log(`Wave ${this.ragnarokPhase} completed! Stage complete!`);
             this.onStageComplete?.(); // Ragnarok completed!
           } else {
+            console.log(`Wave ${this.ragnarokPhase} completed! Spawning next wave...`);
             this.spawnRagnarokWave();
           }
         }
