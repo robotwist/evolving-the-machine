@@ -96,6 +96,7 @@ export class LasatGame extends BaseGame {
   private trenchElements: TrenchElement[] = [];
   private starWarsTrenchMode = false;
   private exhaustPortTargeted = false;
+  private gracePeriod = 180; // 3 seconds of invulnerability
   private aiNarrative = {
     phase: 0,
     timer: 0,
@@ -117,13 +118,13 @@ export class LasatGame extends BaseGame {
   };
 
   init() {
-    // Initialize player (Gunstar Fighter)
+    // Initialize player (Gunstar Fighter) - increased health for better survivability
     this.player = {
       position: { x: this.width / 2, y: this.height - 100 },
       velocity: { x: 0, y: 0 },
       size: 25,
-      health: 100,
-      maxHealth: 100,
+      health: 200, // Increased from 100
+      maxHealth: 200,
       alive: true,
       energy: 100,
       maxEnergy: 100,
@@ -190,15 +191,15 @@ export class LasatGame extends BaseGame {
     // Clear existing enemies
     this.enemies = [];
     
-    // Spawn Ko-Dan Armada squadrons
-    const squadronCount = 2 + this.ragnarokPhase;
+    // Balanced difficulty - start with manageable numbers
+    const squadronCount = Math.min(1 + Math.floor(this.ragnarokPhase / 2), 3); // Max 3 squadrons
     
     for (let squadron = 0; squadron < squadronCount; squadron++) {
-      // Each squadron has different composition
+      // Each squadron has different composition - much more reasonable numbers
       const squadronTypes = [
-        { type: 'fighter' as const, count: 4 + this.ragnarokPhase },
-        { type: 'destroyer' as const, count: 1 + Math.floor(this.ragnarokPhase / 2) },
-        { type: 'mothership' as const, count: this.ragnarokPhase >= 3 ? 1 : 0 }
+        { type: 'fighter' as const, count: Math.min(2 + this.ragnarokPhase, 6) }, // Max 6 fighters per squadron
+        { type: 'destroyer' as const, count: this.ragnarokPhase >= 2 ? 1 : 0 }, // Destroyers only from wave 2+
+        { type: 'mothership' as const, count: this.ragnarokPhase >= 4 ? 1 : 0 } // Motherships only from wave 4+
       ];
 
       squadronTypes.forEach(({ type, count }) => {
@@ -290,6 +291,11 @@ export class LasatGame extends BaseGame {
   update(_deltaTime: number) {
     // Handle input
     this.handleMovement();
+
+    // Update grace period
+    if (this.gracePeriod > 0) {
+      this.gracePeriod--;
+    }
 
     // Update AI betrayal narrative
     this.updateAIBetrayal();
@@ -485,33 +491,37 @@ export class LasatGame extends BaseGame {
   }
 
   private updateTrenchElements() {
-    this.trenchElements.forEach(element => {
-        if (element.type === 'tower') {
-            element.shootCooldown = (element.shootCooldown ?? 0) - 1;
-            if (element.shootCooldown <= 0) {
-                const dx = this.player.position.x - element.x;
-                const dy = this.player.position.y - element.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+    // Disable trench turrets initially for balanced gameplay
+    // Only activate turrets from wave 3+ to add challenge later
+    if (this.ragnarokPhase >= 3) {
+      this.trenchElements.forEach(element => {
+          if (element.type === 'tower') {
+              element.shootCooldown = (element.shootCooldown ?? 0) - 1;
+              if (element.shootCooldown <= 0) {
+                  const dx = this.player.position.x - element.x;
+                  const dy = this.player.position.y - element.y;
+                  const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance > 0 && distance < 400) { // Only shoot if player is in range
-                    const bullet: Projectile = {
-                        position: { x: element.x + element.width / 2, y: element.y },
-                        velocity: { x: (dx / distance) * 5, y: (dy / distance) * 5 },
-                        size: 4,
-                        health: 1,
-                        maxHealth: 1,
-                        alive: true,
-                        owner: 'enemy',
-                        type: 'turret_shot',
-                        damage: 10,
-                        lifetime: 120
-                    };
-                    this.enemyProjectiles.push(bullet);
-                    element.shootCooldown = 120 + Math.random() * 60;
-                }
-            }
-        }
-    });
+                  if (distance > 0 && distance < 400) { // Only shoot if player is in range
+                      const bullet: Projectile = {
+                          position: { x: element.x + element.width / 2, y: element.y },
+                          velocity: { x: (dx / distance) * 5, y: (dy / distance) * 5 },
+                          size: 4,
+                          health: 1,
+                          maxHealth: 1,
+                          alive: true,
+                          owner: 'enemy',
+                          type: 'turret_shot',
+                          damage: 5, // Reduced damage
+                          lifetime: 120
+                      };
+                      this.enemyProjectiles.push(bullet);
+                      element.shootCooldown = 180 + Math.random() * 120; // Slower shooting
+                  }
+              }
+          }
+      });
+    }
   }
 
   private updateEnemy(enemy: Enemy) {
@@ -547,11 +557,11 @@ export class LasatGame extends BaseGame {
         }
     }
 
-    // Shooting
+    // Shooting - much slower for balanced gameplay
     enemy.shootTimer--;
     if (enemy.shootTimer <= 0) {
       this.enemyShoot(enemy);
-      enemy.shootTimer = 30 + Math.random() * (enemy.enraged ? 20 : 60);
+      enemy.shootTimer = 90 + Math.random() * (enemy.enraged ? 30 : 90); // 1.5-3 seconds
     }
 
     // Special attacks
@@ -648,7 +658,7 @@ export class LasatGame extends BaseGame {
         alive: true,
         owner: 'enemy',
         type: enemy.type + '_shot',
-        damage: enemy.type === 'mothership' ? 25 : enemy.type === 'destroyer' ? 20 : 15,
+        damage: enemy.type === 'mothership' ? 12 : enemy.type === 'destroyer' ? 8 : 5,
         lifetime: 150
       };
       
@@ -762,7 +772,7 @@ export class LasatGame extends BaseGame {
     });
 
     // Enemy projectiles vs player
-    if (!this.player.shieldActive) {
+    if (!this.player.shieldActive && this.gracePeriod <= 0) {
       this.enemyProjectiles.forEach(proj => {
         if (this.isColliding(proj, this.player)) {
           this.player.health -= proj.damage;
@@ -999,6 +1009,14 @@ export class LasatGame extends BaseGame {
     this.ctx.fillText(`HULL TEMP: ${Math.round(this.player.health)}`, 20, this.height - 60);
     this.ctx.fillText(`SCORE: ${this.score}`, 20, this.height - 40);
     this.ctx.fillText(`GROUP: ${this.ragnarokPhase}`, 20, this.height - 20);
+    
+    // Grace period indicator
+    if (this.gracePeriod > 0) {
+      this.ctx.fillStyle = '#00FF00';
+      this.ctx.font = '16px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(`INVULNERABLE: ${Math.ceil(this.gracePeriod / 60)}s`, this.width / 2, this.height - 80);
+    }
     
     // Death Blossom status
     if (this.player.deathBlossomReady && this.player.deathBlossomCooldown <= 0) {
