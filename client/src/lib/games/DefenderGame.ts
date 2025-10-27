@@ -441,13 +441,13 @@ export class DefenderGame extends BaseGame {
             const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
             const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
             if (!reduce && allowShake) this.shakeTimer = 14;
-            if (allowParticles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
+            if (allowParticles && this.particles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
             this.playExplosionSound();
         }
       }
       // Trails for enemy bullets
       const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-      if (allowParticles && bullet.owner === 'enemy') {
+      if (allowParticles && bullet.owner === 'enemy' && this.particles) {
         this.particles.addTrail(bullet.position.x, bullet.position.y, bullet.velocity.x, bullet.velocity.y, '#FF4500');
       }
     });

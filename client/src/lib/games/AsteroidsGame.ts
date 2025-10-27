@@ -728,7 +728,7 @@ export class AsteroidsGame extends BaseGame {
   private playStinger(stinger: string) {
     try {
         const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-        if (!audioState.isMuted) {
+        if (audioState && !audioState.isMuted) {
             audioState.playStinger(stinger);
         }
     } catch (e) {
