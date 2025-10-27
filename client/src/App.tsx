@@ -9,6 +9,8 @@ import { ScreenTransition } from './components/ScreenTransition';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { MobileGameUI } from './components/MobileGameUI';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { GameErrorBoundary } from './components/GameErrorBoundary';
 import { useGameStore } from './lib/stores/useGameStore';
 import { useAudio } from './lib/stores/useAudio';
 import { useSettingsStore } from './lib/stores/useSettingsStore';
@@ -295,39 +297,59 @@ export default function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className={`game-container ${isMobile ? 'mobile-game' : 'desktop-game'}`}>
-        <UpdatePrompt />
-        <PWAInstallPrompt />
-        {currentScreen === 'menu' && <MainMenu />}
-        {currentScreen === 'stage-select' && <StageSelect />}
-        {currentScreen === 'game' && (
-          <>
-            {isMobile ? (
-              <MobileGameUI
-                currentGame={getGameName(currentStage)}
-                stage={currentStage}
-                gameState="playing"
-                onGameComplete={() => {/* TODO: Implement mobile game completion */}}
-                onScoreUpdate={(_score) => {/* TODO: Implement mobile score updates */}}
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <div className={`game-container ${isMobile ? 'mobile-game' : 'desktop-game'}`}>
+          <ErrorBoundary>
+            <UpdatePrompt />
+          </ErrorBoundary>
+          <ErrorBoundary>
+            <PWAInstallPrompt />
+          </ErrorBoundary>
+          {currentScreen === 'menu' && (
+            <ErrorBoundary>
+              <MainMenu />
+            </ErrorBoundary>
+          )}
+          {currentScreen === 'stage-select' && (
+            <ErrorBoundary>
+              <StageSelect />
+            </ErrorBoundary>
+          )}
+          {currentScreen === 'game' && (
+            <GameErrorBoundary gameId={`Stage-${currentStage}`}>
+              {isMobile ? (
+                <ErrorBoundary>
+                  <MobileGameUI
+                    currentGame={getGameName(currentStage)}
+                    stage={currentStage}
+                    gameState="playing"
+                    onGameComplete={() => {/* TODO: Implement mobile game completion */}}
+                    onScoreUpdate={(_score) => {/* TODO: Implement mobile score updates */}}
+                  />
+                </ErrorBoundary>
+              ) : (
+                <>
+                  <GameCanvas />
+                  <div className="ui-overlay">
+                    <ErrorBoundary>
+                      <GameUI />
+                    </ErrorBoundary>
+                  </div>
+                </>
+              )}
+            </GameErrorBoundary>
+          )}
+          {showTransition && (
+            <ErrorBoundary>
+              <ScreenTransition
+                message={transitionMessage}
+                onComplete={handleTransitionComplete}
               />
-            ) : (
-              <>
-                <GameCanvas />
-                <div className="ui-overlay">
-                  <GameUI />
-                </div>
-              </>
-            )}
-          </>
-        )}
-        {showTransition && (
-          <ScreenTransition
-            message={transitionMessage}
-            onComplete={handleTransitionComplete}
-          />
-        )}
-      </div>
-    </QueryClientProvider>
+            </ErrorBoundary>
+          )}
+        </div>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

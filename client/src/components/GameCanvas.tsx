@@ -6,6 +6,7 @@ import { useSettingsStore } from '../lib/stores/useSettingsStore';
 import { useIsMobile } from '../hooks/use-is-mobile';
 import { MobileControlsManager } from '../lib/controls/MobileControls';
 import { assetLoader } from '../lib/utils/AssetLoader';
+import { GameErrorBoundary, useGameErrorHandler } from './GameErrorBoundary';
 
 // Lazy load game classes for code splitting
 const loadGame = async (stage: number): Promise<new (ctx: CanvasRenderingContext2D, width: number, height: number) => BaseGame> => {
@@ -79,32 +80,41 @@ function useGameInstance(
     // Load and create game instance dynamically
     loadGame(currentStage)
       .then((gameClass) => {
-        const game = new gameClass(ctx, width, height);
-        gameRef.current = game;
+        try {
+          const game = new gameClass(ctx, width, height);
+          gameRef.current = game;
 
-        game.onScoreUpdate = (score: number) => updateScore(currentStage, score);
-        game.onGameOver = () => setGameState('ended');
-        game.onStageComplete = () => {
-          setGameState('stage-complete');
-          useGameStore.getState().unlockNextStage();
-        };
+          game.onScoreUpdate = (score: number) => updateScore(currentStage, score);
+          game.onGameOver = () => setGameState('ended');
+          game.onStageComplete = () => {
+            setGameState('stage-complete');
+            useGameStore.getState().unlockNextStage();
+          };
 
-        // Initialize game asynchronously
-        return Promise.resolve(game.init())
-          .then(() => {
-            console.log(`✅ Game initialized for stage ${currentStage}`);
-            game.start();
-            isInitializing.current = false;
-          })
-          .catch((error: Error) => {
-            console.error(`❌ Failed to initialize game for stage ${currentStage}:`, error);
-            isInitializing.current = false;
-            throw error;
-          });
+          // Initialize game asynchronously
+          return Promise.resolve(game.init())
+            .then(() => {
+              console.log(`✅ Game initialized for stage ${currentStage}`);
+              game.start();
+              isInitializing.current = false;
+            })
+            .catch((error: Error) => {
+              console.error(`❌ Failed to initialize game for stage ${currentStage}:`, error);
+              isInitializing.current = false;
+              handleError(error, { componentStack: 'GameCanvas.useGameInstance' });
+              throw error;
+            });
+        } catch (error) {
+          console.error(`❌ Failed to create game instance for stage ${currentStage}:`, error);
+          isInitializing.current = false;
+          handleError(error as Error, { componentStack: 'GameCanvas.useGameInstance' });
+          throw error;
+        }
       })
       .catch((error: Error) => {
         console.error(`❌ Failed to load game class for stage ${currentStage}:`, error);
         isInitializing.current = false;
+        handleError(error, { componentStack: 'GameCanvas.loadGame' });
       });
 
     return () => {
@@ -167,13 +177,14 @@ function useCanvasEvents(
 }
 
 
-export function GameCanvas() {
+function GameCanvasInner() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
-  const { gameState } = useGameStore();
+  const { gameState, currentStage } = useGameStore();
   const isMobile = useIsMobile();
   const mobileControlsRef = useRef<MobileControlsManager | null>(null);
+  const handleError = useGameErrorHandler(`Stage-${currentStage}`);
 
   const applyCanvasSize = useCallback(() => {
     const canvas = canvasRef.current;
@@ -283,4 +294,16 @@ export function GameCanvas() {
       }}
     />
   );
+}
+
+// Export the wrapped component with error boundary
+export function GameCanvas() {
+  const { currentStage } = useGameStore();
+  
+  return React.createElement(GameErrorBoundary, { 
+    gameId: `Stage-${currentStage}`,
+    onError: (error, errorInfo) => {
+      console.error(`Game error in Stage ${currentStage}:`, error, errorInfo);
+    }
+  }, React.createElement(GameCanvasInner));
 }
