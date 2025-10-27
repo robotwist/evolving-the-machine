@@ -34,10 +34,10 @@ interface Player extends Entity {
 }
 
 interface Enemy extends Entity {
-  type: 'fighter' | 'destroyer' | 'mothership';
+  type: 'fighter' | 'destroyer' | 'mothership' | 'sinistar_boss';
   shootTimer: number;
   specialAttackTimer: number;
-  behavior: 'aggressive' | 'defensive' | 'berserker';
+  behavior: 'aggressive' | 'defensive' | 'berserker' | 'boss_phase1' | 'boss_phase2' | 'boss_phase3';
   rage: number;
   enraged: boolean;
   enrageTimer: number;
@@ -46,6 +46,11 @@ interface Enemy extends Entity {
   formationPosition: number;
   targetable: boolean;
   lockOnTimer: number;
+  // Boss-specific properties
+  phase?: number;
+  invulnerableTimer?: number;
+  spawnTimer?: number;
+  deathBlossomCooldown?: number;
 }
 
 interface Projectile extends Entity {
@@ -98,6 +103,19 @@ export class LasatGame extends BaseGame {
   private exhaustPortTargeted = false;
   private gracePeriod = 180; // 3 seconds of invulnerability
   private waveCompleteTimer = 0; // Timer for wave completion delay
+  private bossActive = false; // Whether Sinistar boss is active
+  private bossPhase = 1; // Current boss phase (1-3)
+  private enemyCommandTimer = 0; // Timer for enemy command announcements
+  private enemyCommands = [
+    "KO-DAN ARMADA: DEPLOY FIGHTER SQUADRONS!",
+    "DESTROY THE GUNSTAR FIGHTER!",
+    "SEND IN THE DESTROYERS!",
+    "MOTHERSHIP APPROACHING!",
+    "ALL UNITS ATTACK!",
+    "THE SINISTAR AWAKENS...",
+    "RUN COWARD! RUN!",
+    "I HUNGER! I HUNGER!"
+  ];
   private aiNarrative = {
     phase: 0,
     timer: 0,
@@ -289,6 +307,40 @@ export class LasatGame extends BaseGame {
     this.enemies.push(enemy);
   }
 
+  private spawnSinistarBoss() {
+    this.bossActive = true;
+    this.bossPhase = 1;
+    
+    const boss: Enemy = {
+      position: { x: this.width / 2, y: 100 },
+      velocity: { x: 0, y: 0 },
+      size: 120, // Massive boss ship
+      health: 1000,
+      maxHealth: 1000,
+      alive: true,
+      type: 'sinistar_boss',
+      shootTimer: 0,
+      specialAttackTimer: 0,
+      behavior: 'boss_phase1',
+      rage: 0,
+      enraged: false,
+      enrageTimer: 0,
+      squadron: 0,
+      formationPosition: 0,
+      targetable: true,
+      lockOnTimer: 0,
+      phase: 1,
+      invulnerableTimer: 0,
+      spawnTimer: 0,
+      deathBlossomCooldown: 0
+    };
+    
+    this.enemies.push(boss);
+    
+    // Play boss spawn sound
+    this.playStinger('boss_spawn');
+  }
+
   update(_deltaTime: number) {
     // Handle input
     this.handleMovement();
@@ -301,13 +353,20 @@ export class LasatGame extends BaseGame {
     // Update AI betrayal narrative
     this.updateAIBetrayal();
 
+    // Update enemy command announcements
+    this.updateEnemyCommands();
+
     // Update player
     this.updatePlayer();
 
     // Update enemies
     this.enemies.forEach(enemy => {
       if (enemy.alive) {
-        this.updateEnemy(enemy);
+        if (enemy.type === 'sinistar_boss') {
+          this.updateBossBehavior(enemy);
+        } else {
+          this.updateEnemy(enemy);
+        }
       }
     });
 
@@ -342,7 +401,10 @@ export class LasatGame extends BaseGame {
           this.ragnarokPhase++;
           this.waveCompleteTimer = 0; // Reset timer
           
-          if (this.ragnarokPhase > 5) {
+          if (this.ragnarokPhase >= 5 && !this.bossActive) {
+            // Spawn Sinistar boss at wave 5
+            this.spawnSinistarBoss();
+          } else if (this.ragnarokPhase > 5) {
             this.onStageComplete?.(); // Ragnarok completed!
           } else {
             this.spawnRagnarokWave();
@@ -366,6 +428,152 @@ export class LasatGame extends BaseGame {
     }
 
     this.onScoreUpdate?.(this.score);
+  }
+
+  private updateEnemyCommands() {
+    this.enemyCommandTimer--;
+    if (this.enemyCommandTimer <= 0) {
+      // Show random enemy command
+      const command = this.enemyCommands[Math.floor(Math.random() * this.enemyCommands.length)];
+      this.showEnemyCommand(command);
+      this.enemyCommandTimer = 300 + Math.random() * 300; // 5-10 seconds between commands
+    }
+  }
+
+  private showEnemyCommand(_command: string) {
+    // Visual feedback for enemy commands
+    this.playStinger('enemy_command');
+  }
+
+  private updateBossBehavior(boss: Enemy) {
+    // Sinistar boss has 3 phases with different behaviors
+    const healthPercent = boss.health / boss.maxHealth;
+    
+    if (healthPercent > 0.66) {
+      // Phase 1: Slow approach, spawn fighters
+      boss.behavior = 'boss_phase1';
+      boss.phase = 1;
+      this.updateBossPhase1(boss);
+    } else if (healthPercent > 0.33) {
+      // Phase 2: Aggressive attack, spawn destroyers
+      boss.behavior = 'boss_phase2';
+      boss.phase = 2;
+      this.updateBossPhase2(boss);
+    } else {
+      // Phase 3: Berserker mode, Death Blossom attacks
+      boss.behavior = 'boss_phase3';
+      boss.phase = 3;
+      this.updateBossPhase3(boss);
+    }
+  }
+
+  private updateBossPhase1(boss: Enemy) {
+    // Slow movement toward player
+    const dx = this.player.position.x - boss.position.x;
+    const dy = this.player.position.y - boss.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 200) {
+      boss.velocity.x = (dx / distance) * 1; // Slow approach
+      boss.velocity.y = (dy / distance) * 1;
+    } else {
+      boss.velocity.x = 0;
+      boss.velocity.y = 0;
+    }
+    
+    // Spawn fighters periodically
+    boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
+    if (boss.spawnTimer <= 0) {
+      this.spawnEnemy('fighter', 0);
+      boss.spawnTimer = 180; // Every 3 seconds
+    }
+    
+    // Slow shooting
+    boss.shootTimer--;
+    if (boss.shootTimer <= 0) {
+      this.enemyShoot(boss);
+      boss.shootTimer = 120; // Every 2 seconds
+    }
+  }
+
+  private updateBossPhase2(boss: Enemy) {
+    // More aggressive movement
+    const dx = this.player.position.x - boss.position.x;
+    const dy = this.player.position.y - boss.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    boss.velocity.x = (dx / distance) * 2; // Faster approach
+    boss.velocity.y = (dy / distance) * 2;
+    
+    // Spawn destroyers
+    boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
+    if (boss.spawnTimer <= 0) {
+      this.spawnEnemy('destroyer', 0);
+      boss.spawnTimer = 300; // Every 5 seconds
+    }
+    
+    // Faster shooting
+    boss.shootTimer--;
+    if (boss.shootTimer <= 0) {
+      this.enemyShoot(boss);
+      boss.shootTimer = 60; // Every 1 second
+    }
+  }
+
+  private updateBossPhase3(boss: Enemy) {
+    // Berserker movement - erratic and fast
+    const dx = this.player.position.x - boss.position.x;
+    const dy = this.player.position.y - boss.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    boss.velocity.x = (dx / distance) * 3 + (Math.random() - 0.5) * 2; // Erratic movement
+    boss.velocity.y = (dy / distance) * 3 + (Math.random() - 0.5) * 2;
+    
+    // Spawn motherships
+    boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
+    if (boss.spawnTimer <= 0) {
+      this.spawnEnemy('mothership', 0);
+      boss.spawnTimer = 600; // Every 10 seconds
+    }
+    
+    // Rapid shooting
+    boss.shootTimer--;
+    if (boss.shootTimer <= 0) {
+      this.enemyShoot(boss);
+      boss.shootTimer = 30; // Every 0.5 seconds
+    }
+    
+    // Death Blossom attacks
+    boss.deathBlossomCooldown = (boss.deathBlossomCooldown ?? 0) - 1;
+    if (boss.deathBlossomCooldown <= 0) {
+      this.bossDeathBlossom(boss);
+      boss.deathBlossomCooldown = 600; // Every 10 seconds
+    }
+  }
+
+  private bossDeathBlossom(boss: Enemy) {
+    // Boss fires projectiles in all directions
+    for (let angle = 0; angle < 360; angle += 15) {
+      const radians = (angle * Math.PI) / 180;
+      const projectile: Projectile = {
+        position: { x: boss.position.x, y: boss.position.y },
+        velocity: { 
+          x: Math.cos(radians) * 4, 
+          y: Math.sin(radians) * 4 
+        },
+        size: 8,
+        health: 1,
+        maxHealth: 1,
+        alive: true,
+        owner: 'enemy',
+        type: 'boss_death_blossom',
+        damage: 30,
+        lifetime: 300
+      };
+      this.enemyProjectiles.push(projectile);
+    }
+    
+    this.playStinger('boss_death_blossom');
   }
 
   private handleMovement() {
@@ -497,7 +705,7 @@ export class LasatGame extends BaseGame {
       if (distance < burstRadius) {
         enemy.health = 0;
         enemy.alive = false;
-        this.score += enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
+        this.score += enemy.type === 'sinistar_boss' ? 10000 : enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
       }
     });
     
@@ -672,7 +880,7 @@ export class LasatGame extends BaseGame {
         alive: true,
         owner: 'enemy',
         type: enemy.type + '_shot',
-        damage: enemy.type === 'mothership' ? 24 : enemy.type === 'destroyer' ? 16 : 10,
+        damage: enemy.type === 'sinistar_boss' ? 50 : enemy.type === 'mothership' ? 24 : enemy.type === 'destroyer' ? 16 : 10,
         lifetime: 150
       };
       
@@ -776,7 +984,7 @@ export class LasatGame extends BaseGame {
           
           if (enemy.health <= 0) {
             enemy.alive = false;
-            this.score += enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
+            this.score += enemy.type === 'sinistar_boss' ? 10000 : enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
             this.bossesDefeated++;
           }
           
@@ -1043,6 +1251,23 @@ export class LasatGame extends BaseGame {
       this.ctx.fillText(`NEXT WAVE IN: ${Math.ceil(this.waveCompleteTimer / 60)}s`, this.width / 2, this.height - 80);
     }
     
+    // Boss health bar
+    if (this.bossActive) {
+      const boss = this.enemies.find(e => e.type === 'sinistar_boss' && e.alive);
+      if (boss) {
+        this.drawBossHealthBar(boss);
+      }
+    }
+    
+    // Enemy command display
+    if (this.enemyCommandTimer > 0 && this.enemyCommandTimer < 60) {
+      const command = this.enemyCommands[Math.floor(Math.random() * this.enemyCommands.length)];
+      this.ctx.fillStyle = '#FF0000';
+      this.ctx.font = '18px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(command, this.width / 2, 50);
+    }
+    
     // Death Blossom status
     if (this.player.deathBlossomReady && this.player.deathBlossomCooldown <= 0) {
       this.ctx.fillStyle = '#FF0000';
@@ -1191,6 +1416,43 @@ export class LasatGame extends BaseGame {
     this.ctx.restore();
   }
 
+  private drawBossHealthBar(boss: Enemy) {
+    const barWidth = 400;
+    const barHeight = 20;
+    const x = (this.width - barWidth) / 2;
+    const y = 20;
+    
+    // Background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(x - 5, y - 5, barWidth + 10, barHeight + 10);
+    
+    // Health bar background
+    this.ctx.fillStyle = '#333';
+    this.ctx.fillRect(x, y, barWidth, barHeight);
+    
+    // Health bar
+    const healthPercent = boss.health / boss.maxHealth;
+    const healthColor = healthPercent > 0.66 ? '#00FF00' : healthPercent > 0.33 ? '#FFD700' : '#FF0000';
+    this.ctx.fillStyle = healthColor;
+    this.ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
+    
+    // Border
+    this.ctx.strokeStyle = '#FFF';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, barWidth, barHeight);
+    
+    // Boss name and phase
+    this.ctx.fillStyle = '#FF0000';
+    this.ctx.font = '16px monospace';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText(`SINISTAR BOSS - PHASE ${boss.phase}`, this.width / 2, y - 10);
+    
+    // Health text
+    this.ctx.fillStyle = '#FFF';
+    this.ctx.font = '14px monospace';
+    this.ctx.fillText(`${Math.round(boss.health)}/${boss.maxHealth}`, this.width / 2, y + barHeight + 20);
+  }
+
   private drawEnemy(enemy: Enemy) {
     this.ctx.save();
     this.ctx.translate(enemy.position.x, enemy.position.y);
@@ -1272,6 +1534,55 @@ export class LasatGame extends BaseGame {
         this.ctx.textAlign = 'center';
         this.ctx.fillText('MOTHERSHIP', 0, -enemy.size/2 - 15);
         break;
+        
+      case 'sinistar_boss': {
+        // Sinistar Boss - massive, sinister, pulsing
+        const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+        this.ctx.shadowColor = `rgba(255, 0, 0, ${pulse})`;
+        this.ctx.shadowBlur = 30;
+        
+        // Main body - dark red with pulsing effect
+        this.ctx.fillStyle = `rgba(139, 0, 0, ${pulse})`;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, enemy.size/2, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Outer ring - menacing red
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 6;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, enemy.size/2, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // Inner core - pulsing white
+        this.ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, enemy.size/4, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Sinister spikes
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 3;
+        for (let i = 0; i < 8; i++) {
+          const angle = (i * Math.PI * 2) / 8;
+          const x1 = Math.cos(angle) * (enemy.size/2 - 10);
+          const y1 = Math.sin(angle) * (enemy.size/2 - 10);
+          const x2 = Math.cos(angle) * (enemy.size/2 + 10);
+          const y2 = Math.sin(angle) * (enemy.size/2 + 10);
+          
+          this.ctx.beginPath();
+          this.ctx.moveTo(x1, y1);
+          this.ctx.lineTo(x2, y2);
+          this.ctx.stroke();
+        }
+        
+        // Boss label
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = '16px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('SINISTAR', 0, -enemy.size/2 - 20);
+        break;
+      }
     }
 
     // Health bar
