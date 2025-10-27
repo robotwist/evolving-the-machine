@@ -446,7 +446,12 @@
 <a name='L381'></a><a href='#L381'>381</a>
 <a name='L382'></a><a href='#L382'>382</a>
 <a name='L383'></a><a href='#L383'>383</a>
-<a name='L384'></a><a href='#L384'>384</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L384'></a><a href='#L384'>384</a>
+<a name='L385'></a><a href='#L385'>385</a>
+<a name='L386'></a><a href='#L386'>386</a>
+<a name='L387'></a><a href='#L387'>387</a>
+<a name='L388'></a><a href='#L388'>388</a>
+<a name='L389'></a><a href='#L389'>389</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -475,6 +480,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -631,9 +637,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -826,10 +834,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { create } from "zustand";</span>
+import { WindowExtensions } from "@shared/types";
 &nbsp;
 interface AudioState {
   backgroundMusic: HTMLAudioElement | null;
@@ -950,7 +961,7 @@ export const <span class="cstat-no" title="statement not covered" >useAudio = cr
         }
         // Enhanced digital distortion effects
 <span class="cstat-no" title="statement not covered" >        try {</span>
-          const AudioCtx = (<span class="cstat-no" title="statement not covered" >window as any).AudioContext || (window as any).webkitAudioContext;</span>
+          const AudioCtx = (<span class="cstat-no" title="statement not covered" >window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;</span>
 <span class="cstat-no" title="statement not covered" >          if (AudioCtx) {</span>
             const ctx = <span class="cstat-no" title="statement not covered" >new AudioCtx();</span>
 <span class="cstat-no" title="statement not covered" >            if (opts?.haunting) {</span>
@@ -1016,7 +1027,9 @@ export const <span class="cstat-no" title="statement not covered" >useAudio = cr
 <span class="cstat-no" title="statement not covered" >              setTimeout(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >ctx.close(),</span> 200);</span>
             }
           }
-        } catch {}
+        } catch {
+          // Audio context creation failed, continue without audio effects
+        }
 <span class="cstat-no" title="statement not covered" >        window.speechSynthesis.speak(utt);</span>
       });
     } catch (e) {
@@ -1029,7 +1042,7 @@ export const <span class="cstat-no" title="statement not covered" >useAudio = cr
 <span class="cstat-no" title="statement not covered" >    if (isMuted) <span class="cstat-no" title="statement not covered" >return;</span></span>
     
 <span class="cstat-no" title="statement not covered" >    try {</span>
-      const AudioCtx = (<span class="cstat-no" title="statement not covered" >window as any).AudioContext || (window as any).webkitAudioContext;</span>
+      const AudioCtx = (<span class="cstat-no" title="statement not covered" >window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;</span>
 <span class="cstat-no" title="statement not covered" >      if (!AudioCtx) <span class="cstat-no" title="statement not covered" >return;</span></span>
       const audioCtx = <span class="cstat-no" title="statement not covered" >new AudioCtx();</span>
       
@@ -1180,7 +1193,7 @@ export const <span class="cstat-no" title="statement not covered" >useAudio = cr
 <span class="cstat-no" title="statement not covered" >      oscillator.start();</span>
 <span class="cstat-no" title="statement not covered" >      oscillator.stop(audioCtx.currentTime + 0.5);</span>
 <span class="cstat-no" title="statement not covered" >      setTimeout(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >audioCtx.close(),</span> 550);</span>
-    } catch (e) {
+    } catch {
       // Audio system not available
     }
   },
@@ -1188,7 +1201,7 @@ export const <span class="cstat-no" title="statement not covered" >useAudio = cr
     const { isMuted } = <span class="cstat-no" title="statement not covered" >get();</span>
 <span class="cstat-no" title="statement not covered" >    if (isMuted) <span class="cstat-no" title="statement not covered" >return;</span></span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
-      const AudioCtx = (<span class="cstat-no" title="statement not covered" >window as any).AudioContext || (window as any).webkitAudioContext;</span>
+      const AudioCtx = (<span class="cstat-no" title="statement not covered" >window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;</span>
 <span class="cstat-no" title="statement not covered" >      if (!AudioCtx) <span class="cstat-no" title="statement not covered" >return;</span></span>
       const ctx = <span class="cstat-no" title="statement not covered" >new AudioCtx();</span>
       const bufferSize = <span class="cstat-no" title="statement not covered" >Math.floor(0.18 * ctx.sampleRate);</span>
@@ -1209,7 +1222,9 @@ export const <span class="cstat-no" title="statement not covered" >useAudio = cr
 <span class="cstat-no" title="statement not covered" >      noise.start();</span>
 <span class="cstat-no" title="statement not covered" >      noise.stop(ctx.currentTime + 0.18);</span>
 <span class="cstat-no" title="statement not covered" >      setTimeout(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >ctx.close(),</span> 280);</span>
-    } catch {}
+    } catch {
+      // Sizzle sound generation failed, continue without audio
+    }
   }
 }));
 &nbsp;</pre></td></tr></table></pre>
@@ -1219,7 +1234,7 @@ export const <span class="cstat-no" title="statement not covered" >useAudio = cr
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-16T18:43:42.046Z
+                at 2025-10-27T20:35:19.233Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

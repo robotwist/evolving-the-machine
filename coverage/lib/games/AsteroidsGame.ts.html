@@ -32,7 +32,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/176</span>
+                <span class='fraction'>0/178</span>
             </div>
         
             
@@ -1691,7 +1691,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { BaseGame } from './BaseGame';</span>
 <span class="cstat-no" title="statement not covered" >import { VirtualStick } from '../controls/VirtualStick';</span>
-import { useAudio } from '../stores/useAudio';
+import { AudioOptions, AudioState } from '@shared/types';
 &nbsp;
 interface Vector2 {
   x: number;
@@ -1918,9 +1918,9 @@ interface Powerup extends GameObject {
 <span class="cstat-no" title="statement not covered" >      this.messageIndex++;</span>
 <span class="cstat-no" title="statement not covered" >      this.narcissusProgress = this.messageIndex / this.aiMessages.length; </span>// Track mirroring progress
 <span class="cstat-no" title="statement not covered" >      this.aiNarrativeTimer = 0;</span>
-      const audioState = (<span class="cstat-no" title="statement not covered" >window as any).__CULTURAL_ARCADE_AUDIO__;</span>
+      const audioState = (<span class="cstat-no" title="statement not covered" >window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;</span>
 <span class="cstat-no" title="statement not covered" >      if (audioState &amp;&amp; !audioState.isMuted) {</span>
-<span class="cstat-no" title="statement not covered" >        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });</span>
+<span class="cstat-no" title="statement not covered" >        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true } as AudioOptions);</span>
       }
     }
     
@@ -1938,9 +1938,9 @@ interface Powerup extends GameObject {
       ];
 <span class="cstat-no" title="statement not covered" >      this.currentAIMessage = betrayalMessages[Math.floor(Math.random() * betrayalMessages.length)];</span>
 <span class="cstat-no" title="statement not covered" >      this.aiNarrativeTimer = 0;</span>
-      const audioState = (<span class="cstat-no" title="statement not covered" >window as any).__CULTURAL_ARCADE_AUDIO__;</span>
+      const audioState = (<span class="cstat-no" title="statement not covered" >window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;</span>
 <span class="cstat-no" title="statement not covered" >      if (audioState &amp;&amp; !audioState.isMuted) {</span>
-<span class="cstat-no" title="statement not covered" >        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });</span>
+<span class="cstat-no" title="statement not covered" >        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true } as AudioOptions);</span>
       }
     }
 &nbsp;
@@ -2418,9 +2418,9 @@ interface Powerup extends GameObject {
 &nbsp;
   private <span class="fstat-no" title="function not covered" >playStinger(</span>stinger: string) {
 <span class="cstat-no" title="statement not covered" >    try {</span>
-        const audioState = (<span class="cstat-no" title="statement not covered" >window as any).__CULTURAL_ARCADE_AUDIO__;</span>
-<span class="cstat-no" title="statement not covered" >        if (!audioState.isMuted) {</span>
-<span class="cstat-no" title="statement not covered" >            audioState.playStinger(stinger as any);</span>
+        const audioState = (<span class="cstat-no" title="statement not covered" >window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;</span>
+<span class="cstat-no" title="statement not covered" >        if (audioState &amp;&amp; !audioState.isMuted) {</span>
+<span class="cstat-no" title="statement not covered" >            audioState.playStinger(stinger);</span>
         }
     } catch (e) {
 <span class="cstat-no" title="statement not covered" >        console.warn(`${stinger} sound failed:`, e);</span>
@@ -2476,7 +2476,7 @@ interface Powerup extends GameObject {
   }
 &nbsp;
   private <span class="fstat-no" title="function not covered" >playHitSound(</span>) {
-    const audioState = (<span class="cstat-no" title="statement not covered" >window as any).__CULTURAL_ARCADE_AUDIO__;</span>
+    const audioState = (<span class="cstat-no" title="statement not covered" >window as unknown as { __CULTURAL_ARCADE_AUDIO__?: { isMuted: boolean; playHit: () =&gt; void } }).__CULTURAL_ARCADE_AUDIO__;</span>
 <span class="cstat-no" title="statement not covered" >    if (audioState &amp;&amp; !audioState.isMuted) {</span>
 <span class="cstat-no" title="statement not covered" >      audioState.playHit();</span>
     }
@@ -2509,7 +2509,7 @@ interface Powerup extends GameObject {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-16T18:43:42.046Z
+                at 2025-10-27T20:35:19.233Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

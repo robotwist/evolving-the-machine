@@ -978,7 +978,9 @@
 <a name='L913'></a><a href='#L913'>913</a>
 <a name='L914'></a><a href='#L914'>914</a>
 <a name='L915'></a><a href='#L915'>915</a>
-<a name='L916'></a><a href='#L916'>916</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L916'></a><a href='#L916'>916</a>
+<a name='L917'></a><a href='#L917'>917</a>
+<a name='L918'></a><a href='#L918'>918</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1229,6 +1231,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1237,6 +1240,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1894,7 +1898,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { BaseGame } from './BaseGame';</span>
-import { useAudio } from '../stores/useAudio';
+import { WindowExtensions } from '@shared/types';
 &nbsp;
 interface Player {
   position: { x: number; y: number };
@@ -2071,7 +2075,7 @@ interface Explosion {
     });
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  update(</span>deltaTime: number) {
+<span class="fstat-no" title="function not covered" >  update(</span>_deltaTime: number) {
 <span class="cstat-no" title="statement not covered" >    if (this.transitioning) {</span>
 <span class="cstat-no" title="statement not covered" >      this.updateTransition();</span>
 <span class="cstat-no" title="statement not covered" >      return;</span>
@@ -2138,12 +2142,13 @@ interface Explosion {
 <span class="cstat-no" title="statement not covered" >          enemy.velocity.x = Math.sin(enemy.patternTimer * 0.02) * 2;</span>
 <span class="cstat-no" title="statement not covered" >          enemy.velocity.y = 1;</span>
 <span class="cstat-no" title="statement not covered" >          break;</span>
-        case 1: // Circular pattern
-          const radius = <span class="cstat-no" title="statement not covered" >60;</span>
+        case 1: { // Circular pattern
+          const _radius = <span class="cstat-no" title="statement not covered" >60;</span>
 <span class="cstat-no" title="statement not covered" >          enemy.velocity.x = Math.cos(enemy.patternTimer * 0.03) * 1.5;</span>
 <span class="cstat-no" title="statement not covered" >          enemy.velocity.y = Math.sin(enemy.patternTimer * 0.03) * 1.5 + 0.5;</span>
 <span class="cstat-no" title="statement not covered" >          break;</span>
-        case 2: // Aggressive dive
+        }
+        case 2: { // Aggressive dive
           const dx = <span class="cstat-no" title="statement not covered" >this.player.position.x - enemy.position.x;</span>
           const dy = <span class="cstat-no" title="statement not covered" >this.player.position.y - enemy.position.y;</span>
           const distance = <span class="cstat-no" title="statement not covered" >Math.sqrt(dx * dx + dy * dy);</span>
@@ -2152,6 +2157,7 @@ interface Explosion {
 <span class="cstat-no" title="statement not covered" >            enemy.velocity.y = (dy / distance) * 1.5;</span>
           }
 <span class="cstat-no" title="statement not covered" >          break;</span>
+        }
       }
       
 <span class="cstat-no" title="statement not covered" >      enemy.position.x += enemy.velocity.x;</span>
@@ -2786,7 +2792,7 @@ interface Explosion {
 &nbsp;
   private <span class="fstat-no" title="function not covered" >playLaserSound(</span>) {
 <span class="cstat-no" title="statement not covered" >    try {</span>
-      const audioState = (<span class="cstat-no" title="statement not covered" >window as any).__CULTURAL_ARCADE_AUDIO__;</span>
+      const audioState = (<span class="cstat-no" title="statement not covered" >window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;</span>
 <span class="cstat-no" title="statement not covered" >      if (audioState &amp;&amp; !audioState.isMuted) {</span>
 <span class="cstat-no" title="statement not covered" >      if (!audioState.isMuted) {</span>
 <span class="cstat-no" title="statement not covered" >        audioState.playStinger('starwars_laser');</span>
@@ -2799,7 +2805,7 @@ interface Explosion {
 &nbsp;
   private <span class="fstat-no" title="function not covered" >playExplosionSound(</span>) {
 <span class="cstat-no" title="statement not covered" >    try {</span>
-      const audioState = (<span class="cstat-no" title="statement not covered" >window as any).__CULTURAL_ARCADE_AUDIO__;</span>
+      const audioState = (<span class="cstat-no" title="statement not covered" >window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;</span>
 <span class="cstat-no" title="statement not covered" >      if (audioState &amp;&amp; !audioState.isMuted) {</span>
 <span class="cstat-no" title="statement not covered" >        audioState.playStinger('starwars_explosion');</span>
       }
@@ -2815,7 +2821,7 @@ interface Explosion {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-16T18:43:41.981Z
+                at 2025-10-27T20:35:19.160Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
