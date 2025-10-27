@@ -147,12 +147,18 @@ export const gameValidators = {
   // Validate game state transitions
   gameStateTransition: (from: string, to: string): boolean => {
     const validTransitions: Record<string, string[]> = {
+      // Game states
       'playing': ['paused', 'ended', 'stage-complete'],
       'paused': ['playing', 'ended'],
       'ended': ['playing'],
       'stage-complete': ['playing', 'ended'],
       'start': ['playing'],
-      'select': ['playing']
+      'select': ['playing'],
+      // Screen transitions
+      'menu': ['stage-select', 'game', 'transition'],
+      'stage-select': ['menu', 'game', 'transition'],
+      'game': ['paused', 'ended', 'stage-complete', 'transition'],
+      'transition': ['menu', 'stage-select', 'game']
     };
     
     return validTransitions[from]?.includes(to) || false;
