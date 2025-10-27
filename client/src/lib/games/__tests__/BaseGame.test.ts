@@ -40,6 +40,7 @@ global.requestAnimationFrame = jest.fn((cb) => setTimeout(cb, 16));
 global.cancelAnimationFrame = jest.fn();
 
 // Mock performance.now
+const originalPerformanceNow = global.performance.now;
 global.performance.now = jest.fn(() => Date.now());
 
 // Mock window properties

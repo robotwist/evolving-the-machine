@@ -45,7 +45,7 @@ interface Ball {
   radius: number;
   angle: number;
   speed: number;
-  type: 'normal' | 'speed' | 'fire' | 'missile' | 'wacky';
+  type: 'normal' | 'speed' | 'fire' | 'missile' | 'wacky' | 'multiball' | 'gravity' | 'laser';
   trail: Array<{x: number, y: number}>;
   angleSpeed?: number;
 }
@@ -161,7 +161,7 @@ export class PongGame extends BaseGame {
     }
     
     // Initialize haptics and settings through window globals
-    this.haptics = (window as unknown as { __CULTURAL_ARCADE_HAPTICS__?: HapticsAPI }).__CULTURAL_ARCADE_HAPTICS__;
+    this.haptics = (window as unknown as { __CULTURAL_ARCADE_HAPTICS__?: HapticsAPI }).__CULTURAL_ARCADE_HAPTICS__ || null;
     this.settings = {
       hapticsEnabled: (window as unknown as GameSettings).__CULTURAL_ARCADE_HAPTICS_ENABLED__ ?? true,
       hitMarkers: (window as unknown as GameSettings).__CULTURAL_ARCADE_HIT_MARKERS__ ?? true,
@@ -399,14 +399,16 @@ export class PongGame extends BaseGame {
         } else {
             const damage = 15;
             this.player1.damage += damage;
-            if (this.settings?.damageNumbers) {
+            if (this.settings?.damageNumbers && this.visualFeedback) {
                 this.visualFeedback.addDamageNumber(this.player1.x + 20, this.player1.y, damage);
             }
         }
         this.player1.lastHitTime = Date.now();
         this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.1);
         this.player1Combo++;
-        this.visualFeedback.updateCombo(this.player1.x + 20, this.player1.y, this.player1Combo);
+        if (this.visualFeedback) {
+            this.visualFeedback.updateCombo(this.player1.x + 20, this.player1.y, this.player1Combo);
+        }
       } else {
           this.player1Combo = 0;
       }
@@ -414,7 +416,7 @@ export class PongGame extends BaseGame {
         const damage = 10;
         this.player2.damage += damage;
         this.player2.lastHitTime = Date.now();
-        if (this.settings?.damageNumbers) {
+        if (this.settings?.damageNumbers && this.visualFeedback) {
             this.visualFeedback.addDamageNumber(this.player2.x, this.player2.y, damage);
         }
       }
@@ -424,7 +426,9 @@ export class PongGame extends BaseGame {
       if (this.settings?.hapticsEnabled) this.haptics?.vibrate('explosion');
       if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, 1, 'critical');
       if (this.settings?.screenShake) this.shakeTimer = 10;
-      this.particles.addSizzle(this.player2.x, Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y)));
+      if (this.particles) {
+        this.particles.addExplosion(this.player2.x, Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y)), 15, '#FF4500', 'dramatic');
+      }
       this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
       this.playStinger('arcade_hit');
     }
@@ -512,7 +516,7 @@ export class PongGame extends BaseGame {
         
         try {
           const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-          if (!audioState.isMuted) {
+          if (audioState && !audioState.isMuted) {
             audioState.playStinger('arcade_powerup');
           }
         } catch (e) {
@@ -547,7 +551,7 @@ export class PongGame extends BaseGame {
         // Powerup collection sound
         try {
           const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-          if (!audioState.isMuted) {
+          if (audioState && !audioState.isMuted) {
             audioState.playStinger('arcade_powerup');
           }
         } catch (e) {
@@ -579,7 +583,9 @@ export class PongGame extends BaseGame {
     const quality = (window as unknown as GameSettings).__CULTURAL_ARCADE_QUALITY__ || 'medium';
     const count = quality === 'high' ? 25 : quality === 'low' ? 12 : 18;
     
-    this.particles.addExplosion(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, count, '#FFD700', 'dramatic');
+    if (this.particles) {
+      this.particles.addExplosion(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, count, '#FFD700', 'dramatic');
+    }
     
     // Heavy screenshake
     this.shakeTimer = 20;
@@ -939,7 +945,7 @@ export class PongGame extends BaseGame {
       const intensity = Math.floor(Math.random() * 5) + 1; // 1-5 power level
 
       // Enhanced powerup with visual effects
-      const powerupEffects = {
+      const powerupEffects: Record<string, string> = {
         speed: 'glow-blue',
         fire: 'glow-red',
         missile: 'glow-yellow',
@@ -982,30 +988,44 @@ export class PongGame extends BaseGame {
       case 'speed':
         this.ball.speed *= 1.5; // More intense speed boost
         this.ball.angleSpeed = 0;
-        this.particles.addExplosion(this.ball.x, this.ball.y, 15, '#00FFFF', 'subtle');
+        if (this.particles) {
+          this.particles.addExplosion(this.ball.x, this.ball.y, 15, '#00FFFF', 'subtle');
+        }
         break;
       case 'fire':
         this.ball.radius = 15; // Much bigger fire ball
         this.ball.angleSpeed = 0;
-        this.particles.addExplosion(this.ball.x, this.ball.y, 20, '#FF4500', 'dramatic');
+        if (this.particles) {
+          this.particles.addExplosion(this.ball.x, this.ball.y, 20, '#FF4500', 'dramatic');
+        }
         break;
       case 'missile':
         this.ball.speed *= 2.0; // Super fast missile
         this.ball.angleSpeed = 0;
-        this.particles.addExplosion(this.ball.x, this.ball.y, 25, '#FFD700', 'epic');
+        if (this.particles) {
+          this.particles.addExplosion(this.ball.x, this.ball.y, 25, '#FFD700', 'epic');
+        }
         break;
       case 'wacky':
         // Unpredictable movement handled in update
         this.ball.angleSpeed = 0.5; // More erratic
-        this.particles.addExplosion(this.ball.x, this.ball.y, 18, '#FF00FF', 'subtle');
+        if (this.particles) {
+          this.particles.addExplosion(this.ball.x, this.ball.y, 18, '#FF00FF', 'subtle');
+        }
         break;
       case 'shield':
         this.player1.shielded = true;
         this.shieldTimer = 900; // 15 seconds of shield
-        this.particles.addExplosion(this.player1.x + this.player1.width/2, this.player1.y, 12, '#00FFFF', 'subtle');
+        if (this.particles) {
+          this.particles.addExplosion(this.player1.x + this.player1.width/2, this.player1.y, 12, '#00FFFF', 'subtle');
+        }
         break;
       case 'explosion':
-        this.explodeBall();
+        // Create explosion effect
+        if (this.particles) {
+          this.particles.addExplosion(this.ball.x, this.ball.y, 30, '#FF4500', 'epic');
+        }
+        this.playStinger('arcade_explosion');
         break;
       case 'chain':
         this.activateChainReaction();
@@ -1030,21 +1050,29 @@ export class PongGame extends BaseGame {
     this.chainReactionTimer = 120; // 2 seconds
     
     // Initial explosion at ball position
-    this.particles.addExplosion(this.ball.x, this.ball.y, 20, '#FF4500', 'dramatic');
+    if (this.particles) {
+      this.particles.addExplosion(this.ball.x, this.ball.y, 20, '#FF4500', 'dramatic');
+    }
     
     // Chain reaction explosions around AI paddle
     setTimeout(() => {
-      this.particles.addExplosion(this.player2.x - 20, this.player2.y, 15, '#FF0000', 'dramatic');
+      if (this.particles) {
+        this.particles.addExplosion(this.player2.x - 20, this.player2.y, 15, '#FF0000', 'dramatic');
+      }
       this.player2.damage += 25; // Chain reaction damages AI
     }, 200);
     
     setTimeout(() => {
-      this.particles.addExplosion(this.player2.x + this.player2.width + 20, this.player2.y + this.player2.height/2, 15, '#FF0000', 'dramatic');
+      if (this.particles) {
+        this.particles.addExplosion(this.player2.x + this.player2.width + 20, this.player2.y + this.player2.height/2, 15, '#FF0000', 'dramatic');
+      }
       this.player2.damage += 25;
     }, 400);
     
     setTimeout(() => {
-      this.particles.addExplosion(this.player2.x + this.player2.width/2, this.player2.y - 20, 15, '#FF0000', 'dramatic');
+      if (this.particles) {
+        this.particles.addExplosion(this.player2.x + this.player2.width/2, this.player2.y - 20, 15, '#FF0000', 'dramatic');
+      }
       this.player2.damage += 25;
     }, 600);
     
@@ -1060,7 +1088,9 @@ export class PongGame extends BaseGame {
     this.shockwaveTimer = 90; // 1.5 seconds
     
     // Central explosion
-    this.particles.addExplosion(this.ball.x, this.ball.y, 30, '#00FFFF', 'epic');
+    if (this.particles) {
+      this.particles.addExplosion(this.ball.x, this.ball.y, 30, '#00FFFF', 'epic');
+    }
     
     // Expanding shockwave rings
     for (let i = 1; i <= 3; i++) {
@@ -1070,7 +1100,9 @@ export class PongGame extends BaseGame {
         for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
           const x = this.ball.x + Math.cos(angle) * radius;
           const y = this.ball.y + Math.sin(angle) * radius;
-          this.particles.addExplosion(x, y, 5, '#00FFFF', 'subtle');
+          if (this.particles) {
+            this.particles.addExplosion(x, y, 5, '#00FFFF', 'subtle');
+          }
         }
         
         // Damage AI if in shockwave range
@@ -1094,7 +1126,9 @@ export class PongGame extends BaseGame {
 
   private activateMultiball() {
     // Create explosion effect for multiball powerup
-    this.particles.addExplosion(this.ball.x, this.ball.y, 25, '#FF00FF', 'dramatic');
+    if (this.particles) {
+      this.particles.addExplosion(this.ball.x, this.ball.y, 25, '#FF00FF', 'dramatic');
+    }
 
     // Speed up the existing ball dramatically
     this.ball.speed *= 2.0;
@@ -1119,7 +1153,9 @@ export class PongGame extends BaseGame {
     }
 
     // Visual gravity well effect
-    this.particles.addExplosion(centerX, centerY, 35, '#800080', 'epic');
+    if (this.particles) {
+      this.particles.addExplosion(centerX, centerY, 35, '#800080', 'epic');
+    }
 
     // Pull paddles toward center briefly
     this.applyGravityToPaddle(this.player1, centerX, centerY);

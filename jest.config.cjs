@@ -39,9 +39,8 @@ module.exports = {
     '/client/src/App.tsx',
   ],
   // Only test specific files for now
-  testPathPatterns: [
-    'BaseGame',
-    'ParticleSystem', 
-    'useGameStore',
+  testMatch: [
+    '<rootDir>/client/src/**/__tests__/**/*.(ts|tsx|js)',
+    '<rootDir>/client/src/**/*.(test|spec).(ts|tsx|js)',
   ],
 };

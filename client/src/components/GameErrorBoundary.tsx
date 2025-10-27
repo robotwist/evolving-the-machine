@@ -83,7 +83,7 @@ export class GameErrorBoundary extends Component<GameErrorBoundaryProps, GameErr
     // Reset game state and return to menu
     const gameStore = useGameStore.getState();
     gameStore.setGameState('playing');
-    gameStore.setCurrentScreen('main-menu');
+    gameStore.setCurrentScreen('menu');
     
     this.setState({
       hasError: false,

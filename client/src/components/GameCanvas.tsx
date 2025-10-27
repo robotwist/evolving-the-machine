@@ -60,6 +60,7 @@ function useGameInstance(
   const { currentStage, setGameState } = useGameStore();
   const { updateScore } = useScoreStore();
   const isInitializing = useRef(false);
+  const handleError = useGameErrorHandler(`Stage-${currentStage}`);
 
   useEffect(() => {
     if (!ctx || width === 0 || height === 0) return;
