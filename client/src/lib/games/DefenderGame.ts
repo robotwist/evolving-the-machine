@@ -422,7 +422,7 @@ export class DefenderGame extends BaseGame {
           const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
           const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
           if (!reduce && allowShake) this.shakeTimer = 10;
-          if (allowParticles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444', 'dramatic');
+          if (allowParticles && this.particles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444', 'dramatic');
           this.playExplosionSound();
         }
       });
@@ -568,7 +568,7 @@ export class DefenderGame extends BaseGame {
 
     // particles overlay
     const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-    if (allowParticles) {
+    if (allowParticles && this.particles) {
       this.particles.update();
       this.particles.render();
     }
