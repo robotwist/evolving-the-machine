@@ -97,6 +97,7 @@ export class LasatGame extends BaseGame {
   private starWarsTrenchMode = false;
   private exhaustPortTargeted = false;
   private gracePeriod = 180; // 3 seconds of invulnerability
+  private waveCompleteTimer = 0; // Timer for wave completion delay
   private aiNarrative = {
     phase: 0,
     timer: 0,
@@ -329,14 +330,28 @@ export class LasatGame extends BaseGame {
       this.spawnPowerUp();
     }
 
-    // Check wave completion
+    // Check wave completion with proper delay
     if (this.enemies.filter(e => e.alive).length === 0) {
-      this.ragnarokPhase++;
-      if (this.ragnarokPhase > 5) {
-        this.onStageComplete?.(); // Ragnarok completed!
+      if (this.waveCompleteTimer === 0) {
+        // Start wave completion sequence
+        this.waveCompleteTimer = 180; // 3 seconds delay
       } else {
-        this.spawnRagnarokWave();
+        this.waveCompleteTimer--;
+        if (this.waveCompleteTimer <= 0) {
+          // Wave completed! Advance to next phase
+          this.ragnarokPhase++;
+          this.waveCompleteTimer = 0; // Reset timer
+          
+          if (this.ragnarokPhase > 5) {
+            this.onStageComplete?.(); // Ragnarok completed!
+          } else {
+            this.spawnRagnarokWave();
+          }
+        }
       }
+    } else {
+      // Reset timer if enemies are still alive
+      this.waveCompleteTimer = 0;
     }
 
     // Regenerate energy
@@ -1015,6 +1030,17 @@ export class LasatGame extends BaseGame {
       this.ctx.font = '16px monospace';
       this.ctx.textAlign = 'center';
       this.ctx.fillText(`INVULNERABLE: ${Math.ceil(this.gracePeriod / 60)}s`, this.width / 2, this.height - 80);
+    }
+    
+    // Wave completion indicator
+    if (this.waveCompleteTimer > 0) {
+      this.ctx.fillStyle = '#FFD700';
+      this.ctx.font = '20px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(`WAVE ${this.ragnarokPhase} COMPLETE!`, this.width / 2, this.height - 100);
+      this.ctx.fillStyle = '#00FF00';
+      this.ctx.font = '16px monospace';
+      this.ctx.fillText(`NEXT WAVE IN: ${Math.ceil(this.waveCompleteTimer / 60)}s`, this.width / 2, this.height - 80);
     }
     
     // Death Blossom status
