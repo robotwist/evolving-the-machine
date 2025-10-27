@@ -1,5 +1,5 @@
 import { BaseGame } from './BaseGame';
-import { CollidableObject, AudioState, WindowExtensions } from '@shared/types';
+import { AudioState, WindowExtensions } from '@shared/types';
 
 interface Vector2 {
   x: number;
@@ -18,19 +18,34 @@ interface Entity {
 interface Player extends Entity {
   energy: number;
   maxEnergy: number;
-  weaponType: 'laser' | 'plasma' | 'lightning';
+  weaponType: 'laser' | 'ion_cannon';
   shieldActive: boolean;
   shieldTimer: number;
+  // Last Starfighter specific
+  cockpitView: boolean;
+  targetingLock: boolean;
+  targetLocked: Enemy | null;
+  deathBlossomReady: boolean;
+  deathBlossomCooldown: number;
+  weaponEnergy: {
+    laser: number;
+    ion: number;
+  };
 }
 
 interface Enemy extends Entity {
-  type: 'giant' | 'dragon' | 'valkyrie';
+  type: 'fighter' | 'destroyer' | 'mothership';
   shootTimer: number;
   specialAttackTimer: number;
   behavior: 'aggressive' | 'defensive' | 'berserker';
   rage: number;
   enraged: boolean;
   enrageTimer: number;
+  // Last Starfighter specific
+  squadron: number;
+  formationPosition: number;
+  targetable: boolean;
+  lockOnTimer: number;
 }
 
 interface Projectile extends Entity {
@@ -102,7 +117,7 @@ export class LasatGame extends BaseGame {
   };
 
   init() {
-    // Initialize player (Norse Starfighter)
+    // Initialize player (Gunstar Fighter)
     this.player = {
       position: { x: this.width / 2, y: this.height - 100 },
       velocity: { x: 0, y: 0 },
@@ -114,7 +129,16 @@ export class LasatGame extends BaseGame {
       maxEnergy: 100,
       weaponType: 'laser',
       shieldActive: false,
-      shieldTimer: 0
+      shieldTimer: 0,
+      cockpitView: true,
+      targetingLock: false,
+      targetLocked: null,
+      deathBlossomReady: true,
+      deathBlossomCooldown: 0,
+      weaponEnergy: {
+        laser: 100,
+        ion: 100
+      }
     };
 
     this.spawnRagnarokWave();
@@ -166,17 +190,23 @@ export class LasatGame extends BaseGame {
     // Clear existing enemies
     this.enemies = [];
     
-    const waveTypes = [
-      { type: 'giant' as const, count: 3 + this.ragnarokPhase },
-      { type: 'dragon' as const, count: 1 + Math.floor(this.ragnarokPhase / 2) },
-      { type: 'valkyrie' as const, count: 2 + this.ragnarokPhase }
-    ];
+    // Spawn Ko-Dan Armada squadrons
+    const squadronCount = 2 + this.ragnarokPhase;
+    
+    for (let squadron = 0; squadron < squadronCount; squadron++) {
+      // Each squadron has different composition
+      const squadronTypes = [
+        { type: 'fighter' as const, count: 4 + this.ragnarokPhase },
+        { type: 'destroyer' as const, count: 1 + Math.floor(this.ragnarokPhase / 2) },
+        { type: 'mothership' as const, count: this.ragnarokPhase >= 3 ? 1 : 0 }
+      ];
 
-    waveTypes.forEach(({ type, count }) => {
-      for (let i = 0; i < count; i++) {
-        this.spawnEnemy(type);
-      }
-    });
+      squadronTypes.forEach(({ type, count }) => {
+        for (let i = 0; i < count; i++) {
+          this.spawnEnemy(type, squadron);
+        }
+      });
+    }
   }
 
   private createTargetPanels() {
@@ -230,24 +260,28 @@ export class LasatGame extends BaseGame {
     }, 2000);
   }
 
-  private spawnEnemy(type: Enemy['type']) {
+  private spawnEnemy(type: Enemy['type'], squadron: number) {
     const enemy: Enemy = {
       position: {
         x: Math.random() * (this.width - 100) + 50,
         y: Math.random() * 200 + 150 // Lower on screen to avoid panels
       },
       velocity: { x: 0, y: 0 },
-      size: type === 'dragon' ? 50 : type === 'giant' ? 40 : 30,
-      health: type === 'dragon' ? 300 : type === 'giant' ? 250 : 150, // Stronger AI enemies
-      maxHealth: type === 'dragon' ? 300 : type === 'giant' ? 250 : 150,
+      size: type === 'mothership' ? 80 : type === 'destroyer' ? 60 : 30,
+      health: type === 'mothership' ? 500 : type === 'destroyer' ? 300 : 100,
+      maxHealth: type === 'mothership' ? 500 : type === 'destroyer' ? 300 : 100,
       alive: true,
       type,
-      shootTimer: Math.random() * 40, // More aggressive shooting
+      shootTimer: Math.random() * 40,
       specialAttackTimer: 80 + Math.random() * 120,
-      behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as 'aggressive' | 'defensive' | 'berserker', // More aggressive
+      behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as 'aggressive' | 'defensive' | 'berserker',
       rage: 0,
       enraged: false,
-      enrageTimer: 0
+      enrageTimer: 0,
+      squadron: squadron,
+      formationPosition: Math.random() * 360, // Formation angle
+      targetable: true,
+      lockOnTimer: 0
     };
 
     this.enemies.push(enemy);
@@ -316,7 +350,7 @@ export class LasatGame extends BaseGame {
   private handleMovement() {
     const speed = 6;
     
-    // Human player controls (WASD only) - clear distinction from AI
+    // Gunstar Fighter controls (WASD + targeting)
     if (this.keys.has('KeyA')) {
       this.player.velocity.x = -speed;
     } else if (this.keys.has('KeyD')) {
@@ -333,20 +367,25 @@ export class LasatGame extends BaseGame {
       this.player.velocity.y *= 0.85;
     }
 
+    // Weapon systems
     if (this.keys.has('Space')) {
       this.shootPlayerProjectile();
     }
 
-    if (this.keys.has('KeyX') && this.player.energy >= 30) {
-      this.activateSpecialAbility();
+    // Ion Cannon (heavier hitting)
+    if (this.keys.has('KeyX') && this.player.weaponEnergy.ion >= 20) {
+      this.shootIonCannon();
       this.keys.delete('KeyX');
     }
 
-    if (this.keys.has('KeyZ') && this.player.energy >= 20) {
-      this.activateShield();
+    // Death Blossom (last resort)
+    if (this.keys.has('KeyZ') && this.player.deathBlossomReady && this.player.deathBlossomCooldown <= 0) {
+      this.activateDeathBlossom();
       this.keys.delete('KeyZ');
     }
-    this.playStinger('boss_enrage');
+
+    // Targeting system
+    this.updateTargeting();
   }
 
   private updatePlayer() {
@@ -357,6 +396,92 @@ export class LasatGame extends BaseGame {
     // Keep player in bounds
     this.player.position.x = Math.max(this.player.size, Math.min(this.width - this.player.size, this.player.position.x));
     this.player.position.y = Math.max(this.player.size, Math.min(this.height - this.player.size, this.player.position.y));
+    
+    // Update Death Blossom cooldown
+    if (this.player.deathBlossomCooldown > 0) {
+      this.player.deathBlossomCooldown--;
+    }
+    
+    // Regenerate weapon energy
+    this.player.weaponEnergy.laser = Math.min(100, this.player.weaponEnergy.laser + 0.5);
+    this.player.weaponEnergy.ion = Math.min(100, this.player.weaponEnergy.ion + 0.2);
+  }
+
+  private updateTargeting() {
+    // Find nearest enemy for targeting
+    let nearestEnemy: Enemy | null = null;
+    let nearestDistance = Infinity;
+    
+    this.enemies.forEach(enemy => {
+      if (!enemy.alive || !enemy.targetable) return;
+      
+      const dx = enemy.position.x - this.player.position.x;
+      const dy = enemy.position.y - this.player.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < nearestDistance && distance < 200) { // Targeting range
+        nearestDistance = distance;
+        nearestEnemy = enemy;
+      }
+    });
+    
+    // Update targeting lock
+    if (nearestEnemy) {
+      this.player.targetLocked = nearestEnemy;
+      this.player.targetingLock = true;
+      (nearestEnemy as Enemy).lockOnTimer = 60; // 1 second lock
+    } else {
+      this.player.targetLocked = null;
+      this.player.targetingLock = false;
+    }
+  }
+
+  private shootIonCannon() {
+    if (this.player.weaponEnergy.ion < 20) return;
+    
+    this.player.weaponEnergy.ion -= 20;
+    
+    const projectile: Projectile = {
+      position: { ...this.player.position },
+      velocity: { x: 0, y: -15 },
+      size: 8,
+      health: 1,
+      maxHealth: 1,
+      alive: true,
+      owner: 'player',
+      type: 'ion_cannon',
+      damage: 50,
+      lifetime: 120
+    };
+
+    this.playerProjectiles.push(projectile);
+  }
+
+  private activateDeathBlossom() {
+    if (!this.player.deathBlossomReady || this.player.deathBlossomCooldown > 0) return;
+    
+    this.player.deathBlossomReady = false;
+    this.player.deathBlossomCooldown = 1800; // 30 second cooldown
+    
+    // Create energy burst that destroys all nearby enemies
+    const burstRadius = 150;
+    
+    this.enemies.forEach(enemy => {
+      if (!enemy.alive) return;
+      
+      const dx = enemy.position.x - this.player.position.x;
+      const dy = enemy.position.y - this.player.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < burstRadius) {
+        enemy.health = 0;
+        enemy.alive = false;
+        this.score += enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
+      }
+    });
+    
+    // Visual effect
+    this.playStinger('boss_enrage');
   }
 
   private updateTrenchElements() {
@@ -390,16 +515,16 @@ export class LasatGame extends BaseGame {
   }
 
   private updateEnemy(enemy: Enemy) {
-    // AI behavior based on type and behavior
+    // Ko-Dan Armada behavior based on type
     switch (enemy.type) {
-      case 'giant':
-        this.updateGiantBehavior(enemy);
+      case 'fighter':
+        this.updateFighterBehavior(enemy);
         break;
-      case 'dragon':
-        this.updateDragonBehavior(enemy);
+      case 'destroyer':
+        this.updateDestroyerBehavior(enemy);
         break;
-      case 'valkyrie':
-        this.updateValkyrieBehavior(enemy);
+      case 'mothership':
+        this.updateMothershipBehavior(enemy);
         break;
     }
 
@@ -437,39 +562,57 @@ export class LasatGame extends BaseGame {
     }
   }
 
-  private updateGiantBehavior(enemy: Enemy) {
-    // AI Giants - relentless mechanical pursuit
+  private updateFighterBehavior(enemy: Enemy) {
+    // Ko-Dan Fighters - fast, agile, swarm tactics
     const dx = this.player.position.x - enemy.position.x;
     const dy = this.player.position.y - enemy.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance > 0) {
-      // Aggressive AI behavior - faster pursuit when player is weak
-      const aggressionMultiplier = (this.player.health < 50 ? 2.5 : 1.8) * (enemy.enraged ? 1.5 : 1);
-      enemy.velocity.x = (dx / distance) * aggressionMultiplier;
-      enemy.velocity.y = (dy / distance) * 1.5 * (enemy.enraged ? 1.5 : 1);
+      // Swarm behavior - move in formation
+      const formationAngle = enemy.formationPosition * Math.PI / 180;
+      const swarmOffset = Math.sin(Date.now() * 0.003 + enemy.squadron) * 30;
+      
+      enemy.velocity.x = Math.cos(formationAngle) * 2 + (dx / distance) * 1.5;
+      enemy.velocity.y = Math.sin(formationAngle) * 2 + (dy / distance) * 1.5 + swarmOffset * 0.1;
     }
   }
 
-  private updateDragonBehavior(enemy: Enemy) {
-    // Dragons fly in patterns and are aggressive
-    const time = Date.now() * 0.002;
-    enemy.velocity.x = Math.sin(time + enemy.position.y * 0.01) * 3;
-    enemy.velocity.y = Math.cos(time * 0.5) * 2;
+  private updateDestroyerBehavior(enemy: Enemy) {
+    // Ko-Dan Destroyers - heavy, slow, powerful
+    const dx = this.player.position.x - enemy.position.x;
+    const dy = this.player.position.y - enemy.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 0) {
+      // Heavy pursuit - slower but relentless
+      enemy.velocity.x = (dx / distance) * 1.2;
+      enemy.velocity.y = (dy / distance) * 1.2;
+    }
   }
 
-  private updateValkyrieBehavior(enemy: Enemy) {
-    // Valkyries are fast and unpredictable
-    if (Math.random() < 0.05) {
-      enemy.velocity.x = (Math.random() - 0.5) * 8;
-      enemy.velocity.y = (Math.random() - 0.5) * 6;
+  private updateMothershipBehavior(enemy: Enemy) {
+    // Ko-Dan Mothership - massive, slow, spawns fighters
+    const dx = this.player.position.x - enemy.position.x;
+    const dy = this.player.position.y - enemy.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 0) {
+      // Slow but steady approach
+      enemy.velocity.x = (dx / distance) * 0.8;
+      enemy.velocity.y = (dy / distance) * 0.8;
+    }
+    
+    // Spawn fighters occasionally
+    if (Math.random() < 0.01) {
+      this.spawnEnemy('fighter', enemy.squadron);
     }
   }
 
   private shootPlayerProjectile() {
-    if (this.player.energy < 5) return;
+    if (this.player.weaponEnergy.laser < 5) return;
     
-    this.player.energy -= 5;
+    this.player.weaponEnergy.laser -= 5;
     
     const projectile: Projectile = {
       position: { ...this.player.position },
@@ -479,52 +622,12 @@ export class LasatGame extends BaseGame {
       maxHealth: 1,
       alive: true,
       owner: 'player',
-      type: this.player.weaponType,
-      damage: this.getWeaponDamage(this.player.weaponType),
+      type: 'laser',
+      damage: 20,
       lifetime: 100
     };
 
     this.playerProjectiles.push(projectile);
-  }
-
-  private getWeaponDamage(weaponType: string): number {
-    switch (weaponType) {
-      case 'plasma': return 30;
-      case 'lightning': return 50;
-      default: return 20; // laser
-    }
-  }
-
-  private activateSpecialAbility() {
-    this.player.energy -= 30;
-    
-    // Lightning storm attack
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const projectile: Projectile = {
-        position: { ...this.player.position },
-        velocity: {
-          x: Math.cos(angle) * 8,
-          y: Math.sin(angle) * 8
-        },
-        size: 8,
-        health: 1,
-        maxHealth: 1,
-        alive: true,
-        owner: 'player',
-        type: 'lightning_burst',
-        damage: 40,
-        lifetime: 60
-      };
-      
-      this.playerProjectiles.push(projectile);
-    }
-  }
-
-  private activateShield() {
-    this.player.energy -= 20;
-    this.player.shieldActive = true;
-    this.player.shieldTimer = 180; // 3 seconds at 60fps
   }
 
   private enemyShoot(enemy: Enemy) {
@@ -545,7 +648,7 @@ export class LasatGame extends BaseGame {
         alive: true,
         owner: 'enemy',
         type: enemy.type + '_shot',
-        damage: 15,
+        damage: enemy.type === 'mothership' ? 25 : enemy.type === 'destroyer' ? 20 : 15,
         lifetime: 150
       };
       
@@ -555,10 +658,10 @@ export class LasatGame extends BaseGame {
 
   private enemySpecialAttack(enemy: Enemy) {
     switch (enemy.type) {
-      case 'dragon':
-        // Fire breath
-        for (let i = 0; i < 5; i++) {
-          const angle = -Math.PI / 6 + (i / 4) * (Math.PI / 3);
+      case 'destroyer':
+        // Heavy ion blast
+        for (let i = 0; i < 3; i++) {
+          const angle = -Math.PI / 6 + (i / 2) * (Math.PI / 3);
           const projectile: Projectile = {
             position: { ...enemy.position },
             velocity: {
@@ -570,12 +673,18 @@ export class LasatGame extends BaseGame {
             maxHealth: 1,
             alive: true,
             owner: 'enemy',
-            type: 'fire_breath',
-            damage: 25,
+            type: 'destroyer_blast',
+            damage: 30,
             lifetime: 80
           };
           
           this.enemyProjectiles.push(projectile);
+        }
+        break;
+      case 'mothership':
+        // Spawn fighter wave
+        for (let i = 0; i < 3; i++) {
+          this.spawnEnemy('fighter', enemy.squadron);
         }
         break;
     }
@@ -643,7 +752,7 @@ export class LasatGame extends BaseGame {
           
           if (enemy.health <= 0) {
             enemy.alive = false;
-            this.score += enemy.type === 'dragon' ? 500 : enemy.type === 'giant' ? 300 : 200;
+            this.score += enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
             this.bossesDefeated++;
           }
           
@@ -668,14 +777,18 @@ export class LasatGame extends BaseGame {
 
     // Player vs power-ups
     this.powerUps.forEach((powerUp, index) => {
-      if (this.isColliding(this.player, { position: powerUp.position, size: 20 })) {
+      const dx = this.player.position.x - powerUp.position.x;
+      const dy = this.player.position.y - powerUp.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 30) { // 20 (powerup size) + 25 (player size) / 2
         this.collectPowerUp(powerUp);
         this.powerUps.splice(index, 1);
       }
     });
   }
 
-  private isColliding(obj1: CollidableObject, obj2: CollidableObject): boolean {
+  private isColliding(obj1: Entity, obj2: Entity): boolean {
     const dx = obj1.position.x - obj2.position.x;
     const dy = obj1.position.y - obj2.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -702,7 +815,7 @@ export class LasatGame extends BaseGame {
         this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 50);
         break;
       case 'weapon': {
-        const weapons: Player['weaponType'][] = ['laser', 'plasma', 'lightning'];
+        const weapons: Player['weaponType'][] = ['laser', 'ion_cannon'];
         this.player.weaponType = weapons[Math.floor(Math.random() * weapons.length)];
         break;
       }
@@ -832,45 +945,150 @@ export class LasatGame extends BaseGame {
   }
 
   private drawEnhancedUI() {
-    // Last Starfighter-style HUD with AI mirroring effects
-    const aiPhase = Math.min(this.aiNarrative.phase, 5) / 5; // 0-1 progression
-    
-    // Health bar with AI-influenced color shifting
-    const healthColor = `hsl(${120 * (this.player.health / this.player.maxHealth)}, 100%, 50%)`;
-    const aiMirrorColor = `hsl(${120 - (aiPhase * 60)}, 100%, 50%)`; // Shifts toward red as AI progresses
-    
+    // Last Starfighter-style HUD with authentic elements
     this.ctx.save();
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(10, 10, 200, 80);
     
-    // Health display with AI influence
-    this.drawText(`PILOT VITALS: ${Math.round(this.player.health)}`, 20, 30, 12, aiPhase > 0.5 ? aiMirrorColor : healthColor);
-    this.drawText(`ENERGY: ${Math.round(this.player.energy)}`, 20, 50, 12, '#00BFFF');
-    this.drawText(`SCORE: ${this.score}`, 20, 70, 12, '#FFD700');
+    // Main HUD background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(0, 0, this.width, this.height);
     
-    // AI mirroring indicator (grows more prominent)
-    if (aiPhase > 0.2) {
-      this.ctx.fillStyle = `rgba(255, 0, 0, ${aiPhase * 0.3})`;
-      this.ctx.fillRect(0, 0, this.width, this.height);
+    // Central targeting reticle (Last Starfighter style)
+    this.ctx.strokeStyle = this.player.targetingLock ? '#00FF00' : '#FFD700';
+    this.ctx.lineWidth = 2;
+    this.ctx.shadowColor = this.player.targetingLock ? '#00FF00' : '#FFD700';
+    this.ctx.shadowBlur = 10;
+    
+    // Main reticle circle
+    this.ctx.beginPath();
+    this.ctx.arc(this.width / 2, this.height / 2, 30, 0, Math.PI * 2);
+    this.ctx.stroke();
+    
+    // Crosshairs
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.width / 2 - 40, this.height / 2);
+    this.ctx.lineTo(this.width / 2 + 40, this.height / 2);
+    this.ctx.moveTo(this.width / 2, this.height / 2 - 40);
+    this.ctx.lineTo(this.width / 2, this.height / 2 + 40);
+    this.ctx.stroke();
+    
+    // Targeting lock indicator
+    if (this.player.targetingLock && this.player.targetLocked) {
+      this.ctx.strokeStyle = '#00FF00';
+      this.ctx.lineWidth = 3;
+      this.ctx.beginPath();
+      this.ctx.arc(this.player.targetLocked.position.x, this.player.targetLocked.position.y, 25, 0, Math.PI * 2);
+      this.ctx.stroke();
       
-      this.drawText(`AI SYNC: ${Math.round(aiPhase * 100)}%`, this.width - 150, 30, 12, '#FF0000');
-      this.drawText('MIRRORING PROTOCOLS ACTIVE', this.width - 200, 50, 10, '#FF4444');
+      // Lock-on text
+      this.ctx.fillStyle = '#00FF00';
+      this.ctx.font = '12px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('LOCK ON', this.width / 2, this.height / 2 - 50);
     }
     
-    // Targeting reticle (Last Starfighter style)
-    this.ctx.strokeStyle = aiPhase > 0.3 ? '#FF0000' : '#00FF00';
+    this.ctx.shadowBlur = 0;
+    
+    // Weapon energy displays (left and right)
+    this.drawWeaponDisplay('LASER ENERGY', this.player.weaponEnergy.laser, 50, 50, '#00FFFF');
+    this.drawWeaponDisplay('ION CANNON', this.player.weaponEnergy.ion, this.width - 150, 50, '#FF4500');
+    
+    // Hull temperature and ship status
+    this.ctx.fillStyle = '#FFD700';
+    this.ctx.font = '14px monospace';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(`HULL TEMP: ${Math.round(this.player.health)}`, 20, this.height - 60);
+    this.ctx.fillText(`SCORE: ${this.score}`, 20, this.height - 40);
+    this.ctx.fillText(`GROUP: ${this.ragnarokPhase}`, 20, this.height - 20);
+    
+    // Death Blossom status
+    if (this.player.deathBlossomReady && this.player.deathBlossomCooldown <= 0) {
+      this.ctx.fillStyle = '#FF0000';
+      this.ctx.font = '16px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('DEATH BLOSSOM READY', this.width / 2, this.height - 20);
+    } else if (this.player.deathBlossomCooldown > 0) {
+      this.ctx.fillStyle = '#FFD700';
+      this.ctx.font = '12px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(`DEATH BLOSSOM: ${Math.ceil(this.player.deathBlossomCooldown / 60)}s`, this.width / 2, this.height - 20);
+    }
+    
+    // Squadron indicators
+    this.drawSquadronRadar();
+    
+    this.ctx.restore();
+  }
+
+  private drawWeaponDisplay(label: string, energy: number, x: number, y: number, color: string) {
+    this.ctx.save();
+    
+    // Weapon label
+    this.ctx.fillStyle = color;
+    this.ctx.font = '12px monospace';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(label, x, y);
+    
+    // Energy value
+    this.ctx.fillText(`${(energy / 100).toFixed(2)}`, x, y + 20);
+    
+    // Energy bar
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    this.ctx.fillRect(x, y + 25, 100, 10);
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y + 25, (energy / 100) * 100, 10);
+    
+    this.ctx.restore();
+  }
+
+  private drawSquadronRadar() {
+    // Spherical radar displays (top corners)
+    const radarSize = 60;
+    
+    // Top-left radar
+    this.ctx.save();
+    this.ctx.strokeStyle = '#00FF00';
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
-    this.ctx.arc(this.player.position.x, this.player.position.y - 40, 20, 0, Math.PI * 2);
+    this.ctx.arc(radarSize, radarSize, radarSize, 0, Math.PI * 2);
     this.ctx.stroke();
     
-    // Cross-hairs
+    // Draw enemies as dots on radar
+    this.enemies.forEach(enemy => {
+      if (!enemy.alive) return;
+      
+      const relativeX = (enemy.position.x - this.player.position.x) / 10;
+      const relativeY = (enemy.position.y - this.player.position.y) / 10;
+      
+      if (Math.abs(relativeX) < radarSize && Math.abs(relativeY) < radarSize) {
+        this.ctx.fillStyle = enemy.type === 'mothership' ? '#FF0000' : enemy.type === 'destroyer' ? '#FF4500' : '#FFFF00';
+        this.ctx.beginPath();
+        this.ctx.arc(radarSize + relativeX, radarSize + relativeY, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    });
+    
+    this.ctx.restore();
+    
+    // Top-right radar (mirror)
+    this.ctx.save();
+    this.ctx.strokeStyle = '#00FF00';
+    this.ctx.lineWidth = 2;
     this.ctx.beginPath();
-    this.ctx.moveTo(this.player.position.x - 30, this.player.position.y - 40);
-    this.ctx.lineTo(this.player.position.x + 30, this.player.position.y - 40);
-    this.ctx.moveTo(this.player.position.x, this.player.position.y - 60);
-    this.ctx.lineTo(this.player.position.x, this.player.position.y - 20);
+    this.ctx.arc(this.width - radarSize, radarSize, radarSize, 0, Math.PI * 2);
     this.ctx.stroke();
+    
+    // Draw projectiles as dots
+    this.enemyProjectiles.forEach(proj => {
+      const relativeX = (proj.position.x - this.player.position.x) / 10;
+      const relativeY = (proj.position.y - this.player.position.y) / 10;
+      
+      if (Math.abs(relativeX) < radarSize && Math.abs(relativeY) < radarSize) {
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.beginPath();
+        this.ctx.arc(this.width - radarSize + relativeX, radarSize + relativeY, 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    });
     
     this.ctx.restore();
   }
@@ -934,7 +1152,7 @@ export class LasatGame extends BaseGame {
     this.ctx.save();
     this.ctx.translate(enemy.position.x, enemy.position.y);
 
-    // All enemies are now AI machines - distinct visual markers
+    // Ko-Dan Armada ship designs
     if (enemy.enraged) {
         const pulse = Math.sin(Date.now() * 0.02) * 0.5 + 0.5;
         this.ctx.shadowColor = `rgba(255, 0, 0, ${pulse})`;
@@ -942,88 +1160,85 @@ export class LasatGame extends BaseGame {
     }
 
     switch (enemy.type) {
-      case 'giant':
-        // Mechanical giant with glowing core
-        this.ctx.fillStyle = '#2C3E50';
-        this.ctx.fillRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
-        
-        // Glowing AI core
-        this.ctx.fillStyle = '#FF0000';
-        this.ctx.fillRect(-enemy.size/4, -enemy.size/4, enemy.size/2, enemy.size/2);
-        
-        // Mechanical details
-        this.ctx.strokeStyle = '#00FFFF';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
-        
-        // AI indicator
-        this.ctx.fillStyle = '#FF0000';
-        this.ctx.font = '8px monospace';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('AI', 0, -enemy.size/2 - 5);
-        break;
-        
-      case 'dragon':
-        // Mechanical dragon with sharp edges
+      case 'fighter':
+        // Ko-Dan Fighter - small, fast, angular
         this.ctx.fillStyle = '#8B0000';
         this.ctx.beginPath();
         this.ctx.moveTo(0, -enemy.size/2);
-        this.ctx.lineTo(-enemy.size/2, enemy.size/2);
-        this.ctx.lineTo(enemy.size/2, enemy.size/2);
+        this.ctx.lineTo(-enemy.size/3, enemy.size/2);
+        this.ctx.lineTo(enemy.size/3, enemy.size/2);
         this.ctx.closePath();
         this.ctx.fill();
         
-        // Mechanical overlay
+        // Wing details
         this.ctx.strokeStyle = '#FF0000';
-        this.ctx.lineWidth = 3;
+        this.ctx.lineWidth = 2;
         this.ctx.stroke();
         
-        // Glowing eyes
-        this.ctx.fillStyle = '#FF0000';
-        this.ctx.fillRect(-5, -10, 3, 3);
-        this.ctx.fillRect(2, -10, 3, 3);
-        
-        // AI label
-        this.ctx.fillStyle = '#FF0000';
+        // Squadron indicator
+        this.ctx.fillStyle = '#FFD700';
         this.ctx.font = '8px monospace';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('ROGUE', 0, -enemy.size/2 - 5);
+        this.ctx.fillText(`${enemy.squadron}`, 0, -enemy.size/2 - 8);
         break;
         
-      case 'valkyrie':
-        // Mechanical valkyrie with angular design
-        this.ctx.fillStyle = '#4169E1';
+      case 'destroyer':
+        // Ko-Dan Destroyer - heavy, blocky, powerful
+        this.ctx.fillStyle = '#2C3E50';
+        this.ctx.fillRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
+        
+        // Heavy armor plating
+        this.ctx.strokeStyle = '#FF4500';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(-enemy.size/2, -enemy.size/2, enemy.size, enemy.size);
+        
+        // Weapon ports
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.fillRect(-enemy.size/4, -enemy.size/4, enemy.size/2, enemy.size/2);
+        
+        // Destroyer label
+        this.ctx.fillStyle = '#FF4500';
+        this.ctx.font = '10px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('DESTROYER', 0, -enemy.size/2 - 10);
+        break;
+        
+      case 'mothership':
+        // Ko-Dan Mothership - massive, intimidating
+        this.ctx.fillStyle = '#1a1a2e';
         this.ctx.beginPath();
         this.ctx.arc(0, 0, enemy.size/2, 0, Math.PI * 2);
         this.ctx.fill();
         
-        // Mechanical wings
-        this.ctx.fillStyle = '#34495E';
-        this.ctx.fillRect(-enemy.size, -5, enemy.size/2, 10);
-        this.ctx.fillRect(enemy.size/2, -5, enemy.size/2, 10);
+        // Outer ring
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, enemy.size/2, 0, Math.PI * 2);
+        this.ctx.stroke();
         
-        // AI core
+        // Inner structure
         this.ctx.fillStyle = '#FF0000';
         this.ctx.beginPath();
         this.ctx.arc(0, 0, enemy.size/4, 0, Math.PI * 2);
         this.ctx.fill();
         
-        // AI label
+        // Mothership label
         this.ctx.fillStyle = '#FF0000';
-        this.ctx.font = '8px monospace';
+        this.ctx.font = '12px monospace';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('BOT', 0, -enemy.size/2 - 5);
+        this.ctx.fillText('MOTHERSHIP', 0, -enemy.size/2 - 15);
         break;
     }
 
-    // Health bar with AI coloring
+    // Health bar
     const barWidth = enemy.size;
     const barHeight = 4;
     const healthPercent = enemy.health / enemy.maxHealth;
     
     this.ctx.fillStyle = '#FF0000';
     this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 15, barWidth, barHeight);
-    this.ctx.fillStyle = '#00FFFF';
+    this.ctx.fillStyle = '#00FF00';
     this.ctx.fillRect(-barWidth/2, -enemy.size/2 - 15, barWidth * healthPercent, barHeight);
 
     this.ctx.restore();
@@ -1033,13 +1248,19 @@ export class LasatGame extends BaseGame {
     this.ctx.save();
     
     switch (proj.type) {
-      case 'lightning_burst':
-        this.ctx.fillStyle = '#FFFF00';
-        this.ctx.strokeStyle = '#0080FF';
+      case 'ion_cannon':
+        this.ctx.fillStyle = '#FF4500';
+        this.ctx.strokeStyle = '#FFD700';
         this.ctx.lineWidth = 2;
+        this.ctx.shadowColor = '#FF4500';
+        this.ctx.shadowBlur = 8;
         break;
-      case 'plasma':
-        this.ctx.fillStyle = '#FF69B4';
+      case 'laser':
+        this.ctx.fillStyle = '#00FFFF';
+        this.ctx.strokeStyle = '#0080FF';
+        this.ctx.lineWidth = 1;
+        this.ctx.shadowColor = '#00FFFF';
+        this.ctx.shadowBlur = 5;
         break;
       default:
         this.ctx.fillStyle = '#00FFFF';
@@ -1048,7 +1269,7 @@ export class LasatGame extends BaseGame {
     this.ctx.beginPath();
     this.ctx.arc(proj.position.x, proj.position.y, proj.size, 0, Math.PI * 2);
     this.ctx.fill();
-    if (proj.type === 'lightning_burst') {
+    if (proj.type === 'ion_cannon') {
       this.ctx.stroke();
     }
     
@@ -1057,7 +1278,9 @@ export class LasatGame extends BaseGame {
 
   private drawEnemyProjectile(proj: Projectile) {
     this.ctx.save();
-    this.ctx.fillStyle = proj.type === 'fire_breath' ? '#FF4500' : '#DC143C';
+    this.ctx.fillStyle = proj.type === 'destroyer_blast' ? '#FF4500' : '#DC143C';
+    this.ctx.shadowColor = '#FF0000';
+    this.ctx.shadowBlur = 5;
     this.ctx.beginPath();
     this.ctx.arc(proj.position.x, proj.position.y, proj.size, 0, Math.PI * 2);
     this.ctx.fill();
@@ -1095,10 +1318,10 @@ export class LasatGame extends BaseGame {
     }
 
     // Controls
-    this.drawText('WASD: Move | Space: Shoot | X: Special | Z: Shield', this.width / 2, this.height - 40, 12, '#DDD', 'center');
+    this.drawText('WASD: Move | Space: Laser | X: Ion Cannon | Z: Death Blossom', this.width / 2, this.height - 40, 12, '#DDD', 'center');
     
-    // Humanity vs Machine theme
-    this.drawText('HUMAN RESISTANCE: Fight the AI Uprising with Honor!', this.width / 2, this.height - 20, 12, '#FFD700', 'center');
+    // Last Starfighter theme
+    this.drawText('GUNSTAR FIGHTER: Defend Earth from the Ko-Dan Armada!', this.width / 2, this.height - 20, 12, '#FFD700', 'center');
   }
 
   private drawTargetPanels() {
