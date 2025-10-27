@@ -106,6 +106,13 @@ export class LasatGame extends BaseGame {
   private bossActive = false; // Whether Sinistar boss is active
   private bossPhase = 1; // Current boss phase (1-3)
   private enemyCommandTimer = 0; // Timer for enemy command announcements
+  private lives = 5; // Number of lives remaining
+  private gameState: 'start' | 'playing' | 'gameOver' | 'select' = 'start'; // Game state
+  private konamiCode: string[] = []; // Konami code input sequence
+  private konamiCodeSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA']; // ↑↑↓↓←→←→BA
+  private konamiCodeActivated = false; // Whether Konami code has been activated
+  private enemiesDefeated = 0; // Total enemies defeated
+  private bossDefeated = false; // Whether boss has been defeated
   private enemyCommands = [
     "KO-DAN ARMADA: DEPLOY FIGHTER SQUADRONS!",
     "DESTROY THE GUNSTAR FIGHTER!",
@@ -137,6 +144,18 @@ export class LasatGame extends BaseGame {
   };
 
   init() {
+    // Initialize game state
+    this.gameState = 'start';
+    this.lives = 5;
+    this.score = 0;
+    this.ragnarokPhase = 1;
+    this.bossActive = false;
+    this.bossPhase = 1;
+    this.enemiesDefeated = 0;
+    this.bossDefeated = false;
+    this.konamiCode = [];
+    this.konamiCodeActivated = false;
+    
     // Initialize player (Gunstar Fighter) - increased health for better survivability
     this.player = {
       position: { x: this.width / 2, y: this.height - 100 },
@@ -342,6 +361,22 @@ export class LasatGame extends BaseGame {
   }
 
   update(_deltaTime: number) {
+    // Handle different game states
+    if (this.gameState === 'start' || this.gameState === 'select') {
+      this.handleStartScreenInput();
+      return;
+    }
+    
+    if (this.gameState === 'gameOver') {
+      this.handleGameOverInput();
+      return;
+    }
+    
+    // Playing state - normal game logic
+    this.updateGameplay(_deltaTime);
+  }
+
+  private updateGameplay(_deltaTime: number) {
     // Handle input
     this.handleMovement();
 
@@ -428,6 +463,35 @@ export class LasatGame extends BaseGame {
     }
 
     this.onScoreUpdate?.(this.score);
+  }
+
+  private handleStartScreenInput() {
+    // Handle Konami code input
+    this.keys.forEach(key => {
+      if (this.konamiCodeSequence[this.konamiCode.length] === key) {
+        this.konamiCode.push(key);
+        if (this.konamiCode.length === this.konamiCodeSequence.length) {
+          this.konamiCodeActivated = true;
+          this.konamiCode = []; // Reset for next time
+        }
+      } else {
+        this.konamiCode = []; // Reset if wrong input
+      }
+    });
+    
+    // Start game with Enter or Space
+    if (this.keys.has('Enter') || this.keys.has('Space')) {
+      this.gameState = 'playing';
+      this.keys.clear();
+    }
+  }
+
+  private handleGameOverInput() {
+    // Restart game with Enter or Space
+    if (this.keys.has('Enter') || this.keys.has('Space')) {
+      this.init();
+      this.keys.clear();
+    }
   }
 
   private updateEnemyCommands() {
@@ -984,7 +1048,11 @@ export class LasatGame extends BaseGame {
           
           if (enemy.health <= 0) {
             enemy.alive = false;
+            this.enemiesDefeated++;
             this.score += enemy.type === 'sinistar_boss' ? 10000 : enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
+            if (enemy.type === 'sinistar_boss') {
+              this.bossDefeated = true;
+            }
             this.bossesDefeated++;
           }
           
@@ -1001,7 +1069,17 @@ export class LasatGame extends BaseGame {
           proj.alive = false;
           
           if (this.player.health <= 0) {
-            this.onGameOver?.();
+            this.lives--;
+            if (this.lives <= 0) {
+              this.gameState = 'gameOver';
+              this.onGameOver?.();
+            } else {
+              // Respawn player with full health
+              this.player.health = this.player.maxHealth;
+              this.player.position = { x: this.width / 2, y: this.height - 100 };
+              this.player.velocity = { x: 0, y: 0 };
+              this.gracePeriod = 180; // 3 seconds invulnerability
+            }
           }
         }
       });
@@ -1066,6 +1144,120 @@ export class LasatGame extends BaseGame {
   render() {
     this.clearCanvas();
 
+    // Handle different game states
+    if (this.gameState === 'start') {
+      this.drawStartScreen();
+      return;
+    }
+    
+    if (this.gameState === 'select') {
+      this.drawSelectScreen();
+      return;
+    }
+    
+    if (this.gameState === 'gameOver') {
+      this.drawGameOverScreen();
+      return;
+    }
+
+    // Playing state - normal game rendering
+    this.drawGameplay();
+  }
+
+  private drawStartScreen() {
+    // Draw background
+    this.drawNorseBackground();
+    
+    // Title
+    this.ctx.fillStyle = '#FFD700';
+    this.ctx.font = '48px monospace';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('THE LAST STARFIGHTER', this.width / 2, this.height / 2 - 100);
+    
+    // Subtitle
+    this.ctx.fillStyle = '#00FF00';
+    this.ctx.font = '24px monospace';
+    this.ctx.fillText('GUNSTAR FIGHTER', this.width / 2, this.height / 2 - 50);
+    
+    // Instructions
+    this.ctx.fillStyle = '#DDD';
+    this.ctx.font = '18px monospace';
+    this.ctx.fillText('PRESS ENTER OR SPACE TO START', this.width / 2, this.height / 2 + 50);
+    
+    // Konami code hint
+    this.ctx.fillStyle = '#666';
+    this.ctx.font = '14px monospace';
+    this.ctx.fillText('Try the Konami Code: ↑↑↓↓←→←→BA', this.width / 2, this.height / 2 + 100);
+    
+    // Konami code progress
+    if (this.konamiCode.length > 0) {
+      this.ctx.fillStyle = '#00FF00';
+      this.ctx.font = '16px monospace';
+      this.ctx.fillText(`Code Progress: ${this.konamiCode.length}/${this.konamiCodeSequence.length}`, this.width / 2, this.height / 2 + 130);
+    }
+    
+    // Konami code success
+    if (this.konamiCodeActivated) {
+      this.ctx.fillStyle = '#FFD700';
+      this.ctx.font = '20px monospace';
+      this.ctx.fillText('KONAMI CODE ACTIVATED!', this.width / 2, this.height / 2 + 160);
+      this.ctx.fillText('↑↑↓↓←→←→BA', this.width / 2, this.height / 2 + 190);
+    }
+  }
+
+  private drawSelectScreen() {
+    // Draw background
+    this.drawNorseBackground();
+    
+    // Title
+    this.ctx.fillStyle = '#FFD700';
+    this.ctx.font = '36px monospace';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('SELECT DIFFICULTY', this.width / 2, this.height / 2 - 100);
+    
+    // Options
+    this.ctx.fillStyle = '#DDD';
+    this.ctx.font = '20px monospace';
+    this.ctx.fillText('1 - EASY', this.width / 2, this.height / 2 - 20);
+    this.ctx.fillText('2 - NORMAL', this.width / 2, this.height / 2 + 20);
+    this.ctx.fillText('3 - HARD', this.width / 2, this.height / 2 + 60);
+    
+    // Instructions
+    this.ctx.fillStyle = '#666';
+    this.ctx.font = '16px monospace';
+    this.ctx.fillText('PRESS NUMBER TO SELECT', this.width / 2, this.height / 2 + 120);
+  }
+
+  private drawGameOverScreen() {
+    // Draw background
+    this.drawNorseBackground();
+    
+    // Game Over title
+    this.ctx.fillStyle = '#FF0000';
+    this.ctx.font = '48px monospace';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('GAME OVER', this.width / 2, this.height / 2 - 150);
+    
+    // Stats
+    this.ctx.fillStyle = '#DDD';
+    this.ctx.font = '20px monospace';
+    this.ctx.fillText(`FINAL SCORE: ${this.score}`, this.width / 2, this.height / 2 - 80);
+    this.ctx.fillText(`WAVE REACHED: ${this.ragnarokPhase}`, this.width / 2, this.height / 2 - 50);
+    this.ctx.fillText(`ENEMIES DEFEATED: ${this.enemiesDefeated}`, this.width / 2, this.height / 2 - 20);
+    this.ctx.fillText(`BOSS DEFEATED: ${this.bossDefeated ? 'YES' : 'NO'}`, this.width / 2, this.height / 2 + 10);
+    
+    // Lives remaining
+    this.ctx.fillStyle = '#FFD700';
+    this.ctx.font = '18px monospace';
+    this.ctx.fillText(`LIVES REMAINING: ${this.lives}`, this.width / 2, this.height / 2 + 40);
+    
+    // Restart instructions
+    this.ctx.fillStyle = '#00FF00';
+    this.ctx.font = '18px monospace';
+    this.ctx.fillText('PRESS ENTER OR SPACE TO RESTART', this.width / 2, this.height / 2 + 100);
+  }
+
+  private drawGameplay() {
     // Draw Norse/space background
     this.drawNorseBackground();
 
@@ -1228,9 +1420,10 @@ export class LasatGame extends BaseGame {
     this.ctx.fillStyle = '#FFD700';
     this.ctx.font = '14px monospace';
     this.ctx.textAlign = 'left';
-    this.ctx.fillText(`HULL TEMP: ${Math.round(this.player.health)}`, 20, this.height - 60);
-    this.ctx.fillText(`SCORE: ${this.score}`, 20, this.height - 40);
-    this.ctx.fillText(`GROUP: ${this.ragnarokPhase}`, 20, this.height - 20);
+    this.ctx.fillText(`HULL TEMP: ${Math.round(this.player.health)}`, 20, this.height - 80);
+    this.ctx.fillText(`SCORE: ${this.score}`, 20, this.height - 60);
+    this.ctx.fillText(`GROUP: ${this.ragnarokPhase}`, 20, this.height - 40);
+    this.ctx.fillText(`LIVES: ${this.lives}`, 20, this.height - 20);
     
     // Grace period indicator
     if (this.gracePeriod > 0) {
