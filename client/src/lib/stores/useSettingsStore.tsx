@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { gameSanitizers, rateLimiters } from '../utils/security';
 
 interface SettingsState {
   // Graphics settings
@@ -129,13 +130,87 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   // Actions
-  setGraphicsQuality: (quality) => set({ graphicsQuality: quality }),
-  setFpsCap: (fps) => set({ fpsCap: fps }),
-  setEnableDprScaling: (enabled) => set({ enableDprScaling: enabled }),
-  setMasterVolume: (volume) => set({ masterVolume: volume }),
-  setMusicVolume: (volume) => set({ musicVolume: volume }),
-  setSfxVolume: (volume) => set({ sfxVolume: volume }),
-  setVoiceVolume: (volume) => set({ voiceVolume: volume }),
+  setGraphicsQuality: (quality) => {
+    // Rate limiting
+    if (!rateLimiters.settingsChanges.isAllowed('graphics-quality')) {
+      console.warn('Settings change rate limited');
+      return;
+    }
+    
+    const validQualities = ['low', 'medium', 'high'];
+    if (validQualities.includes(quality)) {
+      set({ graphicsQuality: quality });
+    }
+  },
+  
+  setFpsCap: (fps) => {
+    if (!rateLimiters.settingsChanges.isAllowed('fps-cap')) {
+      console.warn('Settings change rate limited');
+      return;
+    }
+    
+    const validFps = [30, 60, 120, 0];
+    if (validFps.includes(fps)) {
+      set({ fpsCap: fps });
+    }
+  },
+  
+  setEnableDprScaling: (enabled) => {
+    if (!rateLimiters.settingsChanges.isAllowed('dpr-scaling')) {
+      console.warn('Settings change rate limited');
+      return;
+    }
+    
+    set({ enableDprScaling: Boolean(enabled) });
+  },
+  
+  setMasterVolume: (volume) => {
+    if (!rateLimiters.settingsChanges.isAllowed('master-volume')) {
+      console.warn('Settings change rate limited');
+      return;
+    }
+    
+    const validatedVolume = Math.max(0, Math.min(100, Number(volume)));
+    if (!isNaN(validatedVolume)) {
+      set({ masterVolume: validatedVolume });
+    }
+  },
+  
+  setMusicVolume: (volume) => {
+    if (!rateLimiters.settingsChanges.isAllowed('music-volume')) {
+      console.warn('Settings change rate limited');
+      return;
+    }
+    
+    const validatedVolume = Math.max(0, Math.min(100, Number(volume)));
+    if (!isNaN(validatedVolume)) {
+      set({ musicVolume: validatedVolume });
+    }
+  },
+  
+  setSfxVolume: (volume) => {
+    if (!rateLimiters.settingsChanges.isAllowed('sfx-volume')) {
+      console.warn('Settings change rate limited');
+      return;
+    }
+    
+    const validatedVolume = Math.max(0, Math.min(100, Number(volume)));
+    if (!isNaN(validatedVolume)) {
+      set({ sfxVolume: validatedVolume });
+    }
+  },
+  
+  setVoiceVolume: (volume) => {
+    if (!rateLimiters.settingsChanges.isAllowed('voice-volume')) {
+      console.warn('Settings change rate limited');
+      return;
+    }
+    
+    const validatedVolume = Math.max(0, Math.min(100, Number(volume)));
+    if (!isNaN(validatedVolume)) {
+      set({ voiceVolume: validatedVolume });
+    }
+  },
   setReduceMotion: (enabled) => set({ reduceMotion: enabled }),
   setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
   setHapticsIntensity: (intensity) => set({ hapticsIntensity: intensity }),

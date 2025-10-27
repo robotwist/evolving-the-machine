@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { gameValidation, ValidationError } from '../utils/validation';
+import { antiCheat, rateLimiters, SecurityError } from '../utils/security';
 
 interface ScoreStore {
   scores: Record<number, number>;
@@ -18,19 +20,41 @@ export const useScoreStore = create<ScoreStore>()(
       highScores: {},
       
       updateScore: (stage, score) => {
-        set((state) => {
-          const newScores = { ...state.scores, [stage]: score };
-          const newHighScores = { ...state.highScores };
+        try {
+          // Validate inputs
+          const validatedStage = gameValidation.stage(stage);
+          const validatedScore = gameValidation.score(score);
           
-          if (!newHighScores[stage] || score > newHighScores[stage]) {
-            newHighScores[stage] = score;
+          // Rate limiting
+          if (!rateLimiters.scoreSubmissions.isAllowed('score-update')) {
+            console.warn('Score update rate limited');
+            return;
           }
           
-          return {
-            scores: newScores,
-            highScores: newHighScores
-          };
-        });
+          // Anti-cheat: detect impossible scores
+          const timeElapsed = Date.now(); // This would be passed from the game
+          if (antiCheat.detectImpossibleScore(validatedScore, validatedStage, timeElapsed)) {
+            console.warn('Suspicious score detected:', { stage: validatedStage, score: validatedScore });
+            // In production, you might want to flag this for review
+            return;
+          }
+          
+          set((state) => {
+            const newScores = { ...state.scores, [validatedStage]: validatedScore };
+            const newHighScores = { ...state.highScores };
+            
+            if (!newHighScores[validatedStage] || validatedScore > newHighScores[validatedStage]) {
+              newHighScores[validatedStage] = validatedScore;
+            }
+            
+            return {
+              scores: newScores,
+              highScores: newHighScores
+            };
+          });
+        } catch (error) {
+          console.error('Invalid score update:', error);
+        }
       },
       
       resetScores: () => set({

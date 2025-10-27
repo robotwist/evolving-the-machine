@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { gameValidation, ValidationError } from '../utils/validation';
+import { gameValidators, SecurityError } from '../utils/security';
 
 const MAX_STAGE = 8;
 
@@ -38,15 +40,53 @@ export const useGameStore = create<GameStore>()(
       showDemo: process.env.NODE_ENV === 'production', // Show demo only in development
       productionMode: process.env.NODE_ENV === 'production',
       
-      setCurrentScreen: (screen) => set({ currentScreen: screen }),
+      setCurrentScreen: (screen) => {
+        // Validate screen transition
+        const currentScreen = get().currentScreen;
+        if (!gameValidators.gameStateTransition(currentScreen, screen)) {
+          console.warn(`Invalid screen transition from ${currentScreen} to ${screen}`);
+          return;
+        }
+        set({ currentScreen: screen });
+      },
 
       // Sets the current stage and resets game state to 'playing'
-      setCurrentStage: (stage) => set({
-        currentStage: stage,
-        gameState: 'playing'
-      }),
+      setCurrentStage: (stage) => {
+        try {
+          const validatedStage = gameValidation.stage(stage);
+          const currentStage = get().currentStage;
+          
+          // Check if stage unlock is valid
+          if (!gameValidators.stageUnlock(currentStage, validatedStage)) {
+            console.warn(`Invalid stage unlock request: ${currentStage} -> ${validatedStage}`);
+            return;
+          }
+          
+          set({
+            currentStage: validatedStage,
+            gameState: 'playing'
+          });
+        } catch (error) {
+          console.error('Invalid stage:', error);
+        }
+      },
 
-      setGameState: (state) => set({ gameState: state }),
+      setGameState: (state) => {
+        try {
+          const validatedState = gameValidation.gameState(state);
+          const currentState = get().gameState;
+          
+          // Validate state transition
+          if (!gameValidators.gameStateTransition(currentState, validatedState)) {
+            console.warn(`Invalid state transition from ${currentState} to ${validatedState}`);
+            return;
+          }
+          
+          set({ gameState: validatedState });
+        } catch (error) {
+          console.error('Invalid game state:', error);
+        }
+      },
 
       setShowDemo: (show) => set({ showDemo: show }),
 
