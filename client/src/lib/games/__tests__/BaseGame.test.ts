@@ -39,9 +39,8 @@ Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
 global.requestAnimationFrame = jest.fn((cb) => setTimeout(cb, 16));
 global.cancelAnimationFrame = jest.fn();
 
-// Mock performance.now
-const originalPerformanceNow = global.performance.now;
-global.performance.now = jest.fn(() => Date.now());
+// Mock performance.now using jest.spyOn
+const performanceNowSpy = jest.spyOn(performance, 'now').mockImplementation(() => Date.now());
 
 // Mock window properties
 Object.defineProperty(window, 'devicePixelRatio', {
@@ -105,6 +104,7 @@ describe('BaseGame', () => {
 
   afterEach(() => {
     game.destroy();
+    performanceNowSpy.mockRestore();
   });
 
   describe('Initialization', () => {
@@ -156,7 +156,7 @@ describe('BaseGame', () => {
         .mockReturnValueOnce(16)   // Second frame (16ms later)
         .mockReturnValueOnce(32);  // Third frame (32ms later)
       
-      global.performance.now = mockNow;
+      performanceNowSpy.mockImplementation(mockNow);
       
       game.testStart();
       game.testGameLoop();

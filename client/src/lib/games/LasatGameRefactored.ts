@@ -3,8 +3,23 @@ import { Vector2 } from './types';
 import { LasatGameState } from './modules/LasatGameState';
 import { LasatPlayerManager } from './modules/LasatPlayerManager';
 import { LasatEnemyManager } from './modules/LasatEnemyManager';
-import { LasatCombatSystem } from './modules/LasatCombatSystem';
+import { LasatCombatSystem, ProjectileData, PowerUpData } from './modules/LasatCombatSystem';
 import { LasatRenderer } from './modules/LasatRenderer';
+
+interface EnemyHit {
+  enemy?: any;
+  enemyIndex?: number;
+  projectile: ProjectileData;
+  projIndex: number;
+  damage: number;
+}
+
+interface CollisionData {
+  playerHit: boolean;
+  enemiesHit: EnemyHit[];
+  powerUpsCollected: PowerUpData[];
+  score: number;
+}
 
 export class LasatGame extends BaseGame {
   // Game modules
@@ -116,7 +131,7 @@ export class LasatGame extends BaseGame {
 
     // Handle player hits
     if (collisions.playerHit && this.gracePeriod <= 0) {
-      const hitData = collisions.enemiesHit.find(hit => hit.damage);
+      const hitData = collisions.enemiesHit.find((hit: EnemyHit) => hit.damage);
       if (hitData) {
         const damageTaken = this.playerManager.takeDamage(hitData.damage);
         if (damageTaken) {
@@ -128,7 +143,7 @@ export class LasatGame extends BaseGame {
     }
 
     // Handle enemy hits
-    collisions.enemiesHit.forEach(hit => {
+    collisions.enemiesHit.forEach((hit: EnemyHit) => {
       if (hit.enemy) {
         const enemyDied = this.enemyManager.takeDamage(hit.enemy, hit.damage);
         if (enemyDied) {
@@ -140,7 +155,7 @@ export class LasatGame extends BaseGame {
     });
 
     // Handle powerup collection
-    collisions.powerUpsCollected.forEach(powerUp => {
+    collisions.powerUpsCollected.forEach((powerUp: PowerUpData) => {
       this.collectPowerUp(powerUp);
       this.combatSystem.removePowerUp(powerUp);
     });
@@ -180,7 +195,7 @@ export class LasatGame extends BaseGame {
     });
   }
 
-  private collectPowerUp(powerUp: any) {
+  private collectPowerUp(powerUp: PowerUpData) {
     const player = this.playerManager.getPlayer();
     
     switch (powerUp.type) {

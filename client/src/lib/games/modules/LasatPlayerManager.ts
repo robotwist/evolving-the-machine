@@ -32,6 +32,29 @@ export class LasatPlayerManager {
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
+    // Initialize player with default values
+    this.player = {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      size: 20,
+      health: 200,
+      maxHealth: 200,
+      alive: true,
+      energy: 100,
+      maxEnergy: 100,
+      weaponType: 'laser',
+      shieldActive: false,
+      shieldTimer: 0,
+      cockpitView: false,
+      targetingLock: false,
+      targetLocked: null,
+      deathBlossomReady: false,
+      deathBlossomCooldown: 0,
+      weaponEnergy: {
+        laser: 100,
+        ion: 100
+      }
+    };
     this.initPlayer();
   }
 

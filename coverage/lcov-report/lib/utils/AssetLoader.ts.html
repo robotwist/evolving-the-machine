@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.68% </span>
+                <span class="strong">12.5% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>5/88</span>
+                <span class='fraction'>11/88</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">13.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/30</span>
+                <span class='fraction'>4/30</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">4% </span>
+                <span class="strong">16% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/25</span>
+                <span class='fraction'>4/25</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">6.17% </span>
+                <span class="strong">12.34% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>5/81</span>
+                <span class='fraction'>10/81</span>
             </div>
         
             
@@ -289,11 +289,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -469,7 +469,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -480,14 +480,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -682,9 +682,9 @@ export class AssetLoader {
 <span class="cstat-no" title="statement not covered" >    console.log(`✅ Stage ${stage} assets preloaded`);</span>
   }
 &nbsp;
-  private <span class="fstat-no" title="function not covered" >getStageAssets(</span>stage: number): string[] {
+  private getStageAssets(stage: number): string[] {
     // Define which assets are needed for each stage
-    const stageAssetMap: Record&lt;number, string[]&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+    const stageAssetMap: Record&lt;number, string[]&gt; = {
       1: [this.manifest.textures.asphalt, this.manifest.sounds.hit], // Pong
       2: [this.manifest.textures.wood, this.manifest.sounds.hit, this.manifest.sounds.success], // Breakout
       3: [this.manifest.textures.sky, this.manifest.sounds.hit], // Asteroids
@@ -695,14 +695,14 @@ export class AssetLoader {
       8: [this.manifest.textures.asphalt, this.manifest.sounds.hit], // Betrayal
     };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return stageAssetMap[stage] || [];</span>
+    return stageAssetMap[stage] || [];
   }
 &nbsp;
   // Get loading progress for a set of assets
-<span class="fstat-no" title="function not covered" >  getLoadingProgress(</span>urls: string[]): number {
-    const total = <span class="cstat-no" title="statement not covered" >urls.length;</span>
-    const loaded = <span class="cstat-no" title="statement not covered" >urls.filter(<span class="fstat-no" title="function not covered" >url </span>=&gt; <span class="cstat-no" title="statement not covered" >this.loadedAssets.has(url))</span>.length;</span>
-<span class="cstat-no" title="statement not covered" >    return total &gt; 0 ? loaded / total : 1;</span>
+  getLoadingProgress(urls: string[]): number {
+    const total = urls.length;
+    const loaded = urls.filter(url =&gt; this.loadedAssets.has(url)).length;
+    return total &gt; 0 ? loaded / total : 1;
   }
 }
 &nbsp;
@@ -715,7 +715,7 @@ export const assetLoader = new AssetLoader();
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-27T20:35:19.160Z
+                at 2025-10-27T22:27:33.399Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
