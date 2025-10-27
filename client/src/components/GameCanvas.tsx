@@ -7,6 +7,8 @@ import { useIsMobile } from '../hooks/use-is-mobile';
 import { MobileControlsManager } from '../lib/controls/MobileControls';
 import { assetLoader } from '../lib/utils/AssetLoader';
 import { GameErrorBoundary, useGameErrorHandler } from './GameErrorBoundary';
+import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { PerformanceDashboard } from './PerformanceDashboard';
 
 // Lazy load game classes for code splitting
 const loadGame = async (stage: number): Promise<new (ctx: CanvasRenderingContext2D, width: number, height: number) => BaseGame> => {
@@ -186,6 +188,10 @@ function GameCanvasInner() {
   const isMobile = useIsMobile();
   const mobileControlsRef = useRef<MobileControlsManager | null>(null);
   const handleError = useGameErrorHandler(`Stage-${currentStage}`);
+  
+  // Performance monitoring
+  const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false);
+  const { startMonitoring, stopMonitoring, addDrawCall, setParticleCount } = usePerformanceMonitor();
 
   const applyCanvasSize = useCallback(() => {
     const canvas = canvasRef.current;
@@ -283,17 +289,49 @@ function GameCanvasInner() {
     }
   }, [gameState, gameRef]);
 
+  // Performance monitoring effects
+  useEffect(() => {
+    if (gameState === 'playing') {
+      startMonitoring();
+    } else {
+      stopMonitoring();
+    }
+    
+    return () => {
+      stopMonitoring();
+    };
+  }, [gameState, startMonitoring, stopMonitoring]);
+
+  // Keyboard shortcut for performance dashboard (Ctrl+Shift+P)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        setShowPerformanceDashboard(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="border border-gray-600"
-      style={{
-        width: '100vw',
-        height: '100vh',
-        touchAction: 'none',
-        objectFit: 'contain'
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="border border-gray-600"
+        style={{
+          width: '100vw',
+          height: '100vh',
+          touchAction: 'none',
+          objectFit: 'contain'
+        }}
+      />
+      <PerformanceDashboard
+        isVisible={showPerformanceDashboard}
+        onToggle={() => setShowPerformanceDashboard(prev => !prev)}
+      />
+    </>
   );
 }
 
