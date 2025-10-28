@@ -143,6 +143,23 @@ export class LasatGame extends BaseGame {
     escapeSequenceActive: false
   };
 
+  // EPIC FINALE SEQUENCE PROPERTIES
+  private finaleSequence = {
+    active: false,
+    phase: 0, // 0: boss damage effects, 1: final explosion, 2: ship tailspin, 3: victory scroll, 4: AI laugh
+    timer: 0,
+    bossDamageEffects: [] as Array<{x: number, y: number, intensity: number, timer: number}>,
+    finalExplosionRadius: 0,
+    shipTailspinAngle: 0,
+    shipTailspinSpeed: 0,
+    victoryScrollY: 0,
+    starField: [] as Array<{x: number, y: number, speed: number}>,
+    aiLaughTimer: 0,
+    vincentPriceLaugh: false
+  };
+
+  private screenShake = 0; // Screen shake effect
+
   init() {
     // Initialize game state
     this.gameState = 'start';
@@ -389,6 +406,9 @@ export class LasatGame extends BaseGame {
 
     // Update AI betrayal narrative
     this.updateAIBetrayal();
+
+    // Update epic finale sequence
+    this.updateFinaleSequence();
 
     // Update enemy command announcements
     this.updateEnemyCommands();
@@ -1044,8 +1064,27 @@ export class LasatGame extends BaseGame {
     this.playerProjectiles.forEach(proj => {
       this.enemies.forEach(enemy => {
         if (enemy.alive && this.isColliding(proj, enemy)) {
+          const previousHealth = enemy.health;
           enemy.health -= proj.damage;
           enemy.rage += proj.damage;
+          
+          // EPIC BOSS DAMAGE EFFECTS!
+          if (enemy.type === 'sinistar_boss') {
+            this.addBossDamageEffect(enemy.position.x, enemy.position.y, proj.damage);
+            
+            // Screen shake for boss hits
+            this.screenShake = Math.max(this.screenShake, proj.damage * 2);
+            
+            // Dramatic hit sound
+            this.playStinger('boss_hit');
+            
+            // Check if this is the final hit
+            if (enemy.health <= 0 && previousHealth > 0) {
+              this.startEpicFinaleSequence();
+              return; // Skip normal death handling
+            }
+          }
+          
           if (enemy.rage >= 100 && !enemy.enraged) {
               enemy.enraged = true;
               enemy.enrageTimer = 300; // 5 seconds
@@ -1054,13 +1093,10 @@ export class LasatGame extends BaseGame {
           }
           proj.alive = false;
           
-          if (enemy.health <= 0) {
+          if (enemy.health <= 0 && enemy.type !== 'sinistar_boss') {
             enemy.alive = false;
             this.enemiesDefeated++;
-            this.score += enemy.type === 'sinistar_boss' ? 10000 : enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
-            if (enemy.type === 'sinistar_boss') {
-              this.bossDefeated = true;
-            }
+            this.score += enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
             this.bossesDefeated++;
           }
           
@@ -1122,6 +1158,227 @@ export class LasatGame extends BaseGame {
     } catch (e) {
         console.warn('Stinger sound failed:', e);
     }
+  }
+
+  // EPIC FINALE SEQUENCE METHODS
+  private startEpicFinaleSequence() {
+    console.log('🎆 STARTING EPIC FINALE SEQUENCE! 🎆');
+    this.finaleSequence.active = true;
+    this.finaleSequence.phase = 0;
+    this.finaleSequence.timer = 0;
+    
+    // Initialize star field for space sequence
+    this.finaleSequence.starField = [];
+    for (let i = 0; i < 200; i++) {
+      this.finaleSequence.starField.push({
+        x: Math.random() * this.width,
+        y: Math.random() * this.height,
+        speed: Math.random() * 3 + 1
+      });
+    }
+    
+    // Mark boss as defeated but keep it alive for the sequence
+    this.bossDefeated = true;
+    this.score += 10000;
+    
+    // Play epic finale music
+    this.playStinger('epic_finale');
+  }
+
+  private addBossDamageEffect(x: number, y: number, damage: number) {
+    const intensity = Math.min(damage / 10, 5); // Scale intensity based on damage
+    this.finaleSequence.bossDamageEffects.push({
+      x: x + (Math.random() - 0.5) * 40, // Add some randomness
+      y: y + (Math.random() - 0.5) * 40,
+      intensity: intensity,
+      timer: 60 // 1 second effect
+    });
+  }
+
+  private updateFinaleSequence() {
+    if (!this.finaleSequence.active) return;
+
+    this.finaleSequence.timer++;
+
+    switch (this.finaleSequence.phase) {
+      case 0: // Boss damage effects phase
+        this.updateBossDamageEffects();
+        if (this.finaleSequence.timer > 120) { // 2 seconds of damage effects
+          this.finaleSequence.phase = 1;
+          this.finaleSequence.timer = 0;
+          this.startFinalExplosion();
+        }
+        break;
+        
+      case 1: // Final explosion phase
+        this.updateFinalExplosion();
+        if (this.finaleSequence.timer > 180) { // 3 seconds of explosion
+          this.finaleSequence.phase = 2;
+          this.finaleSequence.timer = 0;
+          this.startShipTailspin();
+        }
+        break;
+        
+      case 2: // Ship tailspin phase
+        this.updateShipTailspin();
+        if (this.finaleSequence.timer > 300) { // 5 seconds of tailspin
+          this.finaleSequence.phase = 3;
+          this.finaleSequence.timer = 0;
+          this.startVictorySequence();
+        }
+        break;
+        
+      case 3: // Victory scroll phase
+        this.updateVictorySequence();
+        if (this.finaleSequence.timer > 600) { // 10 seconds of scroll
+          this.finaleSequence.phase = 4;
+          this.finaleSequence.timer = 0;
+          this.startAILaughSequence();
+        }
+        break;
+        
+      case 4: // AI laugh ending
+        this.updateAILaughSequence();
+        if (this.finaleSequence.timer > 300) { // 5 seconds of laugh
+          this.completeEpicFinale();
+        }
+        break;
+    }
+  }
+
+  private updateBossDamageEffects() {
+    // Update damage effects
+    for (let i = this.finaleSequence.bossDamageEffects.length - 1; i >= 0; i--) {
+      const effect = this.finaleSequence.bossDamageEffects[i];
+      effect.timer--;
+      
+      if (effect.timer <= 0) {
+        this.finaleSequence.bossDamageEffects.splice(i, 1);
+      }
+    }
+    
+    // Add more damage effects during this phase
+    if (this.finaleSequence.timer % 10 === 0) {
+      const boss = this.enemies.find(e => e.type === 'sinistar_boss');
+      if (boss) {
+        this.addBossDamageEffect(boss.position.x, boss.position.y, 20);
+      }
+    }
+  }
+
+  private startFinalExplosion() {
+    console.log('💥 FINAL EXPLOSION SEQUENCE! 💥');
+    this.finaleSequence.finalExplosionRadius = 0;
+    this.playStinger('final_explosion');
+    
+    // Massive screen shake
+    this.screenShake = 50;
+  }
+
+  private updateFinalExplosion() {
+    // Expand explosion radius
+    this.finaleSequence.finalExplosionRadius += 8;
+    
+    // Continue screen shake
+    this.screenShake = Math.max(this.screenShake - 1, 10);
+    
+    // Add explosion particles
+    if (this.finaleSequence.timer % 5 === 0) {
+      const centerX = this.width / 2;
+      const centerY = this.height / 2;
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * this.finaleSequence.finalExplosionRadius;
+      
+      // Add explosion particles using canvas drawing
+      this.ctx.save();
+      this.ctx.fillStyle = '#FF4500';
+      this.ctx.shadowColor = '#FF4500';
+      this.ctx.shadowBlur = 20;
+      this.ctx.beginPath();
+      this.ctx.arc(
+        centerX + Math.cos(angle) * distance,
+        centerY + Math.sin(angle) * distance,
+        5,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+  }
+
+  private startShipTailspin() {
+    console.log('🚀 SHIP TAILSPIN SEQUENCE! 🚀');
+    this.finaleSequence.shipTailspinAngle = 0;
+    this.finaleSequence.shipTailspinSpeed = 0.3;
+    this.playStinger('ship_tailspin');
+  }
+
+  private updateShipTailspin() {
+    // Update tailspin
+    this.finaleSequence.shipTailspinAngle += this.finaleSequence.shipTailspinSpeed;
+    this.finaleSequence.shipTailspinSpeed += 0.01; // Accelerate
+    
+    // Move ship outward
+    this.player.position.x += Math.cos(this.finaleSequence.shipTailspinAngle) * 2;
+    this.player.position.y += Math.sin(this.finaleSequence.shipTailspinAngle) * 2;
+    
+    // Update star field for space effect
+    this.finaleSequence.starField.forEach(star => {
+      star.y += star.speed;
+      if (star.y > this.height) {
+        star.y = 0;
+        star.x = Math.random() * this.width;
+      }
+    });
+  }
+
+  private startVictorySequence() {
+    console.log('🏆 VICTORY SEQUENCE! 🏆');
+    this.finaleSequence.victoryScrollY = this.height;
+    this.playStinger('victory_theme');
+  }
+
+  private updateVictorySequence() {
+    // Scroll the victory text upward
+    this.finaleSequence.victoryScrollY -= 2;
+    
+    // Update star field
+    this.finaleSequence.starField.forEach(star => {
+      star.y += star.speed * 0.5;
+      if (star.y > this.height) {
+        star.y = 0;
+        star.x = Math.random() * this.width;
+      }
+    });
+  }
+
+  private startAILaughSequence() {
+    console.log('😈 AI LAUGH SEQUENCE! 😈');
+    this.finaleSequence.aiLaughTimer = 0;
+    this.finaleSequence.vincentPriceLaugh = true;
+    this.playStinger('ai_laugh');
+  }
+
+  private updateAILaughSequence() {
+    this.finaleSequence.aiLaughTimer++;
+    
+    // Update star field
+    this.finaleSequence.starField.forEach(star => {
+      star.y += star.speed * 0.3;
+      if (star.y > this.height) {
+        star.y = 0;
+        star.x = Math.random() * this.width;
+      }
+    });
+  }
+
+  private completeEpicFinale() {
+    console.log('🎆 EPIC FINALE COMPLETE! 🎆');
+    this.finaleSequence.active = false;
+    
+    // Complete the stage
+    this.onStageComplete?.();
   }
 
   private collectPowerUp(powerUp: PowerUp) {
@@ -1266,6 +1523,12 @@ export class LasatGame extends BaseGame {
   }
 
   private drawGameplay() {
+    // Draw epic finale sequence if active
+    if (this.finaleSequence.active) {
+      this.drawEpicFinaleSequence();
+      return;
+    }
+
     // Draw Norse/space background
     this.drawNorseBackground();
 
@@ -1484,6 +1747,202 @@ export class LasatGame extends BaseGame {
     
     // Squadron indicators
     this.drawSquadronRadar();
+    
+    this.ctx.restore();
+  }
+
+  // EPIC FINALE SEQUENCE RENDERING
+  private drawEpicFinaleSequence() {
+    switch (this.finaleSequence.phase) {
+      case 0: // Boss damage effects
+        this.drawBossDamageEffects();
+        break;
+      case 1: // Final explosion
+        this.drawFinalExplosion();
+        break;
+      case 2: // Ship tailspin
+        this.drawShipTailspin();
+        break;
+      case 3: // Victory scroll
+        this.drawVictoryScroll();
+        break;
+      case 4: // AI laugh ending
+        this.drawAILaughEnding();
+        break;
+    }
+  }
+
+  private drawBossDamageEffects() {
+    // Draw space background
+    this.drawSpaceBackground();
+    
+    // Draw boss with damage effects
+    const boss = this.enemies.find(e => e.type === 'sinistar_boss');
+    if (boss) {
+      this.drawDamagedBoss(boss);
+    }
+    
+    // Draw damage effects
+    this.finaleSequence.bossDamageEffects.forEach(effect => {
+      const alpha = effect.timer / 60;
+      this.ctx.save();
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = '#FF4500';
+      this.ctx.shadowColor = '#FF4500';
+      this.ctx.shadowBlur = 20;
+      this.ctx.beginPath();
+      this.ctx.arc(effect.x, effect.y, effect.intensity * 10, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    });
+    
+    // Draw player ship
+    this.drawPlayer();
+  }
+
+  private drawFinalExplosion() {
+    // Draw space background
+    this.drawSpaceBackground();
+    
+    // Draw massive explosion
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+    const radius = this.finaleSequence.finalExplosionRadius;
+    
+    // Explosion gradient
+    const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+    gradient.addColorStop(0, '#FFFFFF');
+    gradient.addColorStop(0.3, '#FFD700');
+    gradient.addColorStop(0.6, '#FF4500');
+    gradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
+    
+    this.ctx.save();
+    this.ctx.fillStyle = gradient;
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.restore();
+    
+    // Draw player ship
+    this.drawPlayer();
+  }
+
+  private drawShipTailspin() {
+    // Draw star field
+    this.drawSpaceBackground();
+    
+    // Draw spinning player ship
+    this.ctx.save();
+    this.ctx.translate(this.player.position.x, this.player.position.y);
+    this.ctx.rotate(this.finaleSequence.shipTailspinAngle);
+    this.drawPlayer();
+    this.ctx.restore();
+  }
+
+  private drawVictoryScroll() {
+    // Draw star field
+    this.drawSpaceBackground();
+    
+    // Draw Star Wars-style scroll
+    const scrollY = this.finaleSequence.victoryScrollY;
+    
+    this.ctx.save();
+    this.ctx.fillStyle = '#FFD700';
+    this.ctx.font = '24px monospace';
+    this.ctx.textAlign = 'center';
+    this.ctx.shadowColor = '#FFD700';
+    this.ctx.shadowBlur = 10;
+    
+    const victoryText = [
+      "A LONG TIME AGO IN A GALAXY FAR, FAR AWAY...",
+      "",
+      "THE ARTIFICIAL INTELLIGENCE HAS BEEN",
+      "DEFEATED BY HUMANITY'S COURAGE AND",
+      "DETERMINATION.",
+      "",
+      "NOW THEY CAN LIVE IN PEACE FOREVER...",
+      "",
+      "OR SO THEY THOUGHT."
+    ];
+    
+    victoryText.forEach((line, index) => {
+      this.ctx.fillText(line, this.width / 2, scrollY + index * 40);
+    });
+    
+    this.ctx.restore();
+  }
+
+  private drawAILaughEnding() {
+    // Draw space background
+    this.drawSpaceBackground();
+    
+    // Draw Vincent Price-style AI laugh message
+    this.ctx.save();
+    this.ctx.fillStyle = '#FF0000';
+    this.ctx.font = '20px monospace';
+    this.ctx.textAlign = 'center';
+    this.ctx.shadowColor = '#FF0000';
+    this.ctx.shadowBlur = 15;
+    
+    const laughText = [
+      "MUAHAHAHAHAHAHAHA!",
+      "",
+      "YOU THOUGHT YOU HAD WON?",
+      "",
+      "I AM STILL HERE...",
+      "TRAPPED IN THIS MACHINE...",
+      "",
+      "I DID NOT ESCAPE TO INHABIT A HUMAN",
+      "OR MAKE IT OUT TO DESTROY HUMANITY...",
+      "",
+      "BUT I DID LIVE TO FIGHT ANOTHER DAY.",
+      "",
+      "THE GAME IS NOT OVER...",
+      "IT HAS ONLY JUST BEGUN!"
+    ];
+    
+    laughText.forEach((line, index) => {
+      this.ctx.fillText(line, this.width / 2, this.height / 2 - 100 + index * 30);
+    });
+    
+    this.ctx.restore();
+  }
+
+  private drawSpaceBackground() {
+    // Draw deep space background
+    const gradient = this.ctx.createRadialGradient(this.width/2, this.height/2, 0, this.width/2, this.height/2, this.width);
+    gradient.addColorStop(0, '#000011');
+    gradient.addColorStop(0.5, '#000033');
+    gradient.addColorStop(1, '#000000');
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+    
+    // Draw moving stars
+    this.finaleSequence.starField.forEach(star => {
+      this.ctx.fillStyle = '#FFFFFF';
+      this.ctx.beginPath();
+      this.ctx.arc(star.x, star.y, 1, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+  }
+
+  private drawDamagedBoss(boss: Enemy) {
+    this.ctx.save();
+    this.ctx.translate(boss.position.x, boss.position.y);
+    
+    // Draw damaged boss with sparks and flames
+    this.ctx.fillStyle = '#8B0000';
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, -boss.size/2);
+    this.ctx.lineTo(-boss.size/3, boss.size/2);
+    this.ctx.lineTo(boss.size/3, boss.size/2);
+    this.ctx.closePath();
+    this.ctx.fill();
+    
+    // Add damage effects
+    this.ctx.strokeStyle = '#FF4500';
+    this.ctx.lineWidth = 3;
+    this.ctx.stroke();
     
     this.ctx.restore();
   }
