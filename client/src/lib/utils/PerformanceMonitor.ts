@@ -107,7 +107,7 @@ export class PerformanceMonitor {
       const performanceScore = this.calculatePerformanceScore(this.fps, avgFrameTime, memoryUsage);
 
       // Detect bottlenecks
-      const bottlenecks = this.detectBottlenecks(this.fps, avgFrameTime, memoryUsage, this.drawCallCount, this.particleCount);
+      const bottlenecks = this.detectBottlenecks(this.fps, avgFrameTime, this.drawCallCount, this.particleCount, memoryUsage);
 
       // Generate recommendations
       const recommendations = this.generateRecommendations(bottlenecks, performanceScore);
