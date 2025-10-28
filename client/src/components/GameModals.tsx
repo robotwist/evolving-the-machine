@@ -9,7 +9,7 @@ import { SettingsForm } from './SettingsForm';
 // A generic modal wrapper
 function Modal({ children, onKeyDown, modalRef, className }: { children: React.ReactNode, onKeyDown: (e: React.KeyboardEvent) => void, modalRef: React.RefObject<HTMLDivElement>, className?: string }) {
   return (
-    <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onKeyDown={onKeyDown} role="dialog" tabIndex={-1} aria-hidden="true">
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center" onKeyDown={onKeyDown} role="dialog" tabIndex={-1} aria-modal="true">
       <Card className={`bg-black/90 border-white/20 ${className}`} ref={modalRef}>
         <CardContent className="p-6 text-center">
           {children}

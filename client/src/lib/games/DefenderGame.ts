@@ -212,6 +212,8 @@ export class DefenderGame extends BaseGame {
         if (audioState && !audioState.isMuted) {
           audioState.playSuccess();
         }
+        // Complete the stage
+        this.onStageComplete?.();
       }
     }
 
