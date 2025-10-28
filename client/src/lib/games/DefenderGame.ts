@@ -23,10 +23,12 @@ interface Player extends Entity {
 }
 
 interface Enemy extends Entity {
-  type: 'invader' | 'bomber';
+  type: 'invader' | 'bomber' | 'kamikaze';
   shootTimer: number;
   health: number;
   maxHealth: number;
+  kamikazeMode?: boolean; // For dive bomber behavior
+  originalVelocity?: { x: number; y: number }; // Store original movement
 }
 
 interface Civilian extends Entity {
@@ -75,6 +77,8 @@ export class DefenderGame extends BaseGame {
   };
   private shakeTimer = 0;
   private playerShootCooldown = 0;
+  private kamikazeTimer = 0; // Timer for kamikaze bombers (10 seconds = 600 frames)
+  private kamikazeInterval = 600; // 10 seconds in frames
   // Particle system for effects
   private particles: ParticleSystem | null = null;
   // Ambient whispers (WebAudio)
@@ -113,7 +117,11 @@ export class DefenderGame extends BaseGame {
   }
 
   private spawnWave() {
-    const enemyCount = 5 + this.wave * 2;
+    // Progressive difficulty: more enemies, faster movement, more bombers
+    const baseEnemyCount = 4;
+    const enemyCount = baseEnemyCount + this.wave * 3; // More enemies per wave
+    const bomberRatio = Math.min(0.3 + (this.wave * 0.1), 0.8); // More bombers in later waves
+    const speedMultiplier = 1 + (this.wave * 0.3); // Faster movement each wave
     
     for (let i = 0; i < enemyCount; i++) {
       // Spawn enemies at various heights, some within jump range
@@ -130,21 +138,24 @@ export class DefenderGame extends BaseGame {
         y = 50 + Math.random() * 100;
       }
 
+      const isBomber = Math.random() < bomberRatio;
       const enemy: Enemy = {
         position: {
           x: Math.random() * this.worldWidth,
           y: y
         },
         velocity: {
-          x: (Math.random() - 0.5) * 2,
+          x: (Math.random() - 0.5) * 2 * speedMultiplier, // Faster movement
           y: 0
         },
         size: { x: 25, y: 15 },
         alive: true,
-        type: Math.random() > 0.7 ? 'bomber' : 'invader',
-        shootTimer: Math.random() * 60,
-        health: Math.random() > 0.7 ? 150 : 75, // Bombers have more health
-        maxHealth: Math.random() > 0.7 ? 150 : 75
+        type: isBomber ? 'bomber' : 'invader',
+        shootTimer: Math.random() * (60 - this.wave * 5), // Faster shooting each wave
+        health: isBomber ? 150 + (this.wave * 20) : 75 + (this.wave * 10), // More health each wave
+        maxHealth: isBomber ? 150 + (this.wave * 20) : 75 + (this.wave * 10),
+        kamikazeMode: false,
+        originalVelocity: { x: 0, y: 0 } // Will be set when needed
       };
       
       this.enemies.push(enemy);
@@ -196,6 +207,9 @@ export class DefenderGame extends BaseGame {
 
     this.updatePowerups();
 
+    // Update kamikaze bombers
+    this.updateKamikazeBombers();
+
     // Check collisions
     this.checkCollisions();
 
@@ -206,7 +220,7 @@ export class DefenderGame extends BaseGame {
     if (this.enemies.filter(e => e.alive).length === 0) {
       this.wave++;
       this.spawnWave();
-      if (this.wave > 10) { // Complete after 10 waves
+      if (this.wave > 5) { // Complete after 5 waves
         // Play success sound through window global
         const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
@@ -370,14 +384,18 @@ export class DefenderGame extends BaseGame {
   }
 
   private shootEnemyBullet(enemy: Enemy) {
+    // Progressive difficulty: faster projectiles each wave
+    const bulletSpeed = 3 + (this.wave * 0.5); // Faster bullets each wave
+    const bulletDamage = 15 + (this.wave * 2); // More damage each wave
+    
     const bullet: Projectile = {
       position: { ...enemy.position },
-      velocity: { x: 0, y: 3 },
+      velocity: { x: 0, y: bulletSpeed },
       size: { x: 3, y: 6 },
       alive: true,
       owner: 'enemy',
       lifetime: 200,
-      damage: 15
+      damage: bulletDamage
     };
     
     this.enemyBullets.push(bullet);
@@ -459,6 +477,60 @@ export class DefenderGame extends BaseGame {
             this.activateShield();
             this.powerups.splice(i, 1);
         }
+    }
+  }
+
+  private updateKamikazeBombers() {
+    // Update kamikaze timer
+    this.kamikazeTimer++;
+    
+    // Every 10 seconds, convert an existing enemy to kamikaze
+    if (this.kamikazeTimer >= this.kamikazeInterval) {
+      this.kamikazeTimer = 0;
+      this.createKamikazeBomber();
+    }
+    
+    // Update existing kamikaze bombers
+    this.enemies.forEach(enemy => {
+      if (enemy.kamikazeMode && enemy.alive) {
+        // Kamikaze bombers dive straight at the player
+        const dx = this.player.position.x - enemy.position.x;
+        const dy = this.player.position.y - enemy.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 0) {
+          const speed = 4 + (this.wave * 0.5); // Faster dive each wave
+          enemy.velocity.x = (dx / distance) * speed;
+          enemy.velocity.y = (dy / distance) * speed;
+        }
+      }
+    });
+  }
+
+  private createKamikazeBomber() {
+    // Find a suitable enemy to convert to kamikaze
+    const candidates = this.enemies.filter(e => 
+      e.alive && 
+      !e.kamikazeMode && 
+      e.type !== 'kamikaze' &&
+      Math.abs(e.position.x - this.player.position.x) > 100 // Not too close
+    );
+    
+    if (candidates.length > 0) {
+      const kamikaze = candidates[Math.floor(Math.random() * candidates.length)];
+      
+      // Store original velocity
+      kamikaze.originalVelocity = { ...kamikaze.velocity };
+      
+      // Convert to kamikaze mode
+      kamikaze.kamikazeMode = true;
+      kamikaze.type = 'kamikaze';
+      
+      // Visual effect - make it glow red
+      console.log('🚀 KAMIKAZE BOMBER DEPLOYED!', kamikaze.position);
+      
+      // Play kamikaze sound
+      this.playStinger('kamikaze_warning');
     }
   }
 
@@ -879,7 +951,51 @@ export class DefenderGame extends BaseGame {
     this.ctx.save();
     this.ctx.translate(enemy.position.x, enemy.position.y);
     
-    if (enemy.type === 'bomber') {
+    if (enemy.type === 'kamikaze' || enemy.kamikazeMode) {
+      // Kamikaze bomber - glowing red with flames
+      this.ctx.fillStyle = '#FF0000';
+      this.ctx.strokeStyle = '#FF4500';
+      this.ctx.lineWidth = 3;
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 15;
+      
+      // Main hull - larger and more menacing
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, -20);
+      this.ctx.lineTo(-15, -12);
+      this.ctx.lineTo(-18, 0);
+      this.ctx.lineTo(-15, 12);
+      this.ctx.lineTo(0, 20);
+      this.ctx.lineTo(15, 12);
+      this.ctx.lineTo(18, 0);
+      this.ctx.lineTo(15, -12);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Flame trail
+      this.ctx.fillStyle = '#FF4500';
+      this.ctx.beginPath();
+      this.ctx.moveTo(-8, 20);
+      this.ctx.lineTo(-12, 30);
+      this.ctx.lineTo(-4, 25);
+      this.ctx.closePath();
+      this.ctx.fill();
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(8, 20);
+      this.ctx.lineTo(12, 30);
+      this.ctx.lineTo(4, 25);
+      this.ctx.closePath();
+      this.ctx.fill();
+      
+      // Cockpit - bright red
+      this.ctx.fillStyle = '#FFFFFF';
+      this.ctx.beginPath();
+      this.ctx.arc(0, -10, 5, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+    } else if (enemy.type === 'bomber') {
       // Bomber ship - larger, more menacing
       this.ctx.fillStyle = '#8B0000';
       this.ctx.strokeStyle = '#FF0000';
@@ -1023,11 +1139,17 @@ export class DefenderGame extends BaseGame {
 
   private drawUI() {
     this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
-    this.drawText(`Wave: ${this.wave}`, 20, 60, 20, '#FFD700');
+    this.drawText(`Wave: ${this.wave}/5`, 20, 60, 20, '#FFD700');
     this.drawText(`Rescued: ${this.civiliansRescued}`, 20, 90, 20, '#FFD700');
     
+    // Kamikaze warning
+    const kamikazeCount = this.enemies.filter(e => e.kamikazeMode).length;
+    if (kamikazeCount > 0) {
+      this.drawText(`🚀 KAMIKAZE: ${kamikazeCount}`, 20, 120, 18, '#FF0000');
+    }
+    
     // Player health bar
-    this.drawHealthBar(this.player, 20, 120);
+    this.drawHealthBar(this.player, 20, kamikazeCount > 0 ? 150 : 120);
     
     // Enemy health bars (for visible enemies)
     this.enemies.forEach((enemy, index) => {
