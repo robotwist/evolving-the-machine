@@ -9,20 +9,20 @@ import { BaseGame } from '../../games/BaseGame';
 export class MockGame extends BaseGame {
   public testData: any = {};
   
-  init() {
-    this.gameState = 'playing';
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    super(ctx, width, height);
+  }
+  
+  async init() {
+    // Mock init implementation
   }
   
   update(_deltaTime: number) {
     // Mock update implementation
   }
   
-  draw() {
-    // Mock draw implementation
-  }
-  
-  resize(_width: number, _height: number) {
-    // Mock resize implementation
+  render() {
+    // Mock render implementation
   }
   
   handleInput(_event: KeyboardEvent) {
@@ -60,7 +60,10 @@ export const createMockEnemy = (overrides: Partial<any> = {}) => ({
   alive: true,
   health: 50,
   maxHealth: 50,
-  type: 'fighter',
+  type: 'invader' as 'invader' | 'bomber' | 'kamikaze',
+  shootTimer: 0,
+  kamikazeMode: false,
+  originalVelocity: undefined,
   ...overrides,
 });
 
@@ -69,7 +72,7 @@ export const createMockProjectile = (overrides: Partial<any> = {}) => ({
   velocity: { x: 0, y: -5 },
   size: { x: 3, y: 8 },
   alive: true,
-  owner: 'player',
+  owner: 'player' as 'player' | 'enemy',
   damage: 25,
   lifetime: 100,
   ...overrides,
@@ -114,9 +117,8 @@ export const createMockAudioState = () => ({
 export const createMockSettings = () => ({
   hapticsEnabled: true,
   hitMarkers: true,
-  particlesEnabled: true,
-  screenShakeEnabled: true,
-  reduceMotion: false,
+  screenShake: true,
+  damageNumbers: true,
 });
 
 // Mock particle system for testing
@@ -192,7 +194,37 @@ export const createMockCanvasContext = () => ({
   },
   shadowColor: '',
   shadowBlur: 0,
-});
+  // Additional CanvasRenderingContext2D properties
+  getContextAttributes: jest.fn(),
+  globalCompositeOperation: 'source-over',
+  clip: jest.fn(),
+  isPointInPath: jest.fn(),
+  isPointInStroke: jest.fn(),
+  measureText: jest.fn(() => ({ width: 0 })),
+  createImageData: jest.fn(),
+  createPattern: jest.fn(),
+  createConicGradient: jest.fn(),
+  arc: jest.fn(),
+  arcTo: jest.fn(),
+  bezierCurveTo: jest.fn(),
+  closePath: jest.fn(),
+  ellipse: jest.fn(),
+  lineWidth: 1,
+  lineCap: 'butt',
+  lineJoin: 'miter',
+  miterLimit: 10,
+  lineDashOffset: 0,
+  setLineDash: jest.fn(),
+  getLineDash: jest.fn(() => []),
+  quadraticCurveTo: jest.fn(),
+  rect: jest.fn(),
+  roundRect: jest.fn(),
+  direction: 'inherit',
+  textRenderingOptimization: 'auto',
+  imageSmoothingEnabled: true,
+  imageSmoothingQuality: 'low',
+  filter: 'none',
+}) as unknown as CanvasRenderingContext2D;
 
 // Test assertions for game objects
 export const expectGameObject = (obj: any, expected: any) => {
@@ -206,16 +238,63 @@ export const expectGameObject = (obj: any, expected: any) => {
 export const createMockKeyboardEvent = (code: string, type: 'keydown' | 'keyup' = 'keydown') => ({
   code,
   type,
+  altKey: false,
+  charCode: 0,
+  ctrlKey: false,
+  isComposing: false,
+  key: code,
+  keyCode: 0,
+  location: 0,
+  metaKey: false,
+  repeat: false,
+  shiftKey: false,
+  which: 0,
+  bubbles: false,
+  cancelable: false,
+  composed: false,
+  currentTarget: null,
+  defaultPrevented: false,
+  eventPhase: 0,
+  target: null,
+  timeStamp: 0,
+  isTrusted: false,
+  NONE: 0,
+  CAPTURING_PHASE: 1,
+  AT_TARGET: 2,
+  BUBBLING_PHASE: 3,
+  initEvent: jest.fn(),
   preventDefault: jest.fn(),
+  stopImmediatePropagation: jest.fn(),
   stopPropagation: jest.fn(),
-}) as KeyboardEvent;
+}) as unknown as KeyboardEvent;
 
 export const createMockTouchEvent = (x: number, y: number, type: 'touchstart' | 'touchmove' | 'touchend' = 'touchstart') => ({
   type,
   touches: [{ clientX: x, clientY: y }],
+  altKey: false,
+  changedTouches: [],
+  ctrlKey: false,
+  metaKey: false,
+  shiftKey: false,
+  targetTouches: [],
+  bubbles: false,
+  cancelable: false,
+  composed: false,
+  currentTarget: null,
+  defaultPrevented: false,
+  eventPhase: 0,
+  target: null,
+  timeStamp: 0,
+  isTrusted: false,
+  NONE: 0,
+  CAPTURING_PHASE: 1,
+  AT_TARGET: 2,
+  BUBBLING_PHASE: 3,
+  initEvent: jest.fn(),
   preventDefault: jest.fn(),
+  stopImmediatePropagation: jest.fn(),
   stopPropagation: jest.fn(),
-}) as TouchEvent;
+}) as unknown as TouchEvent;
 
 // Animation frame helpers
 export const waitForAnimationFrame = (): Promise<void> => {
@@ -288,3 +367,28 @@ export default {
   expectGameObject,
   testScenarios,
 };
+
+// Simple test to satisfy Jest requirement
+describe('Test Utils', () => {
+  test('should export all utility functions', () => {
+    expect(createMockPlayer).toBeDefined();
+    expect(createMockEnemy).toBeDefined();
+    expect(createMockProjectile).toBeDefined();
+    expect(createMockPowerUp).toBeDefined();
+    expect(createMockAudioState).toBeDefined();
+    expect(createMockSettings).toBeDefined();
+    expect(createMockParticleSystem).toBeDefined();
+    expect(createMockVisualFeedback).toBeDefined();
+    expect(createGameState).toBeDefined();
+    expect(createMockCanvasContext).toBeDefined();
+    expect(createMockKeyboardEvent).toBeDefined();
+    expect(createMockTouchEvent).toBeDefined();
+    expect(measurePerformance).toBeDefined();
+    expect(waitForAnimationFrame).toBeDefined();
+    expect(waitForFrames).toBeDefined();
+    expect(runGameLoop).toBeDefined();
+    expect(isColliding).toBeDefined();
+    expect(expectGameObject).toBeDefined();
+    expect(testScenarios).toBeDefined();
+  });
+});
