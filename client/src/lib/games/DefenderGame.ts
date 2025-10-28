@@ -56,6 +56,7 @@ export class DefenderGame extends BaseGame {
   private worldWidth = 2048;
   private keys: Set<string> = new Set();
   private score = 0;
+  private lastScore = 0; // Track last score to prevent infinite updates
   private wave = 1;
   private enemiesSpawned = 0;
   private civiliansRescued = 0;
@@ -214,7 +215,11 @@ export class DefenderGame extends BaseGame {
       }
     }
 
-    this.onScoreUpdate?.(this.score);
+    // Only update score when it actually changes to prevent infinite loop
+    if (this.score !== this.lastScore) {
+      this.onScoreUpdate?.(this.score);
+      this.lastScore = this.score;
+    }
   }
 
   private handleMovement() {
@@ -318,6 +323,11 @@ export class DefenderGame extends BaseGame {
   }
 
   private shootPlayerBullet() {
+    // Add cooldown to prevent spam
+    if (this.playerShootCooldown && this.playerShootCooldown > 0) {
+      return;
+    }
+    
     // Calculate bullet direction based on player state
     let bulletDx = this.player.direction * 8;
     let bulletDy = 0;
@@ -345,6 +355,10 @@ export class DefenderGame extends BaseGame {
     };
     
     this.playerBullets.push(bullet);
+    this.playerShootCooldown = 5; // Set cooldown after shooting
+    
+    // Debug: log bullet creation
+    console.log('Bullet created:', bullet.position, 'Velocity:', bullet.velocity, 'Total bullets:', this.playerBullets.length);
   }
 
   private shootEnemyBullet(enemy: Enemy) {
@@ -937,6 +951,8 @@ export class DefenderGame extends BaseGame {
   private drawPlayerBullet(bullet: Projectile) {
     this.ctx.save();
     this.ctx.fillStyle = '#00FFFF';
+    this.ctx.shadowColor = '#00FFFF';
+    this.ctx.shadowBlur = 5;
     this.ctx.fillRect(
       bullet.position.x - bullet.size.x / 2,
       bullet.position.y - bullet.size.y / 2,
