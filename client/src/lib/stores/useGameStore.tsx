@@ -36,9 +36,9 @@ export const useGameStore = create<GameStore>()(
       currentScreen: 'menu',
       currentStage: 1,
       gameState: 'playing',
-      unlockedStages: process.env.NODE_ENV === 'production' ? MAX_STAGE : 1, // Unlock all stages in production
+      unlockedStages: (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === undefined || window.location.hostname !== 'localhost') ? MAX_STAGE : 1, // Unlock all stages in production
       showDemo: process.env.NODE_ENV === 'production', // Show demo only in development
-      productionMode: process.env.NODE_ENV === 'production',
+      productionMode: (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === undefined || window.location.hostname !== 'localhost'),
       
       setCurrentScreen: (screen) => {
         // Validate screen transition
@@ -55,8 +55,26 @@ export const useGameStore = create<GameStore>()(
         try {
           const validatedStage = gameValidation.stage(stage);
           const currentStage = get().currentStage;
+          const { unlockedStages } = get();
           
-          // Check if stage unlock is valid
+          // Debug environment and stage info
+          const isProduction = process.env.NODE_ENV === 'production' || 
+                              process.env.NODE_ENV === undefined || 
+                              window.location.hostname !== 'localhost';
+          console.log('Environment:', process.env.NODE_ENV, 'Is Production:', isProduction);
+          console.log('Current stage:', currentStage, 'Requested stage:', validatedStage, 'Unlocked stages:', unlockedStages);
+          
+          // In production mode or if stage is unlocked, allow any stage
+          if (isProduction || validatedStage <= unlockedStages) {
+            console.log('✅ Stage access allowed - production mode or stage unlocked');
+            set({
+              currentStage: validatedStage,
+              gameState: 'playing'
+            });
+            return;
+          }
+          
+          // Check if stage unlock is valid (development mode only)
           if (!gameValidators.stageUnlock(currentStage, validatedStage)) {
             console.warn(`Invalid stage unlock request: ${currentStage} -> ${validatedStage}`);
             return;
