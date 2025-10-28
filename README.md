@@ -132,6 +132,20 @@ server/
 - **Performance Monitoring:** Real-time metrics and optimization
 - **Adaptive Narrative:** Dynamic story progression based on player performance
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Architecture](docs/ARCHITECTURE.md)** - Complete system architecture overview
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API documentation
+- **[Development Guide](docs/DEVELOPMENT_GUIDE.md)** - Developer onboarding and best practices
+
+### Quick Links
+- [Getting Started](docs/DEVELOPMENT_GUIDE.md#getting-started)
+- [Game Development](docs/DEVELOPMENT_GUIDE.md#game-development)
+- [API Reference](docs/API_REFERENCE.md#game-classes)
+- [Testing Guide](docs/DEVELOPMENT_GUIDE.md#testing)
+
 ## 🎨 Game Design Philosophy
 
 ### Cultural Evolution
