@@ -185,7 +185,7 @@ export class PerformanceMonitor {
     return Math.max(0, score);
   }
 
-  private detectBottlenecks(fps: number, frameTime: number, memoryUsage?: number, drawCalls: number, particleCount: number): string[] {
+  private detectBottlenecks(fps: number, frameTime: number, drawCalls: number, particleCount: number, memoryUsage?: number): string[] {
     const bottlenecks: string[] = [];
 
     if (fps < this.performanceThresholds.fps.warning) {

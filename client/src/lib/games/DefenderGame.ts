@@ -1221,7 +1221,7 @@ export class DefenderGame extends BaseGame {
   }
 
   // Touch/pointer controls for mobile
-  handlePointerDown(x: number, _y: number) {
+  handlePointerDown(x: number, y: number) {
     // Left side of screen = move left, right side = move right
     if (x < this.width * 0.5) {
       this.keys.add('ArrowLeft');
@@ -1230,6 +1230,9 @@ export class DefenderGame extends BaseGame {
       this.keys.add('ArrowRight');
       this.keys.add('KeyD');
     }
+    
+    // Touch shooting: tap anywhere to shoot horizontally
+    this.shootPlayerBullet();
   }
 
   handlePointerUp() {
@@ -1238,6 +1241,11 @@ export class DefenderGame extends BaseGame {
     this.keys.delete('KeyA');
     this.keys.delete('ArrowRight');
     this.keys.delete('KeyD');
+  }
+
+  handlePointerMove(x: number, y: number) {
+    // Optional: Add touch movement tracking here if needed
+    // For now, we'll keep it simple with just tap-to-shoot
   }
 
   private playHitSound() {
