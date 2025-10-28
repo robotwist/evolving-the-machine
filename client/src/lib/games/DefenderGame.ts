@@ -245,6 +245,12 @@ export class DefenderGame extends BaseGame {
       this.keys.delete('Space');
     }
 
+    // Vertical shooting with X key
+    if (this.keys.has('KeyX')) {
+      this.shootVerticalBullet();
+      this.keys.delete('KeyX');
+    }
+
     // Allow continuous upward shooting when W/Up is held
     if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
       // Check if we should shoot (limit fire rate)
@@ -373,6 +379,33 @@ export class DefenderGame extends BaseGame {
     };
     
     this.enemyBullets.push(bullet);
+  }
+
+  private shootVerticalBullet() {
+    // Add cooldown to prevent spam
+    if (this.playerShootCooldown && this.playerShootCooldown > 0) {
+      return;
+    }
+    
+    // Create vertical bullet (straight up)
+    const bullet: Projectile = {
+      position: {
+        x: this.player.position.x,
+        y: this.player.position.y - 10 // Start slightly above player
+      },
+      velocity: { x: 0, y: -8 }, // Straight up
+      size: { x: 3, y: 8 }, // Taller bullet for vertical shots
+      alive: true,
+      owner: 'player',
+      lifetime: 150, // Longer lifetime for vertical shots
+      damage: 30 // More damage for vertical shots
+    };
+    
+    this.playerBullets.push(bullet);
+    this.playerShootCooldown = 8; // Slightly longer cooldown for vertical shots
+    
+    // Debug: log vertical bullet creation
+    console.log('Vertical bullet created:', bullet.position, 'Velocity:', bullet.velocity);
   }
 
   private updateProjectiles() {
