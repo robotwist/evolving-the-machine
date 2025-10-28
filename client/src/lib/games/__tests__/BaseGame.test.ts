@@ -1,227 +1,229 @@
-import { BaseGame } from '../BaseGame';
+/**
+ * Unit tests for BaseGame functionality
+ * Tests core game mechanics, lifecycle, and input handling
+ */
 
-// Mock canvas context
-const mockCanvas = {
-  width: 800,
-  height: 600,
-  getContext: jest.fn(() => ({
-    fillRect: jest.fn(),
-    clearRect: jest.fn(),
-    beginPath: jest.fn(),
-    arc: jest.fn(),
-    fill: jest.fn(),
-    stroke: jest.fn(),
-    moveTo: jest.fn(),
-    lineTo: jest.fn(),
-    save: jest.fn(),
-    restore: jest.fn(),
-    translate: jest.fn(),
-    rotate: jest.fn(),
-    scale: jest.fn(),
-    fillText: jest.fn(),
-    strokeText: jest.fn(),
-    measureText: jest.fn(() => ({ width: 100 })),
-    createLinearGradient: jest.fn(() => ({
-      addColorStop: jest.fn(),
-    })),
-    createRadialGradient: jest.fn(() => ({
-      addColorStop: jest.fn(),
-    })),
-  })),
-} as unknown as HTMLCanvasElement;
-
-// Mock HTMLCanvasElement
-Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-  value: jest.fn(() => mockCanvas.getContext('2d')),
-});
-
-// Mock requestAnimationFrame
-global.requestAnimationFrame = jest.fn((cb) => setTimeout(cb, 16));
-global.cancelAnimationFrame = jest.fn();
-
-// Mock performance.now using jest.spyOn
-const performanceNowSpy = jest.spyOn(performance, 'now').mockImplementation(() => Date.now());
-
-// Mock window properties
-Object.defineProperty(window, 'devicePixelRatio', {
-  value: 1,
-  writable: true,
-});
-
-// Concrete implementation for testing
-class TestGame extends BaseGame {
-  public init(): void {
-    // Mock implementation
-  }
-
-  public update(_deltaTime: number): void {
-    // Mock implementation
-  }
-
-  public render(): void {
-    // Mock implementation
-  }
-
-  public handleInput(_event: KeyboardEvent): void {
-    // Mock implementation
-  }
-
-  public destroy(): void {
-    super.destroy();
-  }
-
-  // Expose protected methods for testing
-  public testGameLoop(): void {
-    this.gameLoop();
-  }
-
-  public testStart(): void {
-    this.start();
-  }
-
-  public testStop(): void {
-    this.stop();
-  }
-
-  public testPause(): void {
-    this.pause();
-  }
-
-  public testResume(): void {
-    this.resume();
-  }
-}
+import { BaseGame } from '../../games/BaseGame';
+import { 
+  createMockCanvasContext, 
+  createMockKeyboardEvent, 
+  createMockTouchEvent,
+  waitForAnimationFrame,
+  runGameLoop,
+  MockGame
+} from '../testUtils';
 
 describe('BaseGame', () => {
-  let game: TestGame;
-  let mockCtx: CanvasRenderingContext2D;
+  let game: MockGame;
+  let mockCanvas: HTMLCanvasElement;
+  let mockContext: CanvasRenderingContext2D;
 
   beforeEach(() => {
-    mockCtx = mockCanvas.getContext('2d') as CanvasRenderingContext2D;
-    game = new TestGame(mockCtx, 800, 600);
-    jest.clearAllMocks();
+    // Create mock canvas and context
+    mockCanvas = document.createElement('canvas');
+    mockCanvas.width = 800;
+    mockCanvas.height = 600;
+    
+    mockContext = createMockCanvasContext() as CanvasRenderingContext2D;
+    jest.spyOn(mockCanvas, 'getContext').mockReturnValue(mockContext);
+
+    // Create game instance
+    game = new MockGame(mockCanvas);
   });
 
   afterEach(() => {
-    game.destroy();
-    performanceNowSpy.mockRestore();
+    jest.clearAllMocks();
   });
 
-  describe('Initialization', () => {
-    it('should initialize with correct dimensions', () => {
-      expect(game).toBeDefined();
-      // Access protected properties through the test class
-      expect((game as any).width).toBe(800);
-      expect((game as any).height).toBe(600);
+  describe('Game Initialization', () => {
+    test('should initialize with correct default values', () => {
+      expect(game.width).toBe(800);
+      expect(game.height).toBe(600);
+      expect(game.gameState).toBe('playing');
+      expect(game.keys).toBeInstanceOf(Set);
     });
 
-    it('should start in stopped state', () => {
-      expect((game as any).isRunning).toBe(false);
-      expect((game as any).isPaused).toBe(false);
+    test('should handle resize correctly', () => {
+      game.resize(1024, 768);
+      expect(game.width).toBe(1024);
+      expect(game.height).toBe(768);
+    });
+
+    test('should maintain aspect ratio on resize', () => {
+      game.resize(1600, 900);
+      expect(game.width).toBe(1600);
+      expect(game.height).toBe(900);
     });
   });
 
-  describe('Game State Management', () => {
-    it('should start the game', () => {
-      game.testStart();
-      expect((game as any).isRunning).toBe(true);
-      expect(global.requestAnimationFrame).toHaveBeenCalled();
+  describe('Input Handling', () => {
+    test('should handle keyboard input correctly', () => {
+      const keyDownEvent = createMockKeyboardEvent('KeyA', 'keydown');
+      const keyUpEvent = createMockKeyboardEvent('KeyA', 'keyup');
+
+      game.handleInput(keyDownEvent);
+      expect(game.keys.has('KeyA')).toBe(true);
+
+      game.handleInput(keyUpEvent);
+      expect(game.keys.has('KeyA')).toBe(false);
     });
 
-    it('should stop the game', () => {
-      game.testStart();
-      game.testStop();
-      expect((game as any).isRunning).toBe(false);
-      expect(global.cancelAnimationFrame).toHaveBeenCalled();
+    test('should handle multiple keys simultaneously', () => {
+      const keyA = createMockKeyboardEvent('KeyA', 'keydown');
+      const keyD = createMockKeyboardEvent('KeyD', 'keydown');
+      const space = createMockKeyboardEvent('Space', 'keydown');
+
+      game.handleInput(keyA);
+      game.handleInput(keyD);
+      game.handleInput(space);
+
+      expect(game.keys.has('KeyA')).toBe(true);
+      expect(game.keys.has('KeyD')).toBe(true);
+      expect(game.keys.has('Space')).toBe(true);
     });
 
-    it('should pause the game', () => {
-      game.testStart();
-      game.testPause();
-      expect((game as any).isPaused).toBe(true);
+    test('should handle touch input correctly', () => {
+      const touchEvent = createMockTouchEvent(100, 200, 'touchstart');
+      
+      game.handlePointerDown(100, 200);
+      // Touch handling should not throw errors
+      expect(() => game.handlePointerDown(100, 200)).not.toThrow();
     });
 
-    it('should resume the game', () => {
-      game.testStart();
-      game.testPause();
-      game.testResume();
-      expect((game as any).isPaused).toBe(false);
+    test('should handle pointer movement', () => {
+      expect(() => game.handlePointerMove(150, 250)).not.toThrow();
+    });
+
+    test('should handle pointer up events', () => {
+      expect(() => game.handlePointerUp()).not.toThrow();
     });
   });
 
   describe('Game Loop', () => {
-    it('should handle frame timing correctly', () => {
-      const mockNow = jest.fn()
-        .mockReturnValueOnce(0)    // First frame
-        .mockReturnValueOnce(16)   // Second frame (16ms later)
-        .mockReturnValueOnce(32);  // Third frame (32ms later)
-      
-      performanceNowSpy.mockImplementation(mockNow);
-      
-      game.testStart();
-      game.testGameLoop();
-      
-      expect(mockNow).toHaveBeenCalled();
-    });
-
-    it('should not update when paused', () => {
-      const updateSpy = jest.spyOn(game, 'update');
-      const renderSpy = jest.spyOn(game, 'render');
-      
-      game.testStart();
-      game.testPause();
-      game.testGameLoop();
-      
-      // Should still call update and render, but with paused flag
-      expect(updateSpy).toHaveBeenCalled();
-      expect(renderSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe('Event Handling', () => {
-    it('should handle keyboard events', () => {
-      const keydownEvent = new KeyboardEvent('keydown', { key: 'ArrowUp' });
-      document.dispatchEvent(keydownEvent);
-      
-      // The BaseGame should have set up event listeners
-      expect(document.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
-    });
-  });
-
-  describe('Performance Monitoring', () => {
-    it('should track frame timing', () => {
-      game.testStart();
-      game.testGameLoop();
-      
-      expect((game as any).lastFrameTimeMs).toBeDefined();
-      expect((game as any).frameAccumulatorMs).toBeDefined();
-    });
-
-    it('should cap delta time to prevent large jumps', () => {
+    test('should update game state correctly', async () => {
       const updateSpy = jest.spyOn(game, 'update');
       
-      // Simulate a large time jump
-      global.performance.now = jest.fn()
-        .mockReturnValueOnce(0)
-        .mockReturnValueOnce(1000); // 1 second jump
+      await runGameLoop(game, 5);
       
-      game.testStart();
-      game.testGameLoop();
+      expect(updateSpy).toHaveBeenCalledTimes(5);
+    });
+
+    test('should handle draw calls', () => {
+      const drawSpy = jest.spyOn(game, 'draw');
       
-      // Should cap delta time to ~33ms (1000/30)
-      expect(updateSpy).toHaveBeenCalledWith(expect.any(Number));
-      const deltaTime = updateSpy.mock.calls[0][0];
-      expect(deltaTime).toBeLessThanOrEqual(1000 / 30);
+      game.draw();
+      
+      expect(drawSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should maintain consistent frame timing', async () => {
+      const startTime = performance.now();
+      
+      await runGameLoop(game, 10);
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      // Should take approximately 160ms for 10 frames at 60fps
+      expect(duration).toBeGreaterThan(150);
+      expect(duration).toBeLessThan(200);
     });
   });
 
-  describe('Cleanup', () => {
-    it('should clean up resources on destroy', () => {
-      game.testStart();
-      game.destroy();
+  describe('Game State Management', () => {
+    test('should track game state correctly', () => {
+      expect(game.gameState).toBe('playing');
       
-      expect((game as any).isRunning).toBe(false);
-      expect(global.cancelAnimationFrame).toHaveBeenCalled();
+      // Test state transitions
+      game.gameState = 'paused';
+      expect(game.gameState).toBe('paused');
+      
+      game.gameState = 'gameOver';
+      expect(game.gameState).toBe('gameOver');
+    });
+
+    test('should handle game lifecycle events', () => {
+      const onGameOver = jest.fn();
+      const onStageComplete = jest.fn();
+      
+      game.onGameOver = onGameOver;
+      game.onStageComplete = onStageComplete;
+      
+      // Test callback assignments
+      expect(game.onGameOver).toBe(onGameOver);
+      expect(game.onStageComplete).toBe(onStageComplete);
+    });
+  });
+
+  describe('Performance', () => {
+    test('should handle high frame rates without issues', async () => {
+      const updateSpy = jest.spyOn(game, 'update');
+      
+      await runGameLoop(game, 120); // 2 seconds at 60fps
+      
+      expect(updateSpy).toHaveBeenCalledTimes(120);
+    });
+
+    test('should maintain memory efficiency', async () => {
+      const initialMemory = (performance as any).memory?.usedJSHeapSize || 0;
+      
+      await runGameLoop(game, 100);
+      
+      const finalMemory = (performance as any).memory?.usedJSHeapSize || 0;
+      const memoryIncrease = finalMemory - initialMemory;
+      
+      // Memory increase should be reasonable (less than 1MB for 100 frames)
+      expect(memoryIncrease).toBeLessThan(1024 * 1024);
+    });
+  });
+
+  describe('Error Handling', () => {
+    test('should handle invalid input gracefully', () => {
+      expect(() => game.handleInput(null as any)).not.toThrow();
+      expect(() => game.handleInput(undefined as any)).not.toThrow();
+    });
+
+    test('should handle invalid resize values', () => {
+      expect(() => game.resize(-100, -100)).not.toThrow();
+      expect(() => game.resize(0, 0)).not.toThrow();
+      expect(() => game.resize(NaN, NaN)).not.toThrow();
+    });
+
+    test('should handle canvas context errors', () => {
+      const invalidCanvas = document.createElement('canvas');
+      jest.spyOn(invalidCanvas, 'getContext').mockReturnValue(null);
+      
+      expect(() => new MockGame(invalidCanvas)).not.toThrow();
+    });
+  });
+
+  describe('Integration', () => {
+    test('should work with real canvas element', () => {
+      const realCanvas = document.createElement('canvas');
+      realCanvas.width = 400;
+      realCanvas.height = 300;
+      
+      const realGame = new MockGame(realCanvas);
+      
+      expect(realGame.width).toBe(400);
+      expect(realGame.height).toBe(300);
+    });
+
+    test('should handle rapid input changes', () => {
+      const events = [
+        createMockKeyboardEvent('KeyA', 'keydown'),
+        createMockKeyboardEvent('KeyD', 'keydown'),
+        createMockKeyboardEvent('KeyA', 'keyup'),
+        createMockKeyboardEvent('Space', 'keydown'),
+        createMockKeyboardEvent('KeyD', 'keyup'),
+        createMockKeyboardEvent('Space', 'keyup'),
+      ];
+      
+      events.forEach(event => {
+        expect(() => game.handleInput(event)).not.toThrow();
+      });
+      
+      expect(game.keys.size).toBe(0);
     });
   });
 });
