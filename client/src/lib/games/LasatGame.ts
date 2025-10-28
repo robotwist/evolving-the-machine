@@ -27,6 +27,7 @@ interface Player extends Entity {
   targetLocked: Enemy | null;
   deathBlossomReady: boolean;
   deathBlossomCooldown: number;
+  heatseekingMissiles: number; // Number of heat-seeking missiles available
   weaponEnergy: {
     laser: number;
     ion: number;
@@ -58,11 +59,12 @@ interface Projectile extends Entity {
   type: string;
   damage: number;
   lifetime: number;
+  target?: Enemy | null; // For heat-seeking missiles
 }
 
 interface PowerUp {
   position: Vector2;
-  type: 'health' | 'energy' | 'weapon' | 'shield';
+  type: 'health' | 'energy' | 'weapon' | 'shield' | 'heatseeking';
   lifetime: number;
 }
 
@@ -191,6 +193,7 @@ export class LasatGame extends BaseGame {
       targetLocked: null,
       deathBlossomReady: true,
       deathBlossomCooldown: 0,
+      heatseekingMissiles: 0,
       weaponEnergy: {
         laser: 100,
         ion: 100
@@ -699,6 +702,12 @@ export class LasatGame extends BaseGame {
       this.keys.delete('KeyX');
     }
 
+    // Heat-seeking missiles (special weapon)
+    if (this.keys.has('KeyC') && this.player.heatseekingMissiles > 0) {
+      this.shootHeatseekingMissile();
+      this.keys.delete('KeyC');
+    }
+
     // Death Blossom (last resort)
     if (this.keys.has('KeyZ') && this.player.deathBlossomReady && this.player.deathBlossomCooldown <= 0) {
       this.activateDeathBlossom();
@@ -938,20 +947,69 @@ export class LasatGame extends BaseGame {
     
     this.player.weaponEnergy.laser -= 5;
     
-    const projectile: Projectile = {
-      position: { ...this.player.position },
-      velocity: { x: 0, y: -12 },
-      size: 5,
+    // Enhanced bullets: 2x speed and quantity
+    const baseSpeed = 24; // 2x original speed (was 12)
+    const bulletCount = 2; // 2x quantity
+    
+    for (let i = 0; i < bulletCount; i++) {
+      const spread = i === 0 ? -2 : 2; // Slight spread for multiple bullets
+      
+      const projectile: Projectile = {
+        position: { x: this.player.position.x + spread, y: this.player.position.y },
+        velocity: { x: spread * 0.3, y: -baseSpeed },
+        size: 5,
+        health: 1,
+        maxHealth: 1,
+        alive: true,
+        owner: 'player',
+        type: 'laser',
+        damage: 20,
+        lifetime: 100
+      };
+      
+      this.playerProjectiles.push(projectile);
+    }
+  }
+
+  private shootHeatseekingMissile() {
+    if (this.player.heatseekingMissiles <= 0) return;
+    
+    this.player.heatseekingMissiles--;
+    
+    // Find nearest enemy to target
+    let nearestEnemy: Enemy | null = null;
+    let nearestDistance = Infinity;
+    
+    this.enemies.forEach(enemy => {
+      if (!enemy.alive) return;
+      
+      const dx = enemy.position.x - this.player.position.x;
+      const dy = enemy.position.y - this.player.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestEnemy = enemy;
+      }
+    });
+    
+    // Create heat-seeking missile
+    const missile: Projectile = {
+      position: { x: this.player.position.x, y: this.player.position.y },
+      velocity: { x: 0, y: -8 },
+      size: 8,
       health: 1,
       maxHealth: 1,
       alive: true,
       owner: 'player',
       type: 'laser',
-      damage: 20,
-      lifetime: 100
+      damage: 50,
+      lifetime: 200,
+      target: nearestEnemy // Add target for heat-seeking behavior
     };
-
-    this.playerProjectiles.push(projectile);
+    
+    this.playerProjectiles.push(missile);
+    this.playStinger('missile_launch');
   }
 
   private enemyShoot(enemy: Enemy) {
@@ -1021,6 +1079,28 @@ export class LasatGame extends BaseGame {
       proj.position.y += proj.velocity.y;
       proj.lifetime--;
       
+      // Heat-seeking behavior for missiles
+      if (proj.target && proj.target.alive) {
+        const dx = proj.target.position.x - proj.position.x;
+        const dy = proj.target.position.y - proj.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 0) {
+          // Gradually steer towards target
+          const steerStrength = 0.1;
+          proj.velocity.x += (dx / distance) * steerStrength;
+          proj.velocity.y += (dy / distance) * steerStrength;
+          
+          // Limit max speed
+          const maxSpeed = 12;
+          const speed = Math.sqrt(proj.velocity.x * proj.velocity.x + proj.velocity.y * proj.velocity.y);
+          if (speed > maxSpeed) {
+            proj.velocity.x = (proj.velocity.x / speed) * maxSpeed;
+            proj.velocity.y = (proj.velocity.y / speed) * maxSpeed;
+          }
+        }
+      }
+      
       return proj.alive && proj.lifetime > 0 && 
              proj.position.x >= 0 && proj.position.x <= this.width &&
              proj.position.y >= 0 && proj.position.y <= this.height;
@@ -1046,7 +1126,7 @@ export class LasatGame extends BaseGame {
   }
 
   private spawnPowerUp() {
-    const types: PowerUp['type'][] = ['health', 'energy', 'weapon', 'shield'];
+    const types: PowerUp['type'][] = ['health', 'energy', 'weapon', 'shield', 'heatseeking'];
     const powerUp: PowerUp = {
       position: {
         x: Math.random() * (this.width - 40) + 20,
@@ -1398,6 +1478,9 @@ export class LasatGame extends BaseGame {
         this.player.shieldActive = true;
         this.player.shieldTimer = 300;
         break;
+      case 'heatseeking':
+        this.player.heatseekingMissiles += 3; // Give 3 heat-seeking missiles
+        break;
     }
     
     const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
@@ -1695,6 +1778,14 @@ export class LasatGame extends BaseGame {
     this.ctx.fillText(`SCORE: ${this.score}`, 20, this.height - 60);
     this.ctx.fillText(`GROUP: ${this.ragnarokPhase}`, 20, this.height - 40);
     this.ctx.fillText(`LIVES: ${this.lives}`, 20, this.height - 20);
+    
+    // Heat-seeking missiles display
+    if (this.player.heatseekingMissiles > 0) {
+      this.ctx.fillStyle = '#FF4500';
+      this.ctx.font = '14px monospace';
+      this.ctx.textAlign = 'left';
+      this.ctx.fillText(`HEAT-SEEKING MISSILES: ${this.player.heatseekingMissiles}`, 20, this.height - 40);
+    }
     
     // Grace period indicator
     if (this.gracePeriod > 0) {
@@ -2309,7 +2400,8 @@ export class LasatGame extends BaseGame {
       health: '#FF0000',
       energy: '#00FF00',
       weapon: '#FFFF00',
-      shield: '#00BFFF'
+      shield: '#00BFFF',
+      heatseeking: '#FF4500'
     };
     
     this.ctx.fillStyle = colors[powerUp.type];

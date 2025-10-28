@@ -18,11 +18,15 @@ interface Player extends Entity {
   direction: number; // -1 left, 1 right
   onGround: boolean;
   shielded?: boolean;
+  health: number;
+  maxHealth: number;
 }
 
 interface Enemy extends Entity {
   type: 'invader' | 'bomber';
   shootTimer: number;
+  health: number;
+  maxHealth: number;
 }
 
 interface Civilian extends Entity {
@@ -33,6 +37,7 @@ interface Civilian extends Entity {
 interface Projectile extends Entity {
   owner: 'player' | 'enemy';
   lifetime: number;
+  damage: number;
 }
 
 interface Powerup extends Entity {
@@ -87,6 +92,8 @@ export class DefenderGame extends BaseGame {
       direction: 1,
       onGround: false,
       shielded: false,
+      health: 100,
+      maxHealth: 100,
     };
 
     this.spawnWave();
@@ -134,7 +141,9 @@ export class DefenderGame extends BaseGame {
         size: { x: 25, y: 15 },
         alive: true,
         type: Math.random() > 0.7 ? 'bomber' : 'invader',
-        shootTimer: Math.random() * 60
+        shootTimer: Math.random() * 60,
+        health: Math.random() > 0.7 ? 150 : 75, // Bombers have more health
+        maxHealth: Math.random() > 0.7 ? 150 : 75
       };
       
       this.enemies.push(enemy);
@@ -331,7 +340,8 @@ export class DefenderGame extends BaseGame {
       size: { x: 4, y: 2 },
       alive: true,
       owner: 'player',
-      lifetime: 120
+      lifetime: 120,
+      damage: 25
     };
     
     this.playerBullets.push(bullet);
@@ -344,7 +354,8 @@ export class DefenderGame extends BaseGame {
       size: { x: 3, y: 6 },
       alive: true,
       owner: 'enemy',
-      lifetime: 200
+      lifetime: 200,
+      damage: 15
     };
     
     this.enemyBullets.push(bullet);
@@ -413,17 +424,25 @@ export class DefenderGame extends BaseGame {
     this.playerBullets.forEach(bullet => {
       this.enemies.forEach(enemy => {
         if (enemy.alive && this.isColliding(bullet, enemy)) {
-          enemy.alive = false;
+          // Apply damage instead of instant kill
+          enemy.health -= bullet.damage;
           bullet.alive = false;
-          this.score += enemy.type === 'bomber' ? 200 : 100;
-          this.playHitSound();
+          
           // Effects
           const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
           const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
           const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-          if (!reduce && allowShake) this.shakeTimer = 10;
-          if (allowParticles && this.particles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 18, '#FF4444', 'dramatic');
-          this.playExplosionSound();
+          if (!reduce && allowShake) this.shakeTimer = 5;
+          if (allowParticles && this.particles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 12, '#FF4444', 'dramatic');
+          this.playHitSound();
+          
+          // Check if enemy is destroyed
+          if (enemy.health <= 0) {
+            enemy.alive = false;
+            this.score += enemy.type === 'bomber' ? 200 : 100;
+            this.playExplosionSound();
+            if (allowParticles && this.particles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 25, '#FF0000', 'epic');
+          }
         }
       });
     });
@@ -436,13 +455,24 @@ export class DefenderGame extends BaseGame {
             bullet.alive = false;
             this.playStinger('pop');
         } else {
-            this.onGameOver?.();
+            // Apply damage to player
+            this.player.health -= bullet.damage;
+            bullet.alive = false;
+            
+            // Effects
             const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
             const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
             const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-            if (!reduce && allowShake) this.shakeTimer = 14;
-            if (allowParticles && this.particles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 24, '#FFD700', 'epic');
-            this.playExplosionSound();
+            if (!reduce && allowShake) this.shakeTimer = 7;
+            if (allowParticles && this.particles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 20, '#FF0000', 'dramatic');
+            this.playHitSound();
+            
+            // Check if player is destroyed
+            if (this.player.health <= 0) {
+              this.player.alive = false;
+              this.onGameOver?.();
+              this.playExplosionSound();
+            }
         }
       }
       // Trails for enemy bullets
@@ -728,30 +758,167 @@ export class DefenderGame extends BaseGame {
         this.ctx.fill();
     }
 
-    // Draw samurai
-    this.ctx.fillStyle = '#2C3E50';
-    this.ctx.fillRect(-10, -10, 20, 20);
+    // Draw stealth jet - sleek, angular design
+    this.ctx.fillStyle = '#1a1a1a'; // Dark stealth color
+    this.ctx.strokeStyle = '#333333';
+    this.ctx.lineWidth = 2;
     
-    // Katana
-    this.ctx.strokeStyle = '#C0C0C0';
-    this.ctx.lineWidth = 3;
+    // Main fuselage
     this.ctx.beginPath();
-    this.ctx.moveTo(10, 0);
-    this.ctx.lineTo(25, -5);
+    this.ctx.moveTo(0, -20);
+    this.ctx.lineTo(-8, -15);
+    this.ctx.lineTo(-12, -5);
+    this.ctx.lineTo(-8, 5);
+    this.ctx.lineTo(-4, 15);
+    this.ctx.lineTo(0, 20);
+    this.ctx.lineTo(4, 15);
+    this.ctx.lineTo(8, 5);
+    this.ctx.lineTo(12, -5);
+    this.ctx.lineTo(8, -15);
+    this.ctx.closePath();
+    this.ctx.fill();
     this.ctx.stroke();
+    
+    // Wings
+    this.ctx.fillStyle = '#2a2a2a';
+    this.ctx.beginPath();
+    this.ctx.moveTo(-15, -8);
+    this.ctx.lineTo(-25, -3);
+    this.ctx.lineTo(-20, 2);
+    this.ctx.lineTo(-10, -3);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(15, -8);
+    this.ctx.lineTo(25, -3);
+    this.ctx.lineTo(20, 2);
+    this.ctx.lineTo(10, -3);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+    
+    // Cockpit
+    this.ctx.fillStyle = '#444444';
+    this.ctx.beginPath();
+    this.ctx.arc(0, -8, 6, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Engine exhausts
+    this.ctx.fillStyle = '#FF4500';
+    this.ctx.beginPath();
+    this.ctx.arc(-6, 18, 3, 0, Math.PI * 2);
+    this.ctx.arc(6, 18, 3, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Navigation lights
+    this.ctx.fillStyle = '#00FF00';
+    this.ctx.beginPath();
+    this.ctx.arc(-20, -3, 2, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    this.ctx.fillStyle = '#FF0000';
+    this.ctx.beginPath();
+    this.ctx.arc(20, -3, 2, 0, Math.PI * 2);
+    this.ctx.fill();
 
     this.ctx.restore();
   }
 
   private drawEnemy(enemy: Enemy) {
     this.ctx.save();
-    this.ctx.fillStyle = enemy.type === 'bomber' ? '#8B0000' : '#DC143C';
-    this.ctx.fillRect(
-      enemy.position.x - enemy.size.x / 2,
-      enemy.position.y - enemy.size.y / 2,
-      enemy.size.x,
-      enemy.size.y
-    );
+    this.ctx.translate(enemy.position.x, enemy.position.y);
+    
+    if (enemy.type === 'bomber') {
+      // Bomber ship - larger, more menacing
+      this.ctx.fillStyle = '#8B0000';
+      this.ctx.strokeStyle = '#FF0000';
+      this.ctx.lineWidth = 2;
+      
+      // Main hull
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, -15);
+      this.ctx.lineTo(-12, -10);
+      this.ctx.lineTo(-15, 0);
+      this.ctx.lineTo(-12, 10);
+      this.ctx.lineTo(0, 15);
+      this.ctx.lineTo(12, 10);
+      this.ctx.lineTo(15, 0);
+      this.ctx.lineTo(12, -10);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Wings
+      this.ctx.fillStyle = '#A00000';
+      this.ctx.beginPath();
+      this.ctx.moveTo(-20, -5);
+      this.ctx.lineTo(-30, 0);
+      this.ctx.lineTo(-25, 5);
+      this.ctx.lineTo(-15, 0);
+      this.ctx.closePath();
+      this.ctx.fill();
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(20, -5);
+      this.ctx.lineTo(30, 0);
+      this.ctx.lineTo(25, 5);
+      this.ctx.lineTo(15, 0);
+      this.ctx.closePath();
+      this.ctx.fill();
+      
+      // Cockpit
+      this.ctx.fillStyle = '#FF0000';
+      this.ctx.beginPath();
+      this.ctx.arc(0, -8, 4, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+    } else {
+      // Fighter ship - smaller, faster looking
+      this.ctx.fillStyle = '#DC143C';
+      this.ctx.strokeStyle = '#FF4500';
+      this.ctx.lineWidth = 1;
+      
+      // Main hull
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, -10);
+      this.ctx.lineTo(-8, -6);
+      this.ctx.lineTo(-10, 0);
+      this.ctx.lineTo(-8, 6);
+      this.ctx.lineTo(0, 10);
+      this.ctx.lineTo(8, 6);
+      this.ctx.lineTo(10, 0);
+      this.ctx.lineTo(8, -6);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Wings
+      this.ctx.fillStyle = '#FF0000';
+      this.ctx.beginPath();
+      this.ctx.moveTo(-12, -3);
+      this.ctx.lineTo(-18, 0);
+      this.ctx.lineTo(-15, 3);
+      this.ctx.lineTo(-10, 0);
+      this.ctx.closePath();
+      this.ctx.fill();
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(12, -3);
+      this.ctx.lineTo(18, 0);
+      this.ctx.lineTo(15, 3);
+      this.ctx.lineTo(10, 0);
+      this.ctx.closePath();
+      this.ctx.fill();
+      
+      // Cockpit
+      this.ctx.fillStyle = '#FF4500';
+      this.ctx.beginPath();
+      this.ctx.arc(0, -5, 3, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+    
     this.ctx.restore();
   }
 
@@ -808,8 +975,68 @@ export class DefenderGame extends BaseGame {
     this.drawText(`Wave: ${this.wave}`, 20, 60, 20, '#FFD700');
     this.drawText(`Rescued: ${this.civiliansRescued}`, 20, 90, 20, '#FFD700');
     
+    // Player health bar
+    this.drawHealthBar(this.player, 20, 120);
+    
+    // Enemy health bars (for visible enemies)
+    this.enemies.forEach((enemy, index) => {
+      if (enemy.alive && enemy.health < enemy.maxHealth) {
+        const screenX = enemy.position.x - this.camera.x;
+        if (screenX >= 0 && screenX <= this.width) {
+          this.drawEnemyHealthBar(enemy, screenX, enemy.position.y - 30);
+        }
+      }
+    });
+    
     // Cultural learning element
     this.drawText('Bushido Code: Protect the innocent with honor and courage', this.width / 2, this.height - 20, 14, '#FFF', 'center');
+  }
+
+  private drawHealthBar(entity: Player | Enemy, x: number, y: number) {
+    const barWidth = 200;
+    const barHeight = 20;
+    const healthPercent = entity.health / entity.maxHealth;
+    
+    // Background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(x, y, barWidth, barHeight);
+    
+    // Health bar
+    const healthColor = healthPercent > 0.6 ? '#00FF00' : healthPercent > 0.3 ? '#FFD700' : '#FF0000';
+    this.ctx.fillStyle = healthColor;
+    this.ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
+    
+    // Border
+    this.ctx.strokeStyle = '#FFF';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, barWidth, barHeight);
+    
+    // Text
+    this.ctx.fillStyle = '#FFF';
+    this.ctx.font = '14px monospace';
+    this.ctx.textAlign = 'left';
+    const label = 'health' in entity ? 'Player Health' : 'Enemy Health';
+    this.ctx.fillText(`${label}: ${Math.round(entity.health)}/${entity.maxHealth}`, x, y - 5);
+  }
+
+  private drawEnemyHealthBar(enemy: Enemy, x: number, y: number) {
+    const barWidth = 40;
+    const barHeight = 6;
+    const healthPercent = enemy.health / enemy.maxHealth;
+    
+    // Background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(x - barWidth/2, y, barWidth, barHeight);
+    
+    // Health bar
+    const healthColor = healthPercent > 0.6 ? '#00FF00' : healthPercent > 0.3 ? '#FFD700' : '#FF0000';
+    this.ctx.fillStyle = healthColor;
+    this.ctx.fillRect(x - barWidth/2, y, barWidth * healthPercent, barHeight);
+    
+    // Border
+    this.ctx.strokeStyle = '#FFF';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x - barWidth/2, y, barWidth, barHeight);
   }
 
   handleInput(event: KeyboardEvent) {
