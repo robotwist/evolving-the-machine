@@ -166,7 +166,11 @@ export const gameValidators = {
 
   // Validate stage unlock requests
   stageUnlock: (currentStage: number, requestedStage: number): boolean => {
-    // Can only unlock next stage or previous stages
+    // In production mode, allow all stages
+    if (process.env.NODE_ENV === 'production') {
+      return requestedStage >= 1 && requestedStage <= 8;
+    }
+    // In development, can only unlock next stage or previous stages
     return requestedStage <= currentStage + 1 && requestedStage >= 1 && requestedStage <= 8;
   },
 

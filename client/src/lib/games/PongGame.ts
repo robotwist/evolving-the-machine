@@ -7,9 +7,9 @@ const PONG_CONSTANTS = {
   WIN_SCORE: 5,
   PADDLE_WIDTH: 15,
   PADDLE_HEIGHT: 100,
-  PADDLE_SPEED: 8, // Increased for more intense gameplay
+  PADDLE_SPEED: 12, // FAST AND FURIOUS MODE - Increased for more intense gameplay
   BALL_RADIUS: 8,
-  BALL_SPEED: 6, // Increased for faster gameplay
+  BALL_SPEED: 8, // FAST AND FURIOUS MODE - Even faster ball for intense gameplay
   AI_BASE_AGGRESSION: 0.8, // More aggressive AI
   POWERUP_SPAWN_TIME: 300, // More frequent powerups (5 seconds)
   POWERUP_DURATION: 420, // Longer lasting powerups (7 seconds)
@@ -492,6 +492,22 @@ export class PongGame extends BaseGame {
         continue;
       }
       
+      // Enhanced collision detection - make powerups more magnetic and fun!
+      const paddleDistance = Math.sqrt(
+        Math.pow(powerup.x + powerup.width/2 - (this.player1.x + this.player1.width/2), 2) +
+        Math.pow(powerup.y + powerup.height/2 - (this.player1.y + this.player1.height/2), 2)
+      );
+      
+      // Magnetic effect - powerups get pulled toward paddle when close
+      const magneticRange = 80;
+      if (paddleDistance < magneticRange && !powerup.collected) {
+        const pullStrength = (magneticRange - paddleDistance) / magneticRange * 2;
+        const dx = (this.player1.x + this.player1.width/2) - (powerup.x + powerup.width/2);
+        const dy = (this.player1.y + this.player1.height/2) - (powerup.y + powerup.height/2);
+        powerup.x += dx * pullStrength * 0.1;
+        powerup.y += dy * pullStrength * 0.1;
+      }
+      
       // Check collision with player paddle OR ball
       const paddleCollision = !powerup.collected &&
           powerup.x < this.player1.x + this.player1.width &&
@@ -509,6 +525,26 @@ export class PongGame extends BaseGame {
         powerup.collected = true;
         this.activatePowerup(powerup.type);
         this.director.updateMetrics({ powerUpsCollected: 1 });
+        
+        // DRAMATIC POWERUP COLLECTION EFFECTS!
+        if (this.particles) {
+          this.particles.addExplosion(
+            powerup.x + powerup.width/2, 
+            powerup.y + powerup.height/2, 
+            30, 
+            '#FFD700', 
+            'epic'
+          );
+        }
+        
+        // Screen flash for dramatic effect
+        if (this.particles) {
+          this.particles.addScreenFlash(
+            powerup.x + powerup.width/2, 
+            powerup.y + powerup.height/2, 
+            0.2
+          );
+        }
         
         // Enhanced haptics and visual feedback for powerup collection
         if (this.settings?.hapticsEnabled) this.haptics?.vibrate('powerup');
@@ -937,8 +973,8 @@ export class PongGame extends BaseGame {
       }
     }
     
-    // Spawn powerups very frequently to speed up the game dramatically
-    if (this.powerupSpawnTimer > 180 && this.powerups.length < 3) { // Every ~3 seconds, up to 3 at once
+    // Spawn powerups very frequently to speed up the game dramatically - FAST AND FURIOUS MODE!
+    if (this.powerupSpawnTimer > 90 && this.powerups.length < 5) { // Every ~1.5 seconds, up to 5 at once
       const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity' | 'laser')[] =
         ['speed', 'fire', 'missile', 'wacky', 'shield', 'explosion', 'chain', 'shockwave', 'multiball', 'gravity', 'laser'];
       const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
