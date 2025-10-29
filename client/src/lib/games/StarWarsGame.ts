@@ -536,6 +536,9 @@ export class StarWarsGame extends BaseGame {
         
         // Check Star Destroyer collisions
         if (this.phase === 'star-destroyer' && this.starDestroyer.alive) {
+          let hitStarDestroyer = false;
+
+          // Check weak points first
           this.starDestroyer.weakPoints.forEach(wp => {
             if (!wp.destroyed) {
               const wpPos = {
@@ -546,9 +549,11 @@ export class StarWarsGame extends BaseGame {
                 wp.destroyed = true;
                 this.starDestroyer.health -= 100;
                 this.createExplosion(wpPos.x, wpPos.y, 30);
+                this.playExplosionSound();
                 bullet.size = 0;
                 this.score += 500;
-                
+                hitStarDestroyer = true;
+
                 if (this.starDestroyer.health <= 0) {
                   this.starDestroyer.alive = false;
                   this.createExplosion(this.starDestroyer.position.x, this.starDestroyer.position.y, 80);
@@ -557,6 +562,23 @@ export class StarWarsGame extends BaseGame {
               }
             }
           });
+
+          // If no weak point was hit, check general hull collision
+          if (!hitStarDestroyer && this.checkCollision(bullet.position, bullet.size, this.starDestroyer.position, this.starDestroyer.size)) {
+            // Deal damage and create explosion for hull hits
+            this.starDestroyer.health -= bullet.damage;
+            this.createExplosion(bullet.position.x, bullet.position.y, 25);
+            this.playExplosionSound();
+            bullet.size = 0;
+            this.score += 50; // Smaller score for hull hits
+            hitStarDestroyer = true;
+
+            if (this.starDestroyer.health <= 0) {
+              this.starDestroyer.alive = false;
+              this.createExplosion(this.starDestroyer.position.x, this.starDestroyer.position.y, 80);
+              this.score += 2000;
+            }
+          }
         }
       } else {
         // Enemy bullet vs player
