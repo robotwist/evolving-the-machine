@@ -64,6 +64,8 @@ export default [
         HTMLOlistElement: 'readonly',
         HTMLImageElement: 'readonly',
         Image: 'readonly',
+        Blob: 'readonly',
+        FileReader: 'readonly',
         CanvasRenderingContext2D: 'readonly',
         CanvasTextAlign: 'readonly',
         // Web APIs
@@ -90,12 +92,15 @@ export default [
         jest: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
+        NodeJS: 'readonly',
         // Web APIs for security and validation utilities
         URL: 'readonly',
         crypto: 'readonly',
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         DOMPurify: 'readonly',
+        btoa: 'readonly',
+        atob: 'readonly',
         // Event types
         Event: 'readonly',
         MouseEvent: 'readonly',

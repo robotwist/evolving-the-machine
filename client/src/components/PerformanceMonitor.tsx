@@ -7,6 +7,12 @@ export function PerformanceMonitor() {
     frameTime: 16,
     drawCalls: 0,
     particleCount: 0,
+    averageFrameTime: 16,
+    frameTimeVariance: 0,
+    memoryPressure: 'low',
+    performanceScore: 100,
+    bottlenecks: [],
+    recommendations: [],
   });
 
   useEffect(() => {

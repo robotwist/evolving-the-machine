@@ -40,3 +40,15 @@ export interface CollidableObject {
   width: number;
   height: number;
 }
+
+// Global type declarations for browser APIs
+declare global {
+  interface Window {
+    Blob: typeof Blob;
+    FileReader: typeof FileReader;
+    NodeJS?: any;
+  }
+
+  function btoa(data: string): string;
+  function atob(data: string): string;
+}
