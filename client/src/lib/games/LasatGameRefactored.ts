@@ -32,6 +32,7 @@ export class LasatGame extends BaseGame {
   // Game data
   private keys: Set<string> = new Set();
   private score = 0;
+  private lastReportedScore = 0;
   private gracePeriod = 180; // 3 seconds of invulnerability
   private waveCompleteTimer = 0;
 
@@ -113,8 +114,11 @@ export class LasatGame extends BaseGame {
     // Check wave completion
     this.checkWaveCompletion();
 
-    // Update score
-    this.onScoreUpdate?.(this.score);
+    // Only update score when it actually changes
+    if (this.score !== this.lastReportedScore) {
+      this.onScoreUpdate?.(this.score);
+      this.lastReportedScore = this.score;
+    }
   }
 
   private handleCombat() {

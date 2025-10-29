@@ -41,6 +41,7 @@ export class AsteroidsGame extends BaseGame {
   private powerups: Powerup[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
+  private lastReportedScore = 0;
   private lives = 3;
   private level = 1;
   private asteroidsDestroyed = 0;
@@ -336,7 +337,11 @@ export class AsteroidsGame extends BaseGame {
       }
     }
 
-    this.onScoreUpdate?.(this.score);
+    // Only update score when it actually changes
+    if (this.score !== this.lastReportedScore) {
+      this.onScoreUpdate?.(this.score);
+      this.lastReportedScore = this.score;
+    }
   }
 
   private updateGameObject(obj: GameObject) {

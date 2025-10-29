@@ -318,26 +318,32 @@ export default function App() {
           )}
           {currentScreen === 'game' && (
             <GameErrorBoundary gameId={`Stage-${currentStage}`}>
-              {isMobile ? (
-                <ErrorBoundary>
-                  <MobileGameUI
-                    currentGame={getGameName(currentStage)}
-                    stage={currentStage}
-                    gameState="playing"
-                    onGameComplete={() => {/* TODO: Implement mobile game completion */}}
-                    onScoreUpdate={(_score) => {/* TODO: Implement mobile score updates */}}
-                  />
-                </ErrorBoundary>
-              ) : (
-                <>
-                  <GameCanvas />
+              <>
+                {/* Always run the actual game canvas */}
+                <GameCanvas />
+                {/* Desktop UI overlay */}
+                {!isMobile && (
                   <div className="ui-overlay">
                     <ErrorBoundary>
                       <GameUI />
                     </ErrorBoundary>
                   </div>
-                </>
-              )}
+                )}
+                {/* Mobile controls overlay (visuals + touch mapping) */}
+                {isMobile && (
+                  <ErrorBoundary>
+                    <div className="ui-overlay pointer-events-none">
+                      <MobileGameUI
+                        currentGame={getGameName(currentStage)}
+                        stage={currentStage}
+                        gameState="playing"
+                        onGameComplete={() => {}}
+                        onScoreUpdate={(_score) => {}}
+                      />
+                    </div>
+                  </ErrorBoundary>
+                )}
+              </>
             </GameErrorBoundary>
           )}
           {showTransition && (

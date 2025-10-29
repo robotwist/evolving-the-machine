@@ -59,6 +59,15 @@ interface Explosion {
   maxTimer: number;
 }
 
+type PowerupType = 'shield' | 'rapid' | 'spread' | 'speed' | 'invincible';
+
+interface Powerup {
+  position: { x: number; y: number };
+  type: PowerupType;
+  radius: number;
+  ttl: number;
+}
+
 export class StarWarsGame extends BaseGame {
   protected score = 0;
   private player!: Player;
@@ -67,6 +76,12 @@ export class StarWarsGame extends BaseGame {
   private bullets: Bullet[] = [];
   private explosions: Explosion[] = [];
   private stars: Array<{x: number, y: number, speed: number}> = [];
+  private powerups: Powerup[] = [];
+  private powerupSpawnTimer = 0;
+  private rapidFireTimer = 0;
+  private spreadTimer = 0;
+  private speedBoostTimer = 0;
+  private invincibleTimer = 0;
   
   private phase: 'enemy-ships' | 'star-destroyer' | 'victory' = 'enemy-ships';
   private enemiesDestroyed = 0;
@@ -208,6 +223,12 @@ export class StarWarsGame extends BaseGame {
       this.updateVictory();
     }
     
+    // Powerups lifecycle
+    if (this.phase !== 'victory') {
+      this.spawnPowerups();
+      this.updatePowerups();
+    }
+
     // Update bullets and explosions
     this.updateBullets();
     this.updateExplosions();
@@ -496,7 +517,7 @@ export class StarWarsGame extends BaseGame {
         }
       } else {
         // Enemy bullet vs player
-        if (this.player.alive && this.checkCollision(bullet.position, bullet.size, this.player.position, this.player.size)) {
+        if (this.player.alive && this.invincibleTimer <= 0 && this.checkCollision(bullet.position, bullet.size, this.player.position, this.player.size)) {
           if (this.player.shield > 0) {
             this.player.shield -= bullet.damage;
             if (this.player.shield < 0) {
@@ -522,6 +543,70 @@ export class StarWarsGame extends BaseGame {
              bullet.position.x > -50 && bullet.position.x < this.width + 50 &&
              bullet.position.y > -50 && bullet.position.y < this.height + 50;
     });
+  }
+
+  private spawnPowerups() {
+    // Spawn a powerup every ~8-12 seconds during combat
+    this.powerupSpawnTimer++;
+    const interval = 480 + Math.floor(Math.random() * 240);
+    if (this.powerupSpawnTimer >= interval) {
+      this.powerupSpawnTimer = 0;
+      const types: PowerupType[] = ['shield', 'rapid', 'spread', 'speed', 'invincible'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      this.powerups.push({
+        position: { x: Math.random() * (this.width - 80) + 40, y: Math.random() * (this.height - 160) + 80 },
+        type,
+        radius: 10,
+        ttl: 600
+      });
+    }
+  }
+
+  private updatePowerups() {
+    // Update timers
+    if (this.rapidFireTimer > 0) this.rapidFireTimer--;
+    if (this.spreadTimer > 0) this.spreadTimer--;
+    if (this.speedBoostTimer > 0) this.speedBoostTimer--;
+    if (this.invincibleTimer > 0) this.invincibleTimer--;
+
+    // Apply speed boost effect
+    const baseMax = 8;
+    this.player.maxSpeed = this.speedBoostTimer > 0 ? 12 : baseMax;
+
+    // Powerup TTL and collection
+    for (let i = this.powerups.length - 1; i >= 0; i--) {
+      const p = this.powerups[i];
+      p.ttl--;
+      if (p.ttl <= 0) {
+        this.powerups.splice(i, 1);
+        continue;
+      }
+      if (this.checkCollision(p.position, p.radius * 2, this.player.position, this.player.size)) {
+        this.applyPowerup(p.type);
+        this.createExplosion(p.position.x, p.position.y, 20);
+        this.powerups.splice(i, 1);
+      }
+    }
+  }
+
+  private applyPowerup(type: PowerupType) {
+    switch (type) {
+      case 'shield':
+        this.player.shield = Math.min(100, this.player.shield + 40);
+        break;
+      case 'rapid':
+        this.rapidFireTimer = 600; // 10s
+        break;
+      case 'spread':
+        this.spreadTimer = 600;
+        break;
+      case 'speed':
+        this.speedBoostTimer = 600;
+        break;
+      case 'invincible':
+        this.invincibleTimer = 240; // 4s
+        break;
+    }
   }
 
   private updateExplosions() {
@@ -576,6 +661,9 @@ export class StarWarsGame extends BaseGame {
     // Draw player
     this.drawPlayer();
     
+    // Draw powerups
+    this.drawPowerups();
+
     // Draw bullets and explosions
     this.drawBullets();
     this.drawExplosions();
@@ -587,6 +675,25 @@ export class StarWarsGame extends BaseGame {
     if (this.transitioning) {
       this.drawTransition();
     }
+  }
+
+  private drawPowerups() {
+    this.powerups.forEach(p => {
+      this.ctx.save();
+      this.ctx.translate(p.position.x, p.position.y);
+      const pulse = (Math.sin(this.gameTimer * 0.1) + 1) * 0.5;
+      switch (p.type) {
+        case 'shield': this.ctx.fillStyle = `rgba(0,200,255,${0.6 + 0.4 * pulse})`; break;
+        case 'rapid': this.ctx.fillStyle = `rgba(0,255,0,${0.6 + 0.4 * pulse})`; break;
+        case 'spread': this.ctx.fillStyle = `rgba(255,200,0,${0.6 + 0.4 * pulse})`; break;
+        case 'speed': this.ctx.fillStyle = `rgba(255,100,0,${0.6 + 0.4 * pulse})`; break;
+        case 'invincible': this.ctx.fillStyle = `rgba(255,255,255,${0.6 + 0.4 * pulse})`; break;
+      }
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    });
   }
 
   private drawStarField() {
@@ -903,7 +1010,8 @@ export class StarWarsGame extends BaseGame {
       case 'Space':
         if (this.player.weaponCooldown <= 0) {
           this.shootPlayerBullet();
-          this.player.weaponCooldown = 10;
+          // Rapid fire reduces cooldown
+          this.player.weaponCooldown = this.rapidFireTimer > 0 ? 5 : 10;
         }
         break;
     }
@@ -917,26 +1025,33 @@ export class StarWarsGame extends BaseGame {
   }
 
   private shootPlayerBullet() {
-    // Calculate bullet position at the nose of the ship
-    const noseX = this.player.position.x + Math.cos(this.player.rotation) * this.player.size;
-    const noseY = this.player.position.y + Math.sin(this.player.rotation) * this.player.size;
-    
-    // Calculate bullet velocity in the direction the ship is facing
-    const bulletSpeed = 12;
-    const bulletVelX = Math.cos(this.player.rotation) * bulletSpeed;
-    const bulletVelY = Math.sin(this.player.rotation) * bulletSpeed;
-    
-    const bullet: Bullet = {
-      position: { x: noseX, y: noseY },
-      velocity: { x: bulletVelX, y: bulletVelY },
-      owner: 'player',
-      size: 4,
-      damage: 20,
-      color: '#00FF00',
-      trail: []
+    // Helper to fire a bullet at angle
+    const fireAtAngle = (angle: number) => {
+      const noseX = this.player.position.x + Math.cos(angle) * this.player.size;
+      const noseY = this.player.position.y + Math.sin(angle) * this.player.size;
+      const bulletSpeed = 12;
+      const bullet: Bullet = {
+        position: { x: noseX, y: noseY },
+        velocity: { x: Math.cos(angle) * bulletSpeed, y: Math.sin(angle) * bulletSpeed },
+        owner: 'player',
+        size: 4,
+        damage: 20,
+        color: '#00FF00',
+        trail: []
+      };
+      this.bullets.push(bullet);
     };
-    this.bullets.push(bullet);
-    
+
+    // Spread shot support
+    if (this.spreadTimer > 0) {
+      const a = this.player.rotation;
+      fireAtAngle(a - 0.15);
+      fireAtAngle(a);
+      fireAtAngle(a + 0.15);
+    } else {
+      fireAtAngle(this.player.rotation);
+    }
+
     // Play laser sound
     this.playLaserSound();
   }

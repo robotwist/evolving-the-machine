@@ -25,9 +25,10 @@ export const useScoreStore = create<ScoreStore>()(
           const validatedStage = gameValidation.stage(stage);
           const validatedScore = gameValidation.score(score);
           
-          // Rate limiting
-          if (!rateLimiters.scoreSubmissions.isAllowed('score-update')) {
-            console.warn('Score update rate limited');
+          // Rate limiting - use a more permissive rate for score updates
+          // Allow up to 60 updates per minute (1 per second) instead of 5
+          if (!rateLimiters.scoreSubmissions.isAllowed(`score-update-${validatedStage}`)) {
+            // Silently skip rate-limited updates instead of logging warnings
             return;
           }
           

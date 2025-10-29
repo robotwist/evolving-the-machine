@@ -63,6 +63,7 @@ export class BreakoutGame extends BaseGame {
   private bricks: Brick[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
+  private lastReportedScore = 0;
   private lives = 5; // More lives to prevent frustrating resets
   private level = 1;
   private transitioning = false;
@@ -475,7 +476,11 @@ export class BreakoutGame extends BaseGame {
       this.startTransition();
     }
 
-    this.onScoreUpdate?.(this.score);
+    // Only update score when it actually changes
+    if (this.score !== this.lastReportedScore) {
+      this.onScoreUpdate?.(this.score);
+      this.lastReportedScore = this.score;
+    }
   }
 
   // Touch/pointer: horizontal paddle control (normal mode) or move evolved body

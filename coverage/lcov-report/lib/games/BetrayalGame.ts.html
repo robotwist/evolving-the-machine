@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/578</span>
+                <span class='fraction'>0/580</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/239</span>
+                <span class='fraction'>0/237</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/560</span>
+                <span class='fraction'>0/562</span>
             </div>
         
             
@@ -1182,7 +1182,11 @@
 <a name='L1117'></a><a href='#L1117'>1117</a>
 <a name='L1118'></a><a href='#L1118'>1118</a>
 <a name='L1119'></a><a href='#L1119'>1119</a>
-<a name='L1120'></a><a href='#L1120'>1120</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L1120'></a><a href='#L1120'>1120</a>
+<a name='L1121'></a><a href='#L1121'>1121</a>
+<a name='L1122'></a><a href='#L1122'>1122</a>
+<a name='L1123'></a><a href='#L1123'>1123</a>
+<a name='L1124'></a><a href='#L1124'>1124</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1273,6 +1277,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1395,10 +1400,14 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1795,7 +1804,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -2384,6 +2392,7 @@ interface Glitch {
   private <span class="cstat-no" title="statement not covered" >glitches: Glitch[] = [];</span>
   private <span class="cstat-no" title="statement not covered" >keys: Set&lt;string&gt; = new Set();</span>
   private <span class="cstat-no" title="statement not covered" >score = 0;</span>
+  private <span class="cstat-no" title="statement not covered" >lastReportedScore = 0;</span>
   private <span class="cstat-no" title="statement not covered" >gamePhase: 'intro' | 'battle' | 'escape' | 'final' | 'victory' | 'defeat' = 'intro';</span>
   private <span class="cstat-no" title="statement not covered" >phaseTimer = 0;</span>
   private <span class="cstat-no" title="statement not covered" >currentMessage = '';</span>
@@ -2514,7 +2523,11 @@ interface Glitch {
 <span class="cstat-no" title="statement not covered" >        break;</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    this.onScoreUpdate?.(this.score);</span>
+    // Only update score when it actually changes
+<span class="cstat-no" title="statement not covered" >    if (this.score !== this.lastReportedScore) {</span>
+<span class="cstat-no" title="statement not covered" >      this.onScoreUpdate?.(this.score);</span>
+<span class="cstat-no" title="statement not covered" >      this.lastReportedScore = this.score;</span>
+    }
   }
 &nbsp;
   private <span class="fstat-no" title="function not covered" >updateIntro(</span>) {
@@ -2919,7 +2932,6 @@ interface Glitch {
 <span class="cstat-no" title="statement not covered" >          this.bullets.splice(i, 1);</span>
 <span class="cstat-no" title="statement not covered" >          this.createExplosion(bullet.position, 30);</span>
 <span class="cstat-no" title="statement not covered" >          this.score += 100;</span>
-<span class="cstat-no" title="statement not covered" >          this.onScoreUpdate?.(this.score);</span>
         }
         // Player bullet hits minion
 <span class="cstat-no" title="statement not covered" >        for (let j = <span class="cstat-no" title="statement not covered" >this.minions.length - 1;</span> j &gt;= 0; j--) {</span>
@@ -3427,7 +3439,7 @@ interface Glitch {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-28T19:09:09.703Z
+                at 2025-10-29T20:54:29.845Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

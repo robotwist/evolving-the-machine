@@ -87,6 +87,13 @@ function useGameInstance(
           const game = new gameClass(ctx, width, height);
           gameRef.current = game;
 
+          // Expose for mobile controls
+          try {
+            (window as unknown as { gameInstance?: BaseGame }).gameInstance = game;
+          } catch {
+            // ignore
+          }
+
           game.onScoreUpdate = (score: number) => updateScore(currentStage, score);
           game.onGameOver = () => setGameState('ended');
           game.onStageComplete = () => {
@@ -122,7 +129,14 @@ function useGameInstance(
 
     return () => {
       console.log(`🧹 Cleaning up game for stage ${currentStage}`);
-      gameRef.current?.destroy();
+              // Clear global reference if pointing to this instance
+              try {
+                const w = (window as unknown as { gameInstance?: BaseGame });
+                if (w.gameInstance === gameRef.current) {
+                  w.gameInstance = undefined;
+                }
+              } catch {}
+              gameRef.current?.destroy();
       gameRef.current = null;
       isInitializing.current = false;
     };

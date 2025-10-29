@@ -96,6 +96,7 @@ export class LasatGame extends BaseGame {
   private powerUps: PowerUp[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
+  private lastReportedScore = 0;
   private wave = 1;
   private bossesDefeated = 0;
   private ragnarokPhase = 1;
@@ -493,7 +494,11 @@ export class LasatGame extends BaseGame {
       }
     }
 
-    this.onScoreUpdate?.(this.score);
+    // Only update score when it actually changes
+    if (this.score !== this.lastReportedScore) {
+      this.onScoreUpdate?.(this.score);
+      this.lastReportedScore = this.score;
+    }
   }
 
   private handleStartScreenInput() {

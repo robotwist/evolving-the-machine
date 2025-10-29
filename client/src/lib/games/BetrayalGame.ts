@@ -81,6 +81,7 @@ export class BetrayalGame extends BaseGame {
   private glitches: Glitch[] = [];
   private keys: Set<string> = new Set();
   private score = 0;
+  private lastReportedScore = 0;
   private gamePhase: 'intro' | 'battle' | 'escape' | 'final' | 'victory' | 'defeat' = 'intro';
   private phaseTimer = 0;
   private currentMessage = '';
@@ -211,7 +212,11 @@ export class BetrayalGame extends BaseGame {
         break;
     }
 
-    this.onScoreUpdate?.(this.score);
+    // Only update score when it actually changes
+    if (this.score !== this.lastReportedScore) {
+      this.onScoreUpdate?.(this.score);
+      this.lastReportedScore = this.score;
+    }
   }
 
   private updateIntro() {
@@ -616,7 +621,6 @@ export class BetrayalGame extends BaseGame {
           this.bullets.splice(i, 1);
           this.createExplosion(bullet.position, 30);
           this.score += 100;
-          this.onScoreUpdate?.(this.score);
         }
         // Player bullet hits minion
         for (let j = this.minions.length - 1; j >= 0; j--) {

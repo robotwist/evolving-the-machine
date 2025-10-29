@@ -337,8 +337,8 @@ export const rateLimiters = {
   // General user actions (10 per minute)
   userActions: new RateLimiter(10, 60000),
   
-  // Score submissions (5 per minute)
-  scoreSubmissions: new RateLimiter(5, 60000),
+  // Score submissions (60 per minute = 1 per second) - more permissive for real-time games
+  scoreSubmissions: new RateLimiter(60, 60000),
   
   // Settings changes (20 per minute)
   settingsChanges: new RateLimiter(20, 60000),
