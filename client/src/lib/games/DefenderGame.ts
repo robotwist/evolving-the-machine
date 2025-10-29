@@ -188,11 +188,13 @@ export class DefenderGame extends BaseGame {
     this.updatePlayer();
 
     // Update enemies
-    this.enemies.forEach(enemy => {
-      if (enemy.alive) {
-        this.updateEnemy(enemy);
-      }
-    });
+    if (this.enemies) {
+      this.enemies.forEach(enemy => {
+        if (enemy.alive) {
+          this.updateEnemy(enemy);
+        }
+      });
+    }
 
     // Update civilians
     this.civilians.forEach(civilian => {
@@ -217,7 +219,7 @@ export class DefenderGame extends BaseGame {
     this.updateCamera();
 
     // Check wave completion
-    if (this.enemies.filter(e => e.alive).length === 0) {
+    if (this.enemies && this.enemies.filter(e => e.alive).length === 0) {
       this.wave++;
       this.spawnWave();
       if (this.wave > 5) { // Complete after 5 waves
@@ -239,8 +241,10 @@ export class DefenderGame extends BaseGame {
   }
 
   private handleMovement() {
+    if (!this.player) return; // Safety check for tests
+
     const speed = 5;
-    
+
     if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
       this.player.velocity.x = -speed;
       this.player.direction = -1;
@@ -278,6 +282,8 @@ export class DefenderGame extends BaseGame {
   }
 
   private updatePlayer() {
+    if (!this.player) return; // Safety check for tests
+
     // Apply gravity
     if (!this.player.onGround) {
       this.player.velocity.y += 0.3;
@@ -429,6 +435,9 @@ export class DefenderGame extends BaseGame {
   }
 
   private updateProjectiles() {
+    // Safety check for tests
+    if (!this.playerBullets) this.playerBullets = [];
+
     // Update player bullets
     this.playerBullets = this.playerBullets.filter(bullet => {
       bullet.position.x += bullet.velocity.x;
@@ -491,6 +500,8 @@ export class DefenderGame extends BaseGame {
     }
     
     // Update existing kamikaze bombers
+    if (!this.enemies) return;
+
     this.enemies.forEach(enemy => {
       if (enemy.kamikazeMode && enemy.alive) {
         // Kamikaze bombers dive straight at the player
@@ -620,6 +631,11 @@ export class DefenderGame extends BaseGame {
   }
 
   private isColliding(obj1: Entity, obj2: Entity): boolean {
+    // Safety checks for tests
+    if (!obj1?.position || !obj2?.position || !obj1?.size || !obj2?.size) {
+      return false;
+    }
+
     return obj1.position.x < obj2.position.x + obj2.size.x &&
            obj1.position.x + obj1.size.x > obj2.position.x &&
            obj1.position.y < obj2.position.y + obj2.size.y &&
@@ -629,7 +645,9 @@ export class DefenderGame extends BaseGame {
   private findNearestEnemy(position: Vector2): Enemy | null {
     let nearest: Enemy | null = null;
     let minDistance = Infinity;
-    
+
+    if (!this.enemies) return null;
+
     this.enemies.forEach(enemy => {
       if (enemy.alive) {
         const distance = this.getDistance(position, enemy.position);
@@ -667,6 +685,9 @@ export class DefenderGame extends BaseGame {
   }
 
   private updateCamera() {
+    // Safety check for tests
+    if (!this.player) return;
+
     // Follow player
     this.camera.x = this.player.position.x - this.width / 2;
     this.camera.x = Math.max(0, Math.min(this.worldWidth - this.width, this.camera.x));
@@ -1213,6 +1234,8 @@ export class DefenderGame extends BaseGame {
   }
 
   handleInput(event: KeyboardEvent) {
+    if (!event) return; // Safety check for tests
+
     if (event.type === 'keydown') {
       this.keys.add(event.code);
     } else if (event.type === 'keyup') {

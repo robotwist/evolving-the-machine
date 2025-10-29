@@ -49,6 +49,12 @@ interface Bullet {
   damage: number;
   color: string;
   trail: Array<{x: number, y: number}>;
+  // New properties for advanced bullets
+  guided?: boolean;
+  target?: { x: number; y: number };
+  tripleShot?: boolean;
+  gravitron?: boolean;
+  lifetime?: number;
 }
 
 interface Explosion {
@@ -59,7 +65,7 @@ interface Explosion {
   maxTimer: number;
 }
 
-type PowerupType = 'shield' | 'rapid' | 'spread' | 'speed' | 'invincible';
+type PowerupType = 'shield' | 'rapid' | 'spread' | 'speed' | 'invincible' | 'guided' | 'triple' | 'gravitron';
 
 interface Powerup {
   position: { x: number; y: number };
@@ -82,7 +88,17 @@ export class StarWarsGame extends BaseGame {
   private spreadTimer = 0;
   private speedBoostTimer = 0;
   private invincibleTimer = 0;
-  
+  private guidedMissileTimer = 0;
+  private tripleShotTimer = 0;
+  private gravitronTimer = 0;
+
+  // Enhanced touch control variables
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchActive = false;
+  private lastTouchX = 0;
+  private lastTouchY = 0;
+
   private phase: 'enemy-ships' | 'star-destroyer' | 'victory' = 'enemy-ships';
   private enemiesDestroyed = 0;
   private readonly TOTAL_ENEMIES = 12;
@@ -464,9 +480,36 @@ export class StarWarsGame extends BaseGame {
 
   private updateBullets() {
     this.bullets = this.bullets.filter(bullet => {
+      // Guided missile homing logic
+      if (bullet.guided && bullet.target) {
+        const dx = bullet.target.x - bullet.position.x;
+        const dy = bullet.target.y - bullet.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 0) {
+          // Homing acceleration (gradually steer toward target)
+          const homingForce = 0.3;
+          const targetAngle = Math.atan2(dy, dx);
+          const currentAngle = Math.atan2(bullet.velocity.y, bullet.velocity.x);
+
+          // Calculate shortest rotation direction
+          let angleDiff = targetAngle - currentAngle;
+          while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+          while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+          // Apply steering force
+          const steerAngle = currentAngle + Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), homingForce);
+
+          // Update velocity with some momentum preservation
+          const speed = Math.sqrt(bullet.velocity.x * bullet.velocity.x + bullet.velocity.y * bullet.velocity.y);
+          bullet.velocity.x = Math.cos(steerAngle) * speed;
+          bullet.velocity.y = Math.sin(steerAngle) * speed;
+        }
+      }
+
       bullet.position.x += bullet.velocity.x;
       bullet.position.y += bullet.velocity.y;
-      
+
       // Add trail
       bullet.trail.push({x: bullet.position.x, y: bullet.position.y});
       if (bullet.trail.length > 5) bullet.trail.shift();
@@ -546,13 +589,23 @@ export class StarWarsGame extends BaseGame {
   }
 
   private spawnPowerups() {
-    // Spawn a powerup every ~8-12 seconds during combat
+    // Spawn a powerup every ~6-10 seconds during combat
     this.powerupSpawnTimer++;
-    const interval = 480 + Math.floor(Math.random() * 240);
+    const interval = 360 + Math.floor(Math.random() * 240); // More frequent spawning
     if (this.powerupSpawnTimer >= interval) {
       this.powerupSpawnTimer = 0;
-      const types: PowerupType[] = ['shield', 'rapid', 'spread', 'speed', 'invincible'];
-      const type = types[Math.floor(Math.random() * types.length)];
+
+      // Different powerups based on phase
+      let availableTypes: PowerupType[];
+      if (this.phase === 'star-destroyer') {
+        // Final phase gets the most powerful powerups
+        availableTypes = ['shield', 'rapid', 'spread', 'speed', 'invincible', 'guided', 'triple', 'gravitron'];
+      } else {
+        // Earlier phases get basic powerups
+        availableTypes = ['shield', 'rapid', 'spread', 'speed'];
+      }
+
+      const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
       this.powerups.push({
         position: { x: Math.random() * (this.width - 80) + 40, y: Math.random() * (this.height - 160) + 80 },
         type,
@@ -568,6 +621,9 @@ export class StarWarsGame extends BaseGame {
     if (this.spreadTimer > 0) this.spreadTimer--;
     if (this.speedBoostTimer > 0) this.speedBoostTimer--;
     if (this.invincibleTimer > 0) this.invincibleTimer--;
+    if (this.guidedMissileTimer > 0) this.guidedMissileTimer--;
+    if (this.tripleShotTimer > 0) this.tripleShotTimer--;
+    if (this.gravitronTimer > 0) this.gravitronTimer--;
 
     // Apply speed boost effect
     const baseMax = 8;
@@ -606,7 +662,76 @@ export class StarWarsGame extends BaseGame {
       case 'invincible':
         this.invincibleTimer = 240; // 4s
         break;
+      case 'guided':
+        this.guidedMissileTimer = 480; // 8s
+        break;
+      case 'triple':
+        this.tripleShotTimer = 600; // 10s
+        break;
+      case 'gravitron':
+        this.gravitronTimer = 1; // Instant effect
+        this.activateGravitronBomb();
+        break;
     }
+  }
+
+  private activateGravitronBomb() {
+    // Create a massive gravitational effect that affects all enemies on screen
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+
+    // Visual effect - large gravitron explosion
+    this.createExplosion(centerX, centerY, 120);
+    this.particles?.addExplosion(centerX, centerY, 60, '#800080', 'epic');
+
+    // Apply gravitron effect to all enemies
+    this.enemies.forEach(enemy => {
+      if (enemy.alive) {
+        const dx = centerX - enemy.position.x;
+        const dy = centerY - enemy.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 0) {
+          // Pull enemies toward center with massive force
+          const pullForce = 8;
+          enemy.velocity.x += (dx / distance) * pullForce;
+          enemy.velocity.y += (dy / distance) * pullForce;
+
+          // Deal damage based on proximity
+          const damage = Math.max(10, 50 - (distance / 10));
+          enemy.health -= damage;
+
+          // Create smaller explosions on affected enemies
+          this.createExplosion(enemy.position.x, enemy.position.y, 15);
+        }
+
+        // Cap enemy velocity to prevent them from flying off screen
+        const maxSpeed = 15;
+        const currentSpeed = Math.sqrt(enemy.velocity.x * enemy.velocity.x + enemy.velocity.y * enemy.velocity.y);
+        if (currentSpeed > maxSpeed) {
+          enemy.velocity.x = (enemy.velocity.x / currentSpeed) * maxSpeed;
+          enemy.velocity.y = (enemy.velocity.y / currentSpeed) * maxSpeed;
+        }
+      }
+    });
+
+    // Also affect Star Destroyer if in final phase
+    if (this.phase === 'star-destroyer' && this.starDestroyer.alive) {
+      const dx = centerX - this.starDestroyer.position.x;
+      const dy = centerY - this.starDestroyer.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance > 0) {
+        const pullForce = 3;
+        // Apply less force to Star Destroyer but more damage
+        const damage = Math.max(20, 100 - (distance / 5));
+        this.starDestroyer.health -= damage;
+        this.createExplosion(this.starDestroyer.position.x, this.starDestroyer.position.y, 25);
+      }
+    }
+
+    this.score += 500; // Bonus points for gravitron bomb
+    console.log('🌀 GRAVITRON BOMB ACTIVATED! All enemies affected!');
   }
 
   private updateExplosions() {
@@ -668,6 +793,11 @@ export class StarWarsGame extends BaseGame {
     this.drawBullets();
     this.drawExplosions();
     
+    // Draw touch control zones (mobile only)
+    if (this.isMobile) {
+      this.drawTouchZones();
+    }
+
     // Draw UI
     this.drawUI();
     
@@ -688,12 +818,90 @@ export class StarWarsGame extends BaseGame {
         case 'spread': this.ctx.fillStyle = `rgba(255,200,0,${0.6 + 0.4 * pulse})`; break;
         case 'speed': this.ctx.fillStyle = `rgba(255,100,0,${0.6 + 0.4 * pulse})`; break;
         case 'invincible': this.ctx.fillStyle = `rgba(255,255,255,${0.6 + 0.4 * pulse})`; break;
+        case 'guided': this.ctx.fillStyle = `rgba(255,0,255,${0.6 + 0.4 * pulse})`; break; // Magenta for guided missiles
+        case 'triple': this.ctx.fillStyle = `rgba(0,255,255,${0.6 + 0.4 * pulse})`; break; // Cyan for triple shot
+        case 'gravitron': this.ctx.fillStyle = `rgba(128,0,128,${0.6 + 0.4 * pulse})`; break; // Purple for gravitron
       }
       this.ctx.beginPath();
       this.ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
       this.ctx.fill();
       this.ctx.restore();
     });
+  }
+
+  private drawTouchZones() {
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.2; // Semi-transparent
+
+    const screenWidth = this.width;
+    const screenHeight = this.height;
+
+    // Left zone: Movement (Blue)
+    this.ctx.fillStyle = '#0088FF';
+    this.ctx.fillRect(0, 0, screenWidth * 0.4, screenHeight);
+
+    // Center zone: Action (Yellow)
+    this.ctx.fillStyle = '#FFFF00';
+    this.ctx.fillRect(screenWidth * 0.4, 0, screenWidth * 0.2, screenHeight);
+
+    // Right zone: Shooting (Red)
+    this.ctx.fillStyle = '#FF4444';
+    this.ctx.fillRect(screenWidth * 0.6, 0, screenWidth * 0.4, screenHeight);
+
+    // Add zone labels
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.font = '16px Arial';
+    this.ctx.textAlign = 'center';
+
+    // Movement label
+    this.ctx.fillText('DRAG TO MOVE', screenWidth * 0.2, screenHeight * 0.1);
+
+    // Shoot label
+    this.ctx.fillText('TAP TO SHOOT', screenWidth * 0.8, screenHeight * 0.1);
+
+    // Action label
+    this.ctx.fillText('ACTION', screenWidth * 0.5, screenHeight * 0.1);
+
+    // Show current touch state if active
+    if (this.touchActive) {
+      this.ctx.fillStyle = '#00FF00';
+      this.ctx.beginPath();
+      this.ctx.arc(this.touchStartX, this.touchStartY, 10, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Draw drag vector
+      const deltaX = this.lastTouchX - this.touchStartX;
+      const deltaY = this.lastTouchY - this.touchStartY;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+      if (distance > 20) {
+        this.ctx.strokeStyle = '#00FF00';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.touchStartX, this.touchStartY);
+        this.ctx.lineTo(this.lastTouchX, this.lastTouchY);
+        this.ctx.stroke();
+
+        // Draw arrow head
+        const angle = Math.atan2(deltaY, deltaX);
+        const arrowLength = 15;
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.lastTouchX, this.lastTouchY);
+        this.ctx.lineTo(
+          this.lastTouchX - arrowLength * Math.cos(angle - Math.PI/6),
+          this.lastTouchY - arrowLength * Math.sin(angle - Math.PI/6)
+        );
+        this.ctx.moveTo(this.lastTouchX, this.lastTouchY);
+        this.ctx.lineTo(
+          this.lastTouchX - arrowLength * Math.cos(angle + Math.PI/6),
+          this.lastTouchY - arrowLength * Math.sin(angle + Math.PI/6)
+        );
+        this.ctx.stroke();
+      }
+    }
+
+    this.ctx.restore();
   }
 
   private drawStarField() {
@@ -1026,10 +1234,10 @@ export class StarWarsGame extends BaseGame {
 
   private shootPlayerBullet() {
     // Helper to fire a bullet at angle
-    const fireAtAngle = (angle: number) => {
+    const fireAtAngle = (angle: number, guided = false, target?: { x: number; y: number }) => {
       const noseX = this.player.position.x + Math.cos(angle) * this.player.size;
       const noseY = this.player.position.y + Math.sin(angle) * this.player.size;
-      const bulletSpeed = 12;
+      const bulletSpeed = 24; // 2x faster than before (was 12)
       const bullet: Bullet = {
         position: { x: noseX, y: noseY },
         velocity: { x: Math.cos(angle) * bulletSpeed, y: Math.sin(angle) * bulletSpeed },
@@ -1037,19 +1245,62 @@ export class StarWarsGame extends BaseGame {
         size: 4,
         damage: 20,
         color: '#00FF00',
-        trail: []
+        trail: [],
+        guided,
+        target,
+        lifetime: guided ? 300 : undefined // Guided missiles live longer
       };
       this.bullets.push(bullet);
     };
 
-    // Spread shot support
-    if (this.spreadTimer > 0) {
+    // Triple shot takes precedence over spread shot
+    if (this.tripleShotTimer > 0) {
+      const a = this.player.rotation;
+      fireAtAngle(a - 0.2);
+      fireAtAngle(a);
+      fireAtAngle(a + 0.2);
+    } else if (this.spreadTimer > 0) {
       const a = this.player.rotation;
       fireAtAngle(a - 0.15);
       fireAtAngle(a);
       fireAtAngle(a + 0.15);
     } else {
       fireAtAngle(this.player.rotation);
+    }
+
+    // Add guided missile support
+    if (this.guidedMissileTimer > 0) {
+      // Find nearest enemy for guided missile
+      let nearestEnemy: EnemyShip | StarDestroyer | null = null;
+      let nearestDistance = Infinity;
+
+      // Check enemy ships
+      for (const enemy of this.enemies) {
+        if (enemy.alive) {
+          const dx = enemy.position.x - this.player.position.x;
+          const dy = enemy.position.y - this.player.position.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < nearestDistance) {
+            nearestDistance = distance;
+            nearestEnemy = enemy;
+          }
+        }
+      }
+
+      // Check Star Destroyer if in final phase
+      if (this.phase === 'star-destroyer' && this.starDestroyer.alive) {
+        const dx = this.starDestroyer.position.x - this.player.position.x;
+        const dy = this.starDestroyer.position.y - this.player.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < nearestDistance) {
+          nearestEnemy = this.starDestroyer;
+        }
+      }
+
+      if (nearestEnemy) {
+        const angle = this.player.rotation;
+        fireAtAngle(angle, true, nearestEnemy.position);
+      }
     }
 
     // Play laser sound
@@ -1083,35 +1334,76 @@ export class StarWarsGame extends BaseGame {
   // Touch/pointer controls for mobile
   handlePointerDown(x: number, y: number) {
     if (!this.player.alive) return;
-    
-    // Touch anywhere to shoot
-    if (this.player.weaponCooldown <= 0) {
-      this.shootPlayerBullet();
-      this.player.weaponCooldown = 10;
+
+    // Enhanced touch controls - divide screen into zones
+    const screenWidth = this.width;
+    const screenHeight = this.height;
+
+    // Left side: movement zone
+    if (x < screenWidth * 0.4) {
+      // Movement controls - store touch start for drag
+      this.touchStartX = x;
+      this.touchStartY = y;
+      this.touchActive = true;
+      this.lastTouchX = x;
+      this.lastTouchY = y;
+      return;
+    }
+
+    // Right side: shooting zone
+    if (x > screenWidth * 0.6) {
+      if (this.player.weaponCooldown <= 0) {
+        this.shootPlayerBullet();
+        // Reduced cooldown for better responsiveness on mobile
+        this.player.weaponCooldown = this.rapidFireTimer > 0 ? 3 : 6;
+
+        // Haptic feedback if available
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+      }
+    }
+
+    // Center zone: action button
+    if (x >= screenWidth * 0.4 && x <= screenWidth * 0.6) {
+      // Could add special action here if needed
     }
   }
 
   handlePointerMove(x: number, y: number) {
     if (!this.player.alive) return;
-    
-    // Convert screen coordinates to relative movement
-    const centerX = this.width / 2;
-    const centerY = this.height / 2;
-    
-    // Calculate direction from center to touch point
-    const dx = x - centerX;
-    const dy = y - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    if (distance > 50) { // Dead zone to prevent accidental movement
-      // Set target rotation based on touch direction
-      this.player.targetRotation = Math.atan2(dy, dx);
-      
-      // Apply thrust in the direction of touch
-      const thrust = this.player.thrust * 0.5; // Reduced thrust for touch
+
+    // Enhanced touch movement - only respond if touch started in movement zone
+    if (!this.touchActive) return;
+
+    // Calculate drag distance and direction from initial touch point
+    const deltaX = x - this.touchStartX;
+    const deltaY = y - this.touchStartY;
+
+    // Normalize to screen size for consistent movement
+    const normalizedX = deltaX / (this.width * 0.3); // Scale to movement zone width
+    const normalizedY = deltaY / (this.height * 0.3); // Scale to movement zone height
+
+    // Calculate distance from start to determine movement intent
+    const distanceFromStart = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const deadZone = 20; // Minimum drag distance before movement starts
+
+    if (distanceFromStart > deadZone) {
+      // Set target rotation based on drag direction
+      this.player.targetRotation = Math.atan2(normalizedY, normalizedX);
+
+      // Apply smooth thrust based on drag distance (further drag = more thrust)
+      const maxThrust = this.player.thrust;
+      const thrustMultiplier = Math.min(1, distanceFromStart / (this.width * 0.15));
+      const thrust = maxThrust * thrustMultiplier;
+
       this.player.velocity.x += Math.cos(this.player.targetRotation) * thrust;
       this.player.velocity.y += Math.sin(this.player.targetRotation) * thrust;
-      
+
+      // Apply friction to prevent excessive sliding
+      this.player.velocity.x *= 0.95;
+      this.player.velocity.y *= 0.95;
+
       // Limit velocity
       const currentSpeed = Math.sqrt(this.player.velocity.x ** 2 + this.player.velocity.y ** 2);
       if (currentSpeed > this.player.maxSpeed) {
@@ -1122,9 +1414,12 @@ export class StarWarsGame extends BaseGame {
   }
 
   handlePointerUp() {
-    // Gradually reduce velocity when touch ends
-    this.player.velocity.x *= 0.8;
-    this.player.velocity.y *= 0.8;
+    // Reset touch control state
+    this.touchActive = false;
+
+    // Apply some drag when touch ends to prevent abrupt stops
+    this.player.velocity.x *= 0.7;
+    this.player.velocity.y *= 0.7;
   }
 
   // Mobile-specific controls

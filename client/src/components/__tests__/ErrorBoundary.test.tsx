@@ -123,10 +123,8 @@ describe('ErrorBoundary', () => {
   it('should reload page when restart button is clicked', () => {
     // Mock window.location.reload
     const mockReload = jest.fn();
-    Object.defineProperty(window, 'location', {
-      value: { reload: mockReload },
-      writable: true,
-    });
+    delete (window as any).location;
+    (window as any).location = { reload: mockReload };
 
     render(
       React.createElement(ErrorBoundary, {},
@@ -149,7 +147,7 @@ describe('ErrorBoundary', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Trigger Error' }));
 
-    expect(consoleSpy).toHaveBeenCalledWith('Error caught by useErrorHandler:', expect.any(Error));
+    expect(consoleSpy).toHaveBeenCalledWith('Error caught by useErrorHandler:', expect.any(Error), undefined);
     expect(consoleGroupSpy).toHaveBeenCalledWith('🚨 Game Error');
 
     consoleSpy.mockRestore();

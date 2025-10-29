@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for lib/stores/useTutorialStore.ts</title>
+    <title>Code coverage report for lib/stores/stateManagement.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../prettify.css" />
     <link rel="stylesheet" href="../../base.css" />
@@ -19,20 +19,20 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">lib/stores</a> useTutorialStore.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">lib/stores</a> stateManagement.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>0/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>0/8</span>
             </div>
         
             
@@ -97,9 +97,7 @@
 <a name='L32'></a><a href='#L32'>32</a>
 <a name='L33'></a><a href='#L33'>33</a>
 <a name='L34'></a><a href='#L34'>34</a>
-<a name='L35'></a><a href='#L35'>35</a>
-<a name='L36'></a><a href='#L36'>36</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L35'></a><a href='#L35'>35</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -107,23 +105,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -133,41 +114,57 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { create } from 'zustand';</span>
-<span class="cstat-no" title="statement not covered" >import { persist } from 'zustand/middleware';</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// Stub implementation for advanced state management store
+// TODO: Implement full state management system
 &nbsp;
-type StageId = 1 | 2 | 3 | 4 | 5;
-&nbsp;
-interface TutorialState {
-  seen: Partial&lt;Record&lt;StageId, boolean&gt;&gt;;
-  show: Partial&lt;Record&lt;StageId, boolean&gt;&gt;;
-  markSeen: (stage: StageId) =&gt; void;
-  maybeShow: (stage: StageId) =&gt; void;
-  hide: (stage: StageId) =&gt; void;
+export interface ActionTypes {
+  UPDATE_STATE: 'UPDATE_STATE';
+  RESET_STATE: 'RESET_STATE';
+  VALIDATE_STATE: 'VALIDATE_STATE';
+  RESET_PROGRESS: 'RESET_PROGRESS';
+  RESET_SCORES: 'RESET_SCORES';
 }
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >useTutorialStore = create&lt;TutorialState&gt;()(</span>
-  persist(
-<span class="fstat-no" title="function not covered" >    (s</span>et, get) =&gt; (<span class="cstat-no" title="statement not covered" >{</span>
-      seen: {},
-      show: {},
-      markSeen: <span class="fstat-no" title="function not covered" >(s</span>tage) =&gt; <span class="cstat-no" title="statement not covered" >set(<span class="fstat-no" title="function not covered" >(s</span>) =&gt; (<span class="cstat-no" title="statement not covered" >{ seen: { ...s.seen, [stage]: true }, show: { ...s.show, [stage]: false } })</span>),</span>
-      maybeShow: <span class="fstat-no" title="function not covered" >(s</span>tage) =&gt; {
-        const { seen } = <span class="cstat-no" title="statement not covered" >get();</span>
-<span class="cstat-no" title="statement not covered" >        if (!seen[stage]) {</span>
-<span class="cstat-no" title="statement not covered" >          set(<span class="fstat-no" title="function not covered" >(s</span>) =&gt; (<span class="cstat-no" title="statement not covered" >{ show: { ...s.show, [stage]: true } })</span>);</span>
-        }
-      },
-      hide: <span class="fstat-no" title="function not covered" >(s</span>tage) =&gt; <span class="cstat-no" title="statement not covered" >set(<span class="fstat-no" title="function not covered" >(s</span>) =&gt; (<span class="cstat-no" title="statement not covered" >{ show: { ...s.show, [stage]: false } })</span>),</span>
-    }),
-    {
-      name: 'cultural-arcade-tutorials',
-      partialize: <span class="fstat-no" title="function not covered" >(s</span>) =&gt; (<span class="cstat-no" title="statement not covered" >{ seen: s.seen })</span>,
-    }
-  )
-);
+export const <span class="cstat-no" title="statement not covered" >ActionTypes: ActionTypes = {</span>
+  UPDATE_STATE: 'UPDATE_STATE',
+  RESET_STATE: 'RESET_STATE',
+  VALIDATE_STATE: 'VALIDATE_STATE',
+  RESET_PROGRESS: 'RESET_PROGRESS',
+  RESET_SCORES: 'RESET_SCORES'
+};
 &nbsp;
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >c</span>reateAction(</span>type: string, payload?: any) {
+<span class="cstat-no" title="statement not covered" >  return { type, payload };</span>
+}
 &nbsp;
+export const <span class="cstat-no" title="statement not covered" >stateManager = {</span>
+  dispatch: <span class="fstat-no" title="function not covered" >(a</span>ction: any) =&gt; {
+<span class="cstat-no" title="statement not covered" >    console.log('State action dispatched:', action);</span>
+  },
+  getState: <span class="fstat-no" title="function not covered" >() =</span>&gt; (<span class="cstat-no" title="statement not covered" >{})</span>,
+  subscribe: <span class="fstat-no" title="function not covered" >(l</span>istener: () =&gt; void) =&gt; <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =</span>&gt; {},</span>
+  middleware: [],
+  addMiddleware: <span class="fstat-no" title="function not covered" >(m</span>iddleware: any) =&gt; {},
+  removeMiddleware: <span class="fstat-no" title="function not covered" >(m</span>iddleware: any) =&gt; {},
+  processAction: <span class="fstat-no" title="function not covered" >(a</span>ction: any, context?: any) =&gt; <span class="cstat-no" title="statement not covered" >action</span>
+};
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

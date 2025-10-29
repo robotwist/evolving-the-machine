@@ -27,8 +27,8 @@ export class MobileControlsManager {
     this.canvas = canvas;
     this.callbacks = callbacks;
     this.controls = {
-      primary: new VirtualStick({ maxRadius: 60, deadZone: 0.1 }),
-      secondary: new VirtualStick({ maxRadius: 60, deadZone: 0.1 }),
+      primary: new VirtualStick({ maxRadius: 80, deadZone: 0.05 }), // Larger radius, smaller dead zone for better precision
+      secondary: new VirtualStick({ maxRadius: 80, deadZone: 0.05 }),
       action: false,
       pause: false
     };

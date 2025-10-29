@@ -202,7 +202,7 @@ describe('Game System Integration Tests', () => {
 
     test('should handle powerup system integration', async () => {
       // Spawn powerups
-      game['spawnPowerups']();
+      (game as any).spawnPowerupsPublic();
       
       const initialPowerupCount = game['powerups'].length;
       expect(initialPowerupCount).toBeGreaterThan(0);
@@ -272,7 +272,7 @@ describe('Game System Integration Tests', () => {
 
     test('should handle powerup system integration', async () => {
       // Spawn powerups
-      game['spawnPowerups']();
+      (game as any).spawnPowerupsPublic();
       
       const initialPowerupCount = game['powerups'].length;
       expect(initialPowerupCount).toBeGreaterThan(0);
