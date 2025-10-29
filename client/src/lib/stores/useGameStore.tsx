@@ -26,6 +26,7 @@ interface GameStore {
   unlockNextStage: () => void;
   goToNextStage: () => void;
   resetProgress: () => void;
+  unlockAllLevels: () => void;
   stageAttempts: Record<number, number>;
   incrementAttempt: (stage: number) => void;
 }
@@ -135,6 +136,12 @@ export const useGameStore = create<GameStore>()(
         currentScreen: 'menu',
         stageAttempts: {}
       }),
+      
+      unlockAllLevels: () => set({
+        unlockedStages: MAX_STAGE,
+        currentScreen: 'menu'
+      }),
+      
       stageAttempts: {},
       incrementAttempt: (stage: number) => set((s) => ({ stageAttempts: { ...s.stageAttempts, [stage]: (s.stageAttempts[stage] ?? 0) + 1 } })),
     }),

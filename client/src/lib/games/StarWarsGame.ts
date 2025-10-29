@@ -5,12 +5,15 @@ interface Player {
   position: { x: number; y: number };
   velocity: { x: number; y: number };
   rotation: number;
+  targetRotation: number;
   size: number;
   health: number;
   maxHealth: number;
   shield: number;
   weaponCooldown: number;
   alive: boolean;
+  thrust: number;
+  maxSpeed: number;
 }
 
 interface EnemyShip {
@@ -94,12 +97,15 @@ export class StarWarsGame extends BaseGame {
       position: { x: this.width / 2, y: this.height - 100 },
       velocity: { x: 0, y: 0 },
       rotation: -Math.PI / 2,
+      targetRotation: -Math.PI / 2,
       size: 25,
       health: 100,
       maxHealth: 100,
       shield: 100,
       weaponCooldown: 0,
-      alive: true
+      alive: true,
+      thrust: 0.3,
+      maxSpeed: 8
     };
 
     // Create starfield
@@ -215,6 +221,24 @@ export class StarWarsGame extends BaseGame {
 
   private updatePlayer() {
     if (!this.player.alive) return;
+    
+    // Apply velocity to position
+    this.player.position.x += this.player.velocity.x;
+    this.player.position.y += this.player.velocity.y;
+    
+    // Apply friction to velocity for smooth movement
+    this.player.velocity.x *= 0.92;
+    this.player.velocity.y *= 0.92;
+    
+    // Smooth rotation towards target
+    const rotationDiff = this.player.targetRotation - this.player.rotation;
+    const normalizedDiff = ((rotationDiff % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const shortestRotation = normalizedDiff > Math.PI ? normalizedDiff - Math.PI * 2 : normalizedDiff;
+    
+    this.player.rotation += shortestRotation * 0.15;
+    
+    // Normalize rotation to 0-2π range
+    this.player.rotation = ((this.player.rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     
     // Weapon cooldown
     if (this.player.weaponCooldown > 0) {
@@ -833,7 +857,7 @@ export class StarWarsGame extends BaseGame {
     }
     
     // Controls
-    this.drawText('WASD: Move | SPACE: Shoot', this.width / 2, this.height - 20, 14, '#CCCCCC', 'center');
+    this.drawText('W: Thrust Forward | A/D: Rotate | S: Reverse | SPACE: Shoot', this.width / 2, this.height - 20, 14, '#CCCCCC', 'center');
   }
 
   private drawTransition() {
@@ -850,24 +874,31 @@ export class StarWarsGame extends BaseGame {
   handleInput(event: KeyboardEvent) {
     if (!this.player.alive) return;
     
-    const speed = 4;
+    const thrust = this.player.thrust;
+    const maxSpeed = this.player.maxSpeed;
     
     switch (event.code) {
       case 'KeyW':
       case 'ArrowUp':
-        this.player.position.y -= speed;
+        // Apply forward thrust based on current rotation
+        this.player.velocity.x += Math.cos(this.player.rotation) * thrust;
+        this.player.velocity.y += Math.sin(this.player.rotation) * thrust;
         break;
       case 'KeyS':
       case 'ArrowDown':
-        this.player.position.y += speed;
+        // Apply backward thrust
+        this.player.velocity.x -= Math.cos(this.player.rotation) * thrust;
+        this.player.velocity.y -= Math.sin(this.player.rotation) * thrust;
         break;
       case 'KeyA':
       case 'ArrowLeft':
-        this.player.position.x -= speed;
+        // Rotate left
+        this.player.targetRotation -= 0.2;
         break;
       case 'KeyD':
       case 'ArrowRight':
-        this.player.position.x += speed;
+        // Rotate right
+        this.player.targetRotation += 0.2;
         break;
       case 'Space':
         if (this.player.weaponCooldown <= 0) {
@@ -876,12 +907,28 @@ export class StarWarsGame extends BaseGame {
         }
         break;
     }
+    
+    // Limit velocity to max speed
+    const currentSpeed = Math.sqrt(this.player.velocity.x ** 2 + this.player.velocity.y ** 2);
+    if (currentSpeed > maxSpeed) {
+      this.player.velocity.x = (this.player.velocity.x / currentSpeed) * maxSpeed;
+      this.player.velocity.y = (this.player.velocity.y / currentSpeed) * maxSpeed;
+    }
   }
 
   private shootPlayerBullet() {
+    // Calculate bullet position at the nose of the ship
+    const noseX = this.player.position.x + Math.cos(this.player.rotation) * this.player.size;
+    const noseY = this.player.position.y + Math.sin(this.player.rotation) * this.player.size;
+    
+    // Calculate bullet velocity in the direction the ship is facing
+    const bulletSpeed = 12;
+    const bulletVelX = Math.cos(this.player.rotation) * bulletSpeed;
+    const bulletVelY = Math.sin(this.player.rotation) * bulletSpeed;
+    
     const bullet: Bullet = {
-      position: { x: this.player.position.x, y: this.player.position.y - this.player.size },
-      velocity: { x: 0, y: -8 },
+      position: { x: noseX, y: noseY },
+      velocity: { x: bulletVelX, y: bulletVelY },
       owner: 'player',
       size: 4,
       damage: 20,
@@ -889,6 +936,9 @@ export class StarWarsGame extends BaseGame {
       trail: []
     };
     this.bullets.push(bullet);
+    
+    // Play laser sound
+    this.playLaserSound();
   }
 
   private playLaserSound() {
@@ -913,5 +963,89 @@ export class StarWarsGame extends BaseGame {
     } catch (e) {
       console.warn('Explosion sound failed:', e);
     }
+  }
+
+  // Touch/pointer controls for mobile
+  handlePointerDown(x: number, y: number) {
+    if (!this.player.alive) return;
+    
+    // Touch anywhere to shoot
+    if (this.player.weaponCooldown <= 0) {
+      this.shootPlayerBullet();
+      this.player.weaponCooldown = 10;
+    }
+  }
+
+  handlePointerMove(x: number, y: number) {
+    if (!this.player.alive) return;
+    
+    // Convert screen coordinates to relative movement
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+    
+    // Calculate direction from center to touch point
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 50) { // Dead zone to prevent accidental movement
+      // Set target rotation based on touch direction
+      this.player.targetRotation = Math.atan2(dy, dx);
+      
+      // Apply thrust in the direction of touch
+      const thrust = this.player.thrust * 0.5; // Reduced thrust for touch
+      this.player.velocity.x += Math.cos(this.player.targetRotation) * thrust;
+      this.player.velocity.y += Math.sin(this.player.targetRotation) * thrust;
+      
+      // Limit velocity
+      const currentSpeed = Math.sqrt(this.player.velocity.x ** 2 + this.player.velocity.y ** 2);
+      if (currentSpeed > this.player.maxSpeed) {
+        this.player.velocity.x = (this.player.velocity.x / currentSpeed) * this.player.maxSpeed;
+        this.player.velocity.y = (this.player.velocity.y / currentSpeed) * this.player.maxSpeed;
+      }
+    }
+  }
+
+  handlePointerUp() {
+    // Gradually reduce velocity when touch ends
+    this.player.velocity.x *= 0.8;
+    this.player.velocity.y *= 0.8;
+  }
+
+  // Mobile-specific controls
+  handleMobileMove(x: number, y: number) {
+    // Convert virtual stick input to ship movement
+    const thrust = this.player.thrust;
+    const maxSpeed = this.player.maxSpeed;
+    
+    // Apply thrust based on stick input
+    this.player.velocity.x += x * thrust;
+    this.player.velocity.y += y * thrust;
+    
+    // Update target rotation based on movement direction
+    if (Math.abs(x) > 0.1 || Math.abs(y) > 0.1) {
+      this.player.targetRotation = Math.atan2(y, x);
+    }
+    
+    // Limit velocity to max speed
+    const currentSpeed = Math.sqrt(this.player.velocity.x ** 2 + this.player.velocity.y ** 2);
+    if (currentSpeed > maxSpeed) {
+      this.player.velocity.x = (this.player.velocity.x / currentSpeed) * maxSpeed;
+      this.player.velocity.y = (this.player.velocity.y / currentSpeed) * maxSpeed;
+    }
+  }
+
+  handleMobileShoot(_x: number, _y: number) {
+    if (!this.player.alive) return;
+    
+    if (this.player.weaponCooldown <= 0) {
+      this.shootPlayerBullet();
+      this.player.weaponCooldown = 10;
+    }
+  }
+
+  handleMobileAction() {
+    // Mobile action button - shoot
+    this.handleMobileShoot(0, 0);
   }
 }

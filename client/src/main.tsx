@@ -4,6 +4,7 @@ import "./index.css";
 import { useSettingsStore } from "./lib/stores/useSettingsStore";
 import { useAudio } from "./lib/stores/useAudio";
 import { useHaptics } from "./lib/stores/useHaptics";
+import { useGameStore } from "./lib/stores/useGameStore";
 
 // Extend window interface for game globals
 declare global {
@@ -20,6 +21,7 @@ declare global {
     __CULTURAL_ARCADE_AUDIO__: unknown;
     __CULTURAL_ARCADE_HAPTICS__: unknown;
     gameInstance: any; // Game instance for mobile controls
+    unlockAllLevels: () => void; // Console command to unlock all levels
   }
 }
 
@@ -63,6 +65,13 @@ setTimeout(() => {
     // Expose audio and haptics stores
     window.__CULTURAL_ARCADE_AUDIO__ = useAudio.getState();
     window.__CULTURAL_ARCADE_HAPTICS__ = useHaptics.getState();
+    
+    // Expose unlock function for console access
+    window.unlockAllLevels = () => {
+      console.log('🔓 Unlocking all levels via console command...');
+      useGameStore.getState().unlockAllLevels();
+      console.log('✅ All levels unlocked! Current unlocked stages:', useGameStore.getState().unlockedStages);
+    };
   };
 
   // Apply mobile defaults on first load

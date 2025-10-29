@@ -2514,4 +2514,75 @@ export class LasatGame extends BaseGame {
       document.removeEventListener('keyup', handleKeyUp);
     };
   }
+
+  // Touch/pointer controls for mobile
+  handlePointerDown(_x: number, _y: number) {
+    // Touch anywhere to shoot
+    this.keys.add('Space');
+  }
+
+  handlePointerMove(x: number, y: number) {
+    // Convert screen coordinates to virtual stick input
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+    
+    // Calculate relative position from center
+    const dx = (x - centerX) / (this.width / 2);
+    const dy = (y - centerY) / (this.height / 2);
+    
+    // Clamp values to -1 to 1 range
+    const clampedX = Math.max(-1, Math.min(1, dx));
+    const clampedY = Math.max(-1, Math.min(1, dy));
+    
+    // Convert to mobile movement
+    this.handleMobileMove(clampedX, clampedY);
+  }
+
+  handlePointerUp() {
+    // Stop shooting when touch ends
+    this.keys.delete('Space');
+    
+    // Stop movement
+    this.player.velocity.x *= 0.8;
+    this.player.velocity.y *= 0.8;
+  }
+
+  // Mobile-specific controls
+  handleMobileMove(x: number, y: number) {
+    // Convert virtual stick input to ship movement
+    const speed = 6;
+    
+    // Apply movement based on stick input
+    if (Math.abs(x) > 0.1) {
+      this.player.velocity.x = x * speed;
+    } else {
+      this.player.velocity.x *= 0.85;
+    }
+
+    if (Math.abs(y) > 0.1) {
+      this.player.velocity.y = y * speed;
+    } else {
+      this.player.velocity.y *= 0.85;
+    }
+
+    // Update targeting based on movement direction
+    if (Math.abs(x) > 0.1 || Math.abs(y) > 0.1) {
+      this.updateTargeting();
+    }
+  }
+
+  handleMobileShoot(_x: number, _y: number) {
+    // Mobile shoot - fire primary weapon
+    this.keys.add('Space');
+    
+    // Also try to fire secondary weapons if available
+    if (this.player.weaponEnergy.ion >= 20) {
+      this.keys.add('KeyX');
+    }
+  }
+
+  handleMobileAction() {
+    // Mobile action button - shoot
+    this.handleMobileShoot(0, 0);
+  }
 }

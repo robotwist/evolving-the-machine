@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 export function MainMenu() {
-  const { setCurrentScreen } = useGameStore();
+  const { setCurrentScreen, unlockAllLevels } = useGameStore();
   const { highScores } = useScoreStore();
 
   return (
@@ -88,6 +88,12 @@ export function MainMenu() {
               className="border-purple-500/50 text-purple-300 hover:bg-purple-900/50 px-8 py-3 text-lg"
             >
               How to Play
+            </Button>
+            <Button 
+              onClick={() => unlockAllLevels()}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 text-lg"
+            >
+              🔓 Unlock All Levels
             </Button>
           </div>
 
