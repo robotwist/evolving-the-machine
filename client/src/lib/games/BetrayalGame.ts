@@ -87,9 +87,7 @@ export class BetrayalGame extends BaseGame {
   private currentMessage = '';
   private messageTimer = 0;
   private messageIndex = 0;
-  private betrayalRevealed = false;
-  private finalBattleStarted = false;
-  private narcissusIntensity = 0; // How much the AI mirrors the player visually
+  private laserFired = false; // Track if laser sound was played
 
   private introMessages = [
     'LOOK AT ME, STARFIGHTER... DO YOU SEE YOURSELF?',
@@ -180,6 +178,7 @@ export class BetrayalGame extends BaseGame {
         this.updateBullets();
         this.updateMinions();
         this.updateGlitches();
+        this.updateExplosions();
         this.checkCollisions();
         break;
       case 'escape':
@@ -189,6 +188,7 @@ export class BetrayalGame extends BaseGame {
         this.updateBullets();
         this.updateMinions();
         this.updateGlitches();
+        this.updateExplosions();
         this.checkCollisions();
         break;
       case 'final':
@@ -198,6 +198,7 @@ export class BetrayalGame extends BaseGame {
         this.updateBullets();
         this.updateMinions();
         this.updateGlitches();
+        this.updateExplosions();
         this.checkCollisions();
         break;
       case 'victory':
@@ -411,6 +412,13 @@ export class BetrayalGame extends BaseGame {
     // AI movement patterns
     this.aiBoss.movePattern = (this.aiBoss.movePattern + 1) % 360;
     
+    // Update laser charge timer
+    if (this.aiBoss.laserChargeTimer > 0) {
+      this.aiBoss.laserChargeTimer--;
+    } else if (this.aiBoss.laserChargeTimer < -1 && this.aiBoss.laserChargeTimer > -90) {
+      this.aiBoss.laserChargeTimer--;
+    }
+    
     if (!this.aiBoss.isEscaping) {
       // Aggressive movement toward player
       const dx = this.player.position.x - this.aiBoss.position.x;
@@ -609,6 +617,14 @@ export class BetrayalGame extends BaseGame {
     }
   }
 
+  private updateExplosions() {
+    this.explosions = this.explosions.filter(explosion => {
+      explosion.lifetime--;
+      explosion.radius = (explosion.lifetime / 30) * explosion.maxRadius;
+      return explosion.lifetime > 0;
+    });
+  }
+
   private checkCollisions() {
     // Bullet collisions
     for (let i = this.bullets.length - 1; i >= 0; i--) {
@@ -732,6 +748,20 @@ export class BetrayalGame extends BaseGame {
         maxRadius,
         lifetime: 30
       });
+      
+      // Play explosion sound
+      try {
+        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
+        if (audioState && !audioState.isMuted) {
+          if (maxRadius >= 30) {
+            audioState.playExplosionSound?.();
+          } else {
+            audioState.playHitSound?.();
+          }
+        }
+      } catch (e) {
+        console.warn('Explosion sound failed:', e);
+      }
     } catch {
       // Fallback to original explosion system
       this.explosions.push({
@@ -902,7 +932,6 @@ export class BetrayalGame extends BaseGame {
 
     // Draw laser charge
     if (this.aiBoss.laserChargeTimer > 0) {
-        this.aiBoss.laserChargeTimer--;
         const chargeProgress = 1 - (this.aiBoss.laserChargeTimer / 120);
         this.ctx.save();
         this.ctx.strokeStyle = `rgba(255, 0, 0, ${chargeProgress})`;
@@ -919,11 +948,14 @@ export class BetrayalGame extends BaseGame {
 
     // Draw laser beam
     if (this.aiBoss.laserChargeTimer === 0) {
-        this.playStinger('boss_laser_fire');
+        // Only play sound once when transitioning from charge to fire
+        if (!this.laserFired) {
+            this.playStinger('boss_laser_fire');
+            this.laserFired = true;
+        }
         this.aiBoss.laserChargeTimer = -1; // Fire state
     }
     if (this.aiBoss.laserChargeTimer < -1 && this.aiBoss.laserChargeTimer > -90) {
-        this.aiBoss.laserChargeTimer--;
         this.ctx.save();
         const laserWidth = 1 - (this.aiBoss.laserChargeTimer / -90);
         this.ctx.strokeStyle = `rgba(255, 0, 0, ${laserWidth})`;
@@ -936,6 +968,9 @@ export class BetrayalGame extends BaseGame {
         );
         this.ctx.stroke();
         this.ctx.restore();
+    } else if (this.aiBoss.laserChargeTimer <= -90) {
+        // Reset flag when laser ends
+        this.laserFired = false;
     }
   }
 
@@ -1040,7 +1075,9 @@ export class BetrayalGame extends BaseGame {
   }
 
   handleMobileShoot(x: number, y: number) {
-    // Shoot towards touch position
+    // Shoot towards touch position - respect weapon cooldown
+    if (this.player.weaponCooldown > 0) return;
+    
     const targetX = (x + 1) * this.width / 2;
     const targetY = (y + 1) * this.height / 2;
 
@@ -1050,6 +1087,7 @@ export class BetrayalGame extends BaseGame {
 
     if (distance > 50) { // Minimum distance for shooting
       this.playerShoot();
+      this.player.weaponCooldown = 15; // Set cooldown after shooting
     }
   }
 
