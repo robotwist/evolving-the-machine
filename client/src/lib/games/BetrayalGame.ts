@@ -667,7 +667,7 @@ export class BetrayalGame extends BaseGame {
         if (minion.alive && this.isColliding(this.player, minion)) {
             this.player.health -= 5;
             minion.alive = false;
-            this.createExplosion(minion.position, 25);
+            this.createExplosion(minion.position, 30); // Consistent explosion size
         }
     }
 
@@ -683,6 +683,8 @@ export class BetrayalGame extends BaseGame {
         if (dist < this.player.size + 10) {
              if (this.player.shield > 0) this.player.shield -= 2;
              else this.player.health -= 2;
+             // Create explosion at player's position for laser impact
+             this.createExplosion(this.player.position, 20);
         }
     }
 
@@ -692,8 +694,10 @@ export class BetrayalGame extends BaseGame {
         if (this.isColliding(this.player, glitch)) {
             if (glitch.type === 'damage') {
                 this.player.health -= 10;
+                this.createExplosion(glitch.position, 15); // Damage glitch impact
             } else {
                 this.player.shield = Math.min(100, this.player.shield + 25);
+                this.createExplosion(glitch.position, 15); // Shield glitch impact
             }
             this.glitches.splice(i, 1);
         }
