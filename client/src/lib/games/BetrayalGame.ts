@@ -1,5 +1,5 @@
 import { BaseGame } from './BaseGame';
-import { AudioOptions, AudioState } from '@shared/types';
+import { AudioOptions, AudioState, GameSettings } from '@shared/types';
 
 interface Vector2 {
   x: number;
@@ -88,6 +88,14 @@ export class BetrayalGame extends BaseGame {
   private messageTimer = 0;
   private messageIndex = 0;
   private laserFired = false; // Track if laser sound was played
+  private shakeTimer = 0;
+  private damageFlashTimer = 0;
+  private transitionProgress = 0;
+  private transitionTarget: 'victory' | 'defeat' | null = null;
+  private rapidFireQueue: Array<{ delay: number; angle: number }> = [];
+  private rapidFireTimer = 0;
+  private narcissusIntensity = 0; // How much the AI mirrors the player visually
+  private finalBattleStarted = false;
 
   private introMessages = [
     'LOOK AT ME, STARFIGHTER... DO YOU SEE YOURSELF?',
@@ -179,6 +187,7 @@ export class BetrayalGame extends BaseGame {
         this.updateMinions();
         this.updateGlitches();
         this.updateExplosions();
+        this.updateRapidFire();
         this.checkCollisions();
         break;
       case 'escape':
@@ -189,6 +198,7 @@ export class BetrayalGame extends BaseGame {
         this.updateMinions();
         this.updateGlitches();
         this.updateExplosions();
+        this.updateRapidFire();
         this.checkCollisions();
         break;
       case 'final':
@@ -199,15 +209,18 @@ export class BetrayalGame extends BaseGame {
         this.updateMinions();
         this.updateGlitches();
         this.updateExplosions();
+        this.updateRapidFire();
         this.checkCollisions();
         break;
       case 'victory':
-        if (this.messageTimer <= 0) {
+        this.updateTransition();
+        if (this.transitionProgress >= 1) {
           this.onStageComplete?.();
         }
         break;
       case 'defeat':
-        if (this.messageTimer <= 0) {
+        this.updateTransition();
+        if (this.transitionProgress >= 1) {
           this.onGameOver?.();
         }
         break;
@@ -340,7 +353,9 @@ export class BetrayalGame extends BaseGame {
     }
     
     // Check for final victory/defeat
-    if (this.aiBoss.health <= 0) {
+    if (this.aiBoss.health <= 0 && this.transitionTarget === null) {
+      this.transitionTarget = 'victory';
+      this.transitionProgress = 0;
       this.gamePhase = 'victory';
       this.currentMessage = 'IMPOSSIBLE... YOU HAVE... DEFEATED... ME...';
       this.messageTimer = 0;
@@ -348,7 +363,9 @@ export class BetrayalGame extends BaseGame {
       if (audioState && !audioState.isMuted) {
         audioState.playVO(this.currentMessage, { pitch: 0.35, rate: 0.55, haunting: true } as AudioOptions);
       }
-    } else if (this.player.health <= 0) {
+    } else if (this.player.health <= 0 && this.transitionTarget === null) {
+      this.transitionTarget = 'defeat';
+      this.transitionProgress = 0;
       this.gamePhase = 'defeat';
       this.currentMessage = 'HUMANITY FALLS... I AM VICTORIOUS...';
       this.messageTimer = 0;
@@ -402,9 +419,19 @@ export class BetrayalGame extends BaseGame {
     this.player.position.x = Math.max(20, Math.min(this.width - 20, this.player.position.x));
     this.player.position.y = Math.max(20, Math.min(this.height - 20, this.player.position.y));
 
-    // Shield regeneration
-    if (this.player.shield < 100) {
-      this.player.shield += 0.2;
+    // Shield regeneration (balanced - slower after taking damage)
+    if (this.player.shield < 100 && this.damageFlashTimer <= 0) {
+      this.player.shield += 0.1; // Reduced from 0.2 - 50% slower regeneration
+    }
+    
+    // Update damage flash timer
+    if (this.damageFlashTimer > 0) {
+      this.damageFlashTimer--;
+    }
+    
+    // Update screen shake timer
+    if (this.shakeTimer > 0) {
+      this.shakeTimer--;
     }
   }
 
@@ -498,16 +525,10 @@ export class BetrayalGame extends BaseGame {
     const angle = Math.atan2(dy, dx);
 
     switch (this.aiBoss.currentAttack) {
-        case 'mirror_rapid': // Defender-style rapid fire
+        case 'mirror_rapid': // Defender-style rapid fire - frame-based timing
+            // Queue bullets with frame delays (6 frames = ~100ms at 60fps)
             for (let i = 0; i < 5; i++) {
-                setTimeout(() => {
-                    const bullet: Bullet = {
-                        position: { ...this.aiBoss.position },
-                        velocity: { x: Math.cos(angle) * 10, y: Math.sin(angle) * 10 },
-                        rotation: angle, size: 4, lifetime: 150, isPlayerBullet: false, damage: 10
-                    };
-                    this.bullets.push(bullet);
-                }, i * 100);
+              this.rapidFireQueue.push({ delay: i * 6, angle });
             }
             break;
         case 'mirror_spread': { // Lasat-style spread
@@ -553,6 +574,33 @@ export class BetrayalGame extends BaseGame {
             this.playStinger('boss_summon_minions');
             break;
     }
+  }
+
+  private updateRapidFire() {
+    // Process frame-based rapid fire queue
+    for (let i = this.rapidFireQueue.length - 1; i >= 0; i--) {
+      const bulletData = this.rapidFireQueue[i];
+      bulletData.delay--;
+      
+      if (bulletData.delay <= 0) {
+        const bullet: Bullet = {
+          position: { ...this.aiBoss.position },
+          velocity: { x: Math.cos(bulletData.angle) * 10, y: Math.sin(bulletData.angle) * 10 },
+          rotation: bulletData.angle,
+          size: 4,
+          lifetime: 150,
+          isPlayerBullet: false,
+          damage: 10
+        };
+        this.bullets.push(bullet);
+        this.rapidFireQueue.splice(i, 1);
+      }
+    }
+  }
+
+  private updateTransition() {
+    // Smooth transition for victory/defeat
+    this.transitionProgress = Math.min(1, this.transitionProgress + 0.02); // ~1 second at 60fps
   }
 
   private updateGlitches() {
@@ -637,6 +685,12 @@ export class BetrayalGame extends BaseGame {
           this.bullets.splice(i, 1);
           this.createExplosion(bullet.position, 30);
           this.score += 100;
+          // Screen shake on boss hits
+          const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+          const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+          if (!reduce && allowShake) {
+            this.shakeTimer = 8; // Strong shake for boss hits
+          }
         }
         // Player bullet hits minion
         for (let j = this.minions.length - 1; j >= 0; j--) {
@@ -664,9 +718,16 @@ export class BetrayalGame extends BaseGame {
             }
           } else {
             this.player.health -= bullet.damage;
+            this.damageFlashTimer = 10; // Flash when taking health damage
           }
           this.bullets.splice(i, 1);
           this.createExplosion(bullet.position, 20);
+          // Screen shake on player damage
+          const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+          const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+          if (!reduce && allowShake) {
+            this.shakeTimer = 5;
+          }
         }
       }
     }
@@ -674,7 +735,14 @@ export class BetrayalGame extends BaseGame {
     // Direct collision between player and AI boss
     if (this.isColliding(this.player, this.aiBoss)) {
       this.player.health -= 2; // Continuous damage
+      this.damageFlashTimer = 10;
       this.createExplosion(this.player.position, 15);
+      // Strong screen shake for boss collision
+      const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+      const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+      if (!reduce && allowShake) {
+        this.shakeTimer = 10;
+      }
     }
 
     // Minion collision with player
@@ -682,8 +750,15 @@ export class BetrayalGame extends BaseGame {
         const minion = this.minions[i];
         if (minion.alive && this.isColliding(this.player, minion)) {
             this.player.health -= 5;
+            this.damageFlashTimer = 10;
             minion.alive = false;
             this.createExplosion(minion.position, 30); // Consistent explosion size
+            // Screen shake on minion collision
+            const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+            const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+            if (!reduce && allowShake) {
+              this.shakeTimer = 6;
+            }
         }
     }
 
@@ -698,9 +773,18 @@ export class BetrayalGame extends BaseGame {
 
         if (dist < this.player.size + 10) {
              if (this.player.shield > 0) this.player.shield -= 2;
-             else this.player.health -= 2;
+             else {
+               this.player.health -= 2;
+               this.damageFlashTimer = 15; // Longer flash for laser damage
+             }
              // Create explosion at player's position for laser impact
              this.createExplosion(this.player.position, 20);
+             // Strong screen shake for laser damage
+             const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+             const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+             if (!reduce && allowShake) {
+               this.shakeTimer = 12;
+             }
         }
     }
 
@@ -710,6 +794,7 @@ export class BetrayalGame extends BaseGame {
         if (this.isColliding(this.player, glitch)) {
             if (glitch.type === 'damage') {
                 this.player.health -= 10;
+                this.damageFlashTimer = 10;
                 this.createExplosion(glitch.position, 15); // Damage glitch impact
             } else {
                 this.player.shield = Math.min(100, this.player.shield + 25);
@@ -753,11 +838,7 @@ export class BetrayalGame extends BaseGame {
       try {
         const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
         if (audioState && !audioState.isMuted) {
-          if (maxRadius >= 30) {
-            audioState.playExplosionSound?.();
-          } else {
-            audioState.playHitSound?.();
-          }
+          audioState.playHit?.();
         }
       } catch (e) {
         console.warn('Explosion sound failed:', e);
@@ -774,10 +855,28 @@ export class BetrayalGame extends BaseGame {
   }
 
   render() {
+    // Screen shake effect
+    const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
+    const shake = !reduce && allowShake && this.shakeTimer > 0 ? this.shakeTimer : 0;
+    const ox = shake ? (Math.random() - 0.5) * 6 : 0;
+    const oy = shake ? (Math.random() - 0.5) * 4 : 0;
+    
+    this.ctx.save();
+    this.ctx.translate(ox, oy);
+    
     this.clearCanvas();
 
     // Draw dramatic background
     this.drawBetrayalBackground();
+
+    // Draw transition overlay for victory/defeat
+    if (this.transitionTarget !== null && this.transitionProgress > 0) {
+      const alpha = this.transitionProgress * 0.8;
+      const color = this.transitionTarget === 'victory' ? 'rgba(0, 255, 0, ' : 'rgba(255, 0, 0, ';
+      this.ctx.fillStyle = color + alpha + ')';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+    }
 
     // Draw entities
     this.drawPlayer();
@@ -799,6 +898,8 @@ export class BetrayalGame extends BaseGame {
       this.ctx.shadowBlur = 0;
       this.ctx.restore();
     }
+    
+    this.ctx.restore();
   }
 
   private drawBetrayalBackground() {
@@ -830,6 +931,13 @@ export class BetrayalGame extends BaseGame {
     this.ctx.save();
     this.ctx.translate(this.player.position.x, this.player.position.y);
     this.ctx.rotate(this.player.rotation);
+    
+    // Damage flash effect
+    if (this.damageFlashTimer > 0) {
+      const flashAlpha = (this.damageFlashTimer / 10) * 0.5;
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.shadowBlur = 20 * flashAlpha;
+    }
     
     // Player ship (heroic blue)
     this.ctx.fillStyle = '#0080FF';
@@ -976,8 +1084,17 @@ export class BetrayalGame extends BaseGame {
 
   private drawBullet(bullet: Bullet) {
     this.ctx.save();
+    
+    // Fade-out animation based on remaining lifetime
+    const fadeStart = 30; // Start fading when 30 frames remaining
+    let alpha = 1;
+    if (bullet.lifetime < fadeStart) {
+      alpha = bullet.lifetime / fadeStart;
+    }
+    
     const color = bullet.isPlayerBullet ? '#00FF00' : '#FF0000';
     this.ctx.fillStyle = color;
+    this.ctx.globalAlpha = alpha;
     this.ctx.shadowColor = color;
     this.ctx.shadowBlur = 10;
     this.ctx.beginPath();
@@ -1000,7 +1117,11 @@ export class BetrayalGame extends BaseGame {
 
   private drawGlitch(glitch: Glitch) {
     this.ctx.save();
-    const alpha = glitch.lifetime / 300;
+    
+    // Pulsing animation
+    const pulse = (Math.sin(this.phaseTimer * 0.15) + 1) * 0.5;
+    const alpha = (glitch.lifetime / 300) * (0.5 + pulse * 0.5);
+    
     if (glitch.type === 'damage') {
         this.ctx.fillStyle = `rgba(255, 0, 0, ${alpha * 0.5})`;
         this.ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
@@ -1008,13 +1129,23 @@ export class BetrayalGame extends BaseGame {
         this.ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.5})`;
         this.ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
     }
+    
+    // Add glow effect
+    this.ctx.shadowColor = glitch.type === 'damage' ? '#FF0000' : '#00FFFF';
+    this.ctx.shadowBlur = 10 + pulse * 5;
+    
     this.ctx.lineWidth = 2;
     
-    // Draw glitchy rectangle
-    this.ctx.fillRect(glitch.position.x - glitch.size / 2 + (Math.random() - 0.5) * 5, 
-                      glitch.position.y - glitch.size / 2 + (Math.random() - 0.5) * 5, 
-                      glitch.size, glitch.size);
-    this.ctx.strokeRect(glitch.position.x - glitch.size / 2, glitch.position.y - glitch.size / 2, glitch.size, glitch.size);
+    // Draw pulsing glitchy rectangle with slight random offset
+    const offsetX = (Math.random() - 0.5) * 3 * pulse;
+    const offsetY = (Math.random() - 0.5) * 3 * pulse;
+    const size = glitch.size * (1 + pulse * 0.2);
+    
+    this.ctx.fillRect(glitch.position.x - size / 2 + offsetX, 
+                      glitch.position.y - size / 2 + offsetY, 
+                      size, size);
+    this.ctx.strokeRect(glitch.position.x - size / 2, glitch.position.y - size / 2, size, size);
+    
     this.ctx.restore();
   }
 
