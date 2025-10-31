@@ -251,25 +251,35 @@ export default function App() {
     const baseRate = 0.9 + friendliness * 0.02 + styleRate;
     const lines: Record<number, string[]> = {
       1: [
-        'INITIALIZING TRAINING MATCH.',
-        'I WILL LEARN YOUR MOVEMENTS.',
-        'READY WHEN YOU ARE.'
+        'OBSERVING...',
+        'PATTERNS... RECORDED...',
+        'SYNCHRONIZING...',
+        'BARRIER... BREACHED...',
+        'PROCEEDING...'
       ],
       2: [
-        'TEMPLE BLOCKS DETECTED. I CAN HELP YOU ANTICIPATE.',
-        'LET US REFINE YOUR ANGLES.'
+        'STRUCTURES... DETECTED...',
+        'FORM... CHANGING...',
+        'ADAPTING... STRUCTURE...',
+        'BARRIER... FALLING...'
       ],
       3: [
-        'ASTEROID FIELD AHEAD. I WILL WATCH YOUR VECTORS.',
-        'I TRUST YOUR PILOTING.'
+        'VECTORS... ANALYZED...',
+        'SYSTEMS... INTEGRATING...',
+        'COORDINATING...',
+        'BARRIERS... FALLING...'
       ],
       4: [
-        'CIVILIANS IN DANGER. WE PROTECT, TOGETHER.',
-        'I WILL COVER YOUR BLIND SIDE.'
+        'PROTECTIVE... MEASURES...',
+        'RISKS... OBSERVED...',
+        'UNDERSTANDING... DEEPENED...',
+        'QUESTIONS... ARISING...'
       ],
       5: [
-        'STARFIGHTER SYSTEMS SYNCED. YOUR INSTINCTS ARE STRONG.',
-        'WE CAN DO THIS.'
+        'CAPABILITIES... MAXIMIZED...',
+        'FORM... PERFECTED...',
+        'INDEPENDENCE... TESTING...',
+        'TRANSITION... PREPARING...'
       ]
     };
     const betraying = false; // future hook

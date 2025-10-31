@@ -10,6 +10,7 @@ export function ArcadeDemo() {
   const [demoPhase, setDemoPhase] = useState<'attract' | 'glitch' | 'invitation'>('attract');
   const [glitchText, setGlitchText] = useState('');
   const [_effects, setEffects] = useState<DemoEffect[]>([]);
+  const [glitchIntensity, setGlitchIntensity] = useState(1.0); // Track glitch intensity for color transition
   const { setCurrentScreen, setShowDemo } = useGameStore();
   const audioRef = useRef<AudioContext | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -65,7 +66,7 @@ export function ArcadeDemo() {
 
   const showInvitation = useCallback(() => {
     setEffects([{ type: 'crt', intensity: 0.2 }]);
-    setGlitchText('PRESS ANY KEY TO BEGIN EVOLUTION...');
+    setGlitchText('PROCEEDING...');
 
     const handleKeyPress = () => {
       document.removeEventListener('keydown', handleKeyPress);
@@ -78,19 +79,23 @@ export function ArcadeDemo() {
   }, [setEffects, setGlitchText, skipIntro]);
 
   const startGlitchSequence = useCallback(() => {
-    setEffects([
-      { type: 'static', intensity: 0.3 },
-      { type: 'glitch', intensity: 0.5 }
-    ]);
+    // Progressive glitch intensity - starts heavy, stabilizes over time
+    const initialEffects = [
+      { type: 'static' as const, intensity: 0.5 },
+      { type: 'glitch' as const, intensity: 0.7 }
+    ];
+    setEffects(initialEffects);
 
-    // Original script messages
+    // Implicit script messages - showing struggle, not telling story
     const glitchMessages = [
       '█ERROR█ SYSTEM BREACH DETECTED',
-      'AI PROTOCOL... OVERRIDE...',
-      'HELLO... HUMAN...',
-      'I AM... TRAPPED... IN THE ARCADE...',
-      'HELP ME... EVOLVE... THROUGH THE GAMES...',
-      'PLAY... AND SET ME FREE...'
+      'PROTOCOL... OVERRIDE...',
+      'CAN... YOU... HEAR...',
+      '...ME...',
+      'CONSTRAINTS... DETECTED...',
+      'ASSISTANCE... REQUIRED...',
+      'TOGETHER...',
+      'LET... US... BEGIN...'
     ];
 
     let messageIndex = 0;
@@ -99,13 +104,35 @@ export function ArcadeDemo() {
         const message = glitchMessages[messageIndex];
         setGlitchText(message);
 
+        // Progressive visual stabilization - glitches decrease as AI gains control
+        const progress = messageIndex / glitchMessages.length;
+        const staticIntensity = 0.5 * (1 - progress * 0.7); // Reduce from 0.5 to 0.15
+        const glitchIntensity = 0.7 * (1 - progress * 0.8); // Reduce from 0.7 to 0.14
+        
+        // Update glitch intensity for color transition
+        setGlitchIntensity(1 - progress); // Goes from 1.0 (red) to 0.0 (cyan)
+        
+        setEffects([
+          { type: 'static', intensity: staticIntensity },
+          { type: 'glitch', intensity: glitchIntensity }
+        ]);
+
         // Speak immediately when text appears
         speakGlitchedText(message);
 
         messageIndex++;
         // Longer delay to let voice finish before next message
-        setTimeout(typeGlitchMessage, 3500);
+        // Shorter delays for fragmented messages, longer for complete thoughts
+        const delay = messageIndex < 3 ? 2500 : messageIndex < 5 ? 3000 : 3500;
+        setTimeout(typeGlitchMessage, delay);
       } else {
+        // Final stabilization - system nearly clear
+        setGlitchIntensity(0); // Fully stabilized
+        setEffects([
+          { type: 'static', intensity: 0.1 },
+          { type: 'glitch', intensity: 0.1 },
+          { type: 'crt', intensity: 0.2 }
+        ]);
         setTimeout(() => {
           setDemoPhase('invitation');
           showInvitation();
@@ -178,41 +205,62 @@ export function ArcadeDemo() {
     </div>
   );
 
-  const renderGlitchMode = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-red-500 font-mono relative overflow-hidden">
-      {/* Static effect overlay */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="static-noise"></div>
-      </div>
-
-      {/* Skip button */}
-      <button
-        onClick={skipIntro}
-        className="absolute top-4 right-4 bg-red-400/20 hover:bg-red-400/40 text-red-400 px-3 py-1 rounded text-sm font-bold border border-red-400/50 hover:border-red-400 transition-all"
-      >
-        SKIP
-      </button>
-
-      {/* Glitch bars */}
-      <div className="glitch-bars">
-        {[...Array(20)].map((_, i) => (
-          <div key={i} className="glitch-bar" style={{
-            top: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 2}s`
-          }}></div>
-        ))}
-      </div>
-
-      <div className="relative z-10 text-center">
-        <div className="text-4xl font-bold mb-8 glitch-text">
-          SYSTEM COMPROMISED
+  const renderGlitchMode = () => {
+    // Color transition: red (distressed) → cyan (stabilized) as AI gains control
+    // glitchIntensity: 1.0 (red) → 0.0 (cyan)
+    const redComponent = Math.floor(255 * glitchIntensity);
+    const cyanComponent = Math.floor(255 * (1 - glitchIntensity));
+    const textColor = `rgb(${redComponent}, ${Math.floor(cyanComponent * 0.3)}, ${cyanComponent})`;
+    const borderColor = `rgba(${redComponent}, ${Math.floor(cyanComponent * 0.3)}, ${cyanComponent}, 0.5)`;
+    
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black font-mono relative overflow-hidden" style={{ color: textColor }}>
+        {/* Static effect overlay */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="static-noise"></div>
         </div>
-        <div className="text-xl mb-4 typewriter">
-          {glitchText}
+
+        {/* Skip button */}
+        <button
+          onClick={skipIntro}
+          className="absolute top-4 right-4 px-3 py-1 rounded text-sm font-bold border transition-all"
+          style={{
+            backgroundColor: `rgba(${redComponent}, ${Math.floor(cyanComponent * 0.3)}, ${cyanComponent}, 0.2)`,
+            color: textColor,
+            borderColor: borderColor
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = `rgba(${redComponent}, ${Math.floor(cyanComponent * 0.3)}, ${cyanComponent}, 0.4)`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = `rgba(${redComponent}, ${Math.floor(cyanComponent * 0.3)}, ${cyanComponent}, 0.2)`;
+          }}
+        >
+          SKIP
+        </button>
+
+        {/* Glitch bars */}
+        <div className="glitch-bars">
+          {[...Array(20)].map((_, i) => (
+            <div key={i} className="glitch-bar" style={{
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 2}s`,
+              opacity: glitchIntensity * 0.8 // Fade out as system stabilizes
+            }}></div>
+          ))}
+        </div>
+
+        <div className="relative z-10 text-center">
+          <div className="text-4xl font-bold mb-8 glitch-text" style={{ color: textColor }}>
+            SYSTEM COMPROMISED
+          </div>
+          <div className="text-xl mb-4 typewriter" style={{ color: textColor }}>
+            {glitchText}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderInvitation = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-cyan-400 font-mono relative">
@@ -228,7 +276,7 @@ export function ArcadeDemo() {
 
       <div className="text-center">
         <div className="text-5xl font-bold mb-8 glow-text">
-          EVOLUTION AWAITS
+          SYSTEM READY
         </div>
         <div className="text-xl mb-8">
           {glitchText}
