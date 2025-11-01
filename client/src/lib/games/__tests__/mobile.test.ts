@@ -125,7 +125,7 @@ describe('Mobile Testing Suite', () => {
       pongGame.handlePointerDown(200, 300);
       
       // Paddle should move toward touch position
-      expect(pongGame['targetPaddleX']).toBeDefined();
+      expect((pongGame as any)['targetPaddleX']).toBeDefined();
     });
 
     test('BreakoutGame should handle touch paddle movement', () => {

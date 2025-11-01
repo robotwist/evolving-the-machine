@@ -39,6 +39,7 @@ interface StarDestroyer {
   specialAttackTimer: number;
   weakPoints: Array<{x: number, y: number, destroyed: boolean}>;
   alive: boolean;
+  size: number;
 }
 
 interface Bullet {
@@ -158,7 +159,8 @@ export class StarWarsGame extends BaseGame {
         {x: 40, y: 20, destroyed: false},
         {x: 0, y: 40, destroyed: false}
       ],
-      alive: true
+      alive: true,
+      size: 150
     };
   }
 
@@ -704,7 +706,6 @@ export class StarWarsGame extends BaseGame {
 
     // Visual effect - large gravitron explosion
     this.createExplosion(centerX, centerY, 120);
-    this.particles?.addExplosion(centerX, centerY, 60, '#800080', 'epic');
 
     // Apply gravitron effect to all enemies
     this.enemies.forEach(enemy => {
@@ -816,7 +817,8 @@ export class StarWarsGame extends BaseGame {
     this.drawExplosions();
     
     // Draw touch control zones (mobile only)
-    if (this.isMobile) {
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile) {
       this.drawTouchZones();
     }
 

@@ -119,7 +119,7 @@ describe('Game System Integration Tests', () => {
       game['particles'] = particleSystem as any;
 
       // Create an explosion
-      game['particles'].addExplosion(100, 100, 20, '#FF0000', 'epic');
+      (game as any)['particles'].addExplosion(100, 100, 20, '#FF0000', 'epic');
 
       expect(particleSystem.addExplosion).toHaveBeenCalledWith(
         100, 100, 20, '#FF0000', 'epic'
@@ -128,7 +128,7 @@ describe('Game System Integration Tests', () => {
 
     test('should handle visual feedback integration', () => {
       const visualFeedback = createMockVisualFeedback();
-      game['visualFeedback'] = visualFeedback;
+      (game as any)['visualFeedback'] = visualFeedback;
 
       // Test that visual feedback system is available and can be called
       visualFeedback.addScreenShake(5);
@@ -323,12 +323,12 @@ describe('Game System Integration Tests', () => {
       const defenderGame = new DefenderGame(mockContext, 800, 600);
       const pongGame = new PongGame(mockContext, 800, 600);
 
-      defenderGame['settings'] = settings;
-      pongGame['settings'] = settings;
+      (defenderGame as any)['settings'] = settings;
+      (pongGame as any)['settings'] = settings;
 
       // Both games should respect the same settings
-      expect(defenderGame['settings'].hapticsEnabled).toBe(settings.hapticsEnabled);
-      expect(pongGame['settings'].hapticsEnabled).toBe(settings.hapticsEnabled);
+      expect((defenderGame as any)['settings'].hapticsEnabled).toBe(settings.hapticsEnabled);
+      expect((pongGame as any)['settings'].hapticsEnabled).toBe(settings.hapticsEnabled);
     });
   });
 
