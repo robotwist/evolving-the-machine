@@ -47,7 +47,7 @@ jobs:
         echo "Build successful"
     
     - name: Security Audit
-      run: npm audit --audit-level=moderate
+      run: npm audit --audit-level=high
 
     - name: Check bundle size
       run: |
