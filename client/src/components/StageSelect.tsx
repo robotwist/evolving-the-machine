@@ -13,56 +13,56 @@ export function StageSelect() {
     {
       id: 1,
       name: 'Pong Master',
-      culture: 'Ancient Greece',
-      description: 'Learn about Olympic competition and fair play through classic paddle combat. Watch as Greek columns compete in divine games.',
+      culture: 'Classic Arena',
+      description: 'Master the fundamentals of paddle combat through classic mechanics. Watch as columns compete in structured games.',
       difficulty: 'Beginner',
       color: 'from-blue-600 to-cyan-600'
     },
     {
       id: 2,
       name: 'Temple Breaker',
-      culture: 'Greek Evolution',
-      description: 'Greek temple blocks reveal cosmic secrets. Watch your paddle evolve into a celestial ship as architecture transforms into space.',
+      culture: 'Structural Evolution',
+      description: 'Monumental blocks reveal cosmic secrets. Watch your paddle evolve into a celestial ship as architecture transforms into space.',
       difficulty: 'Beginner+',
       color: 'from-cyan-600 to-teal-600'
     },
     {
       id: 3,
       name: 'Asteroid Hunter',
-      culture: 'Mayan Astronomy',
-      description: 'Your ship now navigates asteroid fields using Mayan astronomical knowledge. Ancient temple blocks have become celestial bodies.',
+      culture: 'Stellar Navigation',
+      description: 'Your ship navigates asteroid fields using advanced stellar knowledge. Ancient blocks have become celestial bodies.',
       difficulty: 'Intermediate',
       color: 'from-yellow-600 to-orange-600'
     },
     {
       id: 4,
       name: 'Defender',
-      culture: 'Feudal Japan',
-      description: 'The ship morphs into a samurai defender. Learn bushido while protecting villages, as your craft embodies honor and duty.',
+      culture: 'Guardian Protocol',
+      description: 'The ship morphs into a guardian defender. Learn protection protocols while defending settlements, as your craft embodies honor and duty.',
       difficulty: 'Advanced',
       color: 'from-red-600 to-pink-600'
     },
     {
       id: 5,
       name: 'Lasat Starfighter',
-      culture: 'Norse Mythology',
-      description: 'Final evolution into a Norse longship-fighter for Ragnarok. Master the fierce warrior culture in epic space battles.',
+      culture: 'Final Evolution',
+      description: 'Final evolution into a longship-fighter for the ultimate conflict. Master the fierce combat culture in epic space battles.',
       difficulty: 'Master',
       color: 'from-purple-600 to-indigo-600'
     },
     {
       id: 6,
       name: 'DANCE INTERLUDE',
-      culture: 'Young Frankenstein Tribute',
-      description: '🎭 "Puttin\' on the Ritz" - A 3-minute AI humanoid bot dance spectacular with top hat and cane! Skip with SPACEBAR.',
+      culture: 'Performance Protocol',
+      description: '🎭 A 3-minute AI humanoid bot dance spectacular with top hat and cane! Skip with SPACEBAR.',
       difficulty: 'FABULOUS',
       color: 'from-yellow-400 to-pink-500'
     },
     {
       id: 7,
-      name: 'STAR WARS BATTLE',
-      culture: 'Last Starfighter Homage',
-      description: '⭐ Fight 12 Imperial ships in epic space combat! X-Wing vs TIE Fighters, then face a massive Star Destroyer boss.',
+      name: 'SPACE BATTLE',
+      culture: 'Fleet Engagement',
+      description: '⭐ Fight 12 enemy ships in epic space combat! Then face a massive command vessel boss.',
       difficulty: 'EPIC',
       color: 'from-blue-400 to-indigo-600'
     },
@@ -87,9 +87,9 @@ export function StageSelect() {
     <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black p-2 sm:p-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-4">Choose Your Cultural Journey</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-4">Choose Your Journey</h1>
           <p className="text-gray-300 text-sm sm:text-base lg:text-lg px-2">
-            Progress through gaming evolution while learning about world cultures
+            Progress through evolution as you break through each barrier
           </p>
           <Button
             onClick={() => setCurrentScreen('menu')}

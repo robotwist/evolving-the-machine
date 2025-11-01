@@ -912,8 +912,8 @@ export class BreakoutGame extends BaseGame {
     this.ctx.translate(ox, oy);
     this.clearCanvas();
 
-    // Draw Greek-inspired background
-    this.drawGreekBackground();
+    // Draw background
+    this.drawBackground();
 
     if (this.transitioning) {
       this.drawTransition();
@@ -1213,7 +1213,7 @@ export class BreakoutGame extends BaseGame {
     this.ctx.restore();
   }
 
-  private drawGreekBackground() {
+  private drawBackground() {
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
     gradient.addColorStop(0, '#1a1a2e');
     gradient.addColorStop(1, '#16213e');
@@ -1466,7 +1466,7 @@ export class BreakoutGame extends BaseGame {
         this.drawText('EVOLVED! WASD to move, Z/X to punch blocks!', this.width / 2, this.height - 40, 16, '#00FF00', 'center');
         this.drawText(`Left Punch: ${this.punchCooldownLeft > 0 ? 'COOLING' : 'READY'} | Right Punch: ${this.punchCooldownRight > 0 ? 'COOLING' : 'READY'}`, this.width / 2, this.height - 20, 12, '#DDD', 'center');
       } else {
-        this.drawText('Greek Temple Blocks - Break them to reveal the cosmos!', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+        this.drawText('Temple Blocks - Break them to reveal the cosmos!', this.width / 2, this.height - 20, 14, '#DDD', 'center');
       }
     }
   }

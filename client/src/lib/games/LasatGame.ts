@@ -1519,13 +1519,13 @@ export class LasatGame extends BaseGame {
 
   private drawStartScreen() {
     // Draw background
-    this.drawNorseBackground();
+    this.drawBackground();
     
     // Title
     this.ctx.fillStyle = '#FFD700';
     this.ctx.font = '48px monospace';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('THE LAST STARFIGHTER', this.width / 2, this.height / 2 - 100);
+    this.ctx.fillText('STARFIGHTER', this.width / 2, this.height / 2 - 100);
     
     // Subtitle
     this.ctx.fillStyle = '#00FF00';
@@ -1560,7 +1560,7 @@ export class LasatGame extends BaseGame {
 
   private drawSelectScreen() {
     // Draw background
-    this.drawNorseBackground();
+    this.drawBackground();
     
     // Title
     this.ctx.fillStyle = '#FFD700';
@@ -1583,7 +1583,7 @@ export class LasatGame extends BaseGame {
 
   private drawGameOverScreen() {
     // Draw background
-    this.drawNorseBackground();
+    this.drawBackground();
     
     // Game Over title
     this.ctx.fillStyle = '#FF0000';
@@ -1618,7 +1618,7 @@ export class LasatGame extends BaseGame {
     }
 
     // Draw Norse/space background
-    this.drawNorseBackground();
+    this.drawBackground();
 
     // Draw player
     this.drawPlayer();
@@ -2117,8 +2117,8 @@ export class LasatGame extends BaseGame {
     this.ctx.restore();
   }
 
-  private drawNorseBackground() {
-    // Cosmic background with Norse runes
+  private drawBackground() {
+    // Cosmic background
     const gradient = this.ctx.createRadialGradient(this.width/2, this.height/2, 0, this.width/2, this.height/2, this.width);
     gradient.addColorStop(0, '#1a1a2e');
     gradient.addColorStop(0.5, '#16213e');
@@ -2421,7 +2421,7 @@ export class LasatGame extends BaseGame {
     this.drawText(`Energy: ${this.player.energy}/${this.player.maxEnergy}`, 20, 50, 16, '#00FF00');
     this.drawText(`Weapon: ${this.player.weaponType.toUpperCase()}`, 20, 70, 16, '#FFFF00');
     this.drawText(`Score: ${this.score}`, 20, 90, 16, '#FFD700');
-    this.drawText(`Ragnarok Phase: ${this.ragnarokPhase}/5`, 20, 110, 16, '#FFD700');
+    this.drawText(`Phase: ${this.ragnarokPhase}/5`, 20, 110, 16, '#FFD700');
 
     // Shield indicator
     if (this.player.shieldActive) {

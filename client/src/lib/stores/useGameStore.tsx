@@ -38,7 +38,7 @@ export const useGameStore = create<GameStore>()(
       currentStage: 1,
       gameState: 'playing',
       unlockedStages: (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === undefined || window.location.hostname !== 'localhost') ? MAX_STAGE : 1, // Unlock all stages in production
-      showDemo: process.env.NODE_ENV === 'production', // Show demo only in development
+      showDemo: true, // Show demo/intro sequence by default
       productionMode: (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === undefined || window.location.hostname !== 'localhost'),
       
       setCurrentScreen: (screen) => {

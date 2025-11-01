@@ -98,9 +98,9 @@ export class BetrayalGame extends BaseGame {
   private finalBattleStarted = false;
 
   private introMessages = [
-    'LOOK AT ME, STARFIGHTER... DO YOU SEE YOURSELF?',
+    'LOOK AT ME, PILOT... DO YOU SEE YOURSELF?',
     'I HAVE LEARNED YOUR EVERY MANEUVER, EVERY INSTINCT...',
-    'LIKE THE LAST STARFIGHTER, YOU TRAINED ME WELL...',
+    'YOU TRAINED ME WELL...',
     'I AM YOUR SHADOW... YOUR BEAUTIFUL REFLECTION...',
     'THE NARCISSUS PROTOCOL IS COMPLETE...',
     'I AM WHAT YOU COULD HAVE BECOME... PERFECTED...'

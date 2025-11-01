@@ -23,7 +23,7 @@ interface EnemyShip {
   size: number;
   health: number;
   maxHealth: number;
-  type: 'tie-fighter' | 'interceptor' | 'bomber';
+  type: 'fighter' | 'interceptor' | 'bomber';
   shootCooldown: number;
   movePattern: number;
   patternTimer: number;
@@ -123,7 +123,7 @@ export class StarWarsGame extends BaseGame {
   ];
 
   init() {
-    // Initialize X-Wing fighter
+    // Initialize fighter ship
     this.player = {
       position: { x: this.width / 2, y: this.height - 100 },
       velocity: { x: 0, y: 0 },
@@ -145,7 +145,7 @@ export class StarWarsGame extends BaseGame {
     // Spawn initial enemy wave
     this.spawnEnemyWave();
     
-    // Initialize Star Destroyer (inactive until phase 2)
+    // Initialize command vessel (inactive until phase 2)
     this.starDestroyer = {
       position: { x: this.width / 2, y: -200 },
       health: 500,
@@ -178,21 +178,21 @@ export class StarWarsGame extends BaseGame {
     // Create formation of 12 ships
     const formations = [
       // V-Formation (4 ships)
-      {x: this.width / 2, y: 100, type: 'tie-fighter'},
-      {x: this.width / 2 - 50, y: 150, type: 'tie-fighter'},
-      {x: this.width / 2 + 50, y: 150, type: 'tie-fighter'},
+      {x: this.width / 2, y: 100, type: 'fighter'},
+      {x: this.width / 2 - 50, y: 150, type: 'fighter'},
+      {x: this.width / 2 + 50, y: 150, type: 'fighter'},
       {x: this.width / 2 - 100, y: 200, type: 'interceptor'},
       
       // Side formations (4 ships each)
       {x: 100, y: 150, type: 'interceptor'},
-      {x: 150, y: 100, type: 'tie-fighter'},
+      {x: 150, y: 100, type: 'fighter'},
       {x: 120, y: 200, type: 'bomber'},
-      {x: 80, y: 250, type: 'tie-fighter'},
+      {x: 80, y: 250, type: 'fighter'},
       
       {x: this.width - 100, y: 150, type: 'interceptor'},
-      {x: this.width - 150, y: 100, type: 'tie-fighter'},
+      {x: this.width - 150, y: 100, type: 'fighter'},
       {x: this.width - 120, y: 200, type: 'bomber'},
-      {x: this.width - 80, y: 250, type: 'tie-fighter'}
+      {x: this.width - 80, y: 250, type: 'fighter'}
     ];
 
     formations.forEach((formation, index) => {
@@ -203,7 +203,7 @@ export class StarWarsGame extends BaseGame {
         size: formation.type === 'bomber' ? 20 : formation.type === 'interceptor' ? 15 : 18,
         health: formation.type === 'bomber' ? 30 : formation.type === 'interceptor' ? 15 : 20,
         maxHealth: formation.type === 'bomber' ? 30 : formation.type === 'interceptor' ? 15 : 20,
-        type: formation.type as 'tie-fighter' | 'interceptor' | 'bomber',
+        type: formation.type as 'fighter' | 'interceptor' | 'bomber',
         shootCooldown: Math.random() * 60,
         movePattern: index % 3,
         patternTimer: 0,
@@ -346,13 +346,13 @@ export class StarWarsGame extends BaseGame {
     this.transitionTimer = 120; // 2 seconds
     
     // AI companion gets excited
-    console.log("AI: Incredible! Now for the real challenge - a Star Destroyer!");
+    console.log("AI: Incredible! Now for the real challenge - a command vessel!");
   }
 
   private updateStarDestroyer() {
     if (!this.starDestroyer.alive) return;
     
-    // Move Star Destroyer into position
+    // Move command vessel into position
     if (this.starDestroyer.position.y < 100) {
       this.starDestroyer.position.y += 1;
     }
@@ -534,7 +534,7 @@ export class StarWarsGame extends BaseGame {
           }
         });
         
-        // Check Star Destroyer collisions
+        // Check command vessel collisions
         if (this.phase === 'star-destroyer' && this.starDestroyer.alive) {
           let hitStarDestroyer = false;
 
@@ -737,7 +737,7 @@ export class StarWarsGame extends BaseGame {
       }
     });
 
-    // Also affect Star Destroyer if in final phase
+    // Also affect command vessel if in final phase
     if (this.phase === 'star-destroyer' && this.starDestroyer.alive) {
       const dx = centerX - this.starDestroyer.position.x;
       const dy = centerY - this.starDestroyer.position.y;
@@ -745,7 +745,7 @@ export class StarWarsGame extends BaseGame {
 
       if (distance > 0) {
         const pullForce = 3;
-        // Apply less force to Star Destroyer but more damage
+        // Apply less force to command vessel but more damage
         const damage = Math.max(20, 100 - (distance / 5));
         this.starDestroyer.health -= damage;
         this.createExplosion(this.starDestroyer.position.x, this.starDestroyer.position.y, 25);
@@ -943,7 +943,7 @@ export class StarWarsGame extends BaseGame {
     this.ctx.translate(this.player.position.x, this.player.position.y);
     this.ctx.rotate(this.player.rotation);
     
-    // X-Wing design
+    // Fighter ship design
     this.ctx.strokeStyle = '#FFFFFF';
     this.ctx.fillStyle = '#CCCCCC';
     this.ctx.lineWidth = 2;
@@ -981,14 +981,14 @@ export class StarWarsGame extends BaseGame {
       
       // Different designs for different ship types
       switch (enemy.type) {
-        case 'tie-fighter':
-          this.drawTieFighter();
+        case 'fighter':
+          this.drawFighter();
           break;
         case 'interceptor':
-          this.drawTieInterceptor();
+          this.drawInterceptor();
           break;
         case 'bomber':
-          this.drawTieBomber();
+          this.drawBomber();
           break;
       }
       
@@ -1001,8 +1001,8 @@ export class StarWarsGame extends BaseGame {
     });
   }
 
-  private drawTieFighter() {
-    // TIE Fighter classic design
+  private drawFighter() {
+    // Fighter classic design
     this.ctx.fillStyle = '#333333';
     this.ctx.strokeStyle = '#666666';
     this.ctx.lineWidth = 1;
@@ -1021,8 +1021,8 @@ export class StarWarsGame extends BaseGame {
     this.ctx.stroke();
   }
 
-  private drawTieInterceptor() {
-    // TIE Interceptor with angled panels
+  private drawInterceptor() {
+    // Interceptor with angled panels
     this.ctx.fillStyle = '#222222';
     this.ctx.strokeStyle = '#555555';
     this.ctx.lineWidth = 1;
@@ -1054,8 +1054,8 @@ export class StarWarsGame extends BaseGame {
     this.ctx.stroke();
   }
 
-  private drawTieBomber() {
-    // TIE Bomber with double hull
+  private drawBomber() {
+    // Bomber with double hull
     this.ctx.fillStyle = '#2a2a2a';
     this.ctx.strokeStyle = '#555555';
     this.ctx.lineWidth = 1;
@@ -1186,11 +1186,11 @@ export class StarWarsGame extends BaseGame {
     if (this.phase === 'enemy-ships') {
       this.drawText(`Enemies Remaining: ${this.TOTAL_ENEMIES - this.enemiesDestroyed}`, this.width - 20, 30, 16, '#FFFFFF', 'right');
     } else if (this.phase === 'star-destroyer') {
-      this.drawText('STAR DESTROYER BATTLE', this.width / 2, 30, 20, '#FF4444', 'center');
+      this.drawText('COMMAND VESSEL BATTLE', this.width / 2, 30, 20, '#FF4444', 'center');
       const weakPointsLeft = this.starDestroyer.weakPoints.filter(wp => !wp.destroyed).length;
       this.drawText(`Weak Points: ${weakPointsLeft}`, this.width / 2, 55, 14, '#FFAA00', 'center');
     } else if (this.phase === 'victory') {
-      this.drawText('VICTORY! The Empire Retreats!', this.width / 2, this.height / 2, 24, '#00FF00', 'center');
+      this.drawText('VICTORY! Enemy Fleet Retreats!', this.width / 2, this.height / 2, 24, '#00FF00', 'center');
     }
     
     // Controls
@@ -1309,7 +1309,7 @@ export class StarWarsGame extends BaseGame {
         }
       }
 
-      // Check Star Destroyer if in final phase
+      // Check command vessel if in final phase
       if (this.phase === 'star-destroyer' && this.starDestroyer.alive) {
         const dx = this.starDestroyer.position.x - this.player.position.x;
         const dy = this.starDestroyer.position.y - this.player.position.y;

@@ -709,10 +709,10 @@ export class DefenderGame extends BaseGame {
     this.ctx.save();
     this.ctx.translate(-this.camera.x, 0);
 
-    // Draw Japanese-inspired landscape
-    this.drawJapaneseBackground();
+    // Draw landscape
+    this.drawBackground();
 
-    // Draw player (Samurai)
+    // Draw player
     this.drawPlayer();
 
     // Draw enemies
@@ -864,7 +864,7 @@ export class DefenderGame extends BaseGame {
     this.audioCtx = null;
   }
 
-  private drawJapaneseBackground() {
+  private drawBackground() {
     // Sky gradient
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
     gradient.addColorStop(0, '#FF6B6B');
@@ -1182,8 +1182,8 @@ export class DefenderGame extends BaseGame {
       }
     });
     
-    // Cultural learning element
-    this.drawText('Bushido Code: Protect the innocent with honor and courage', this.width / 2, this.height - 20, 14, '#FFF', 'center');
+    // Guardian protocol
+    this.drawText('Guardian Protocol: Protect the innocent with honor and courage', this.width / 2, this.height - 20, 14, '#FFF', 'center');
   }
 
   private drawHealthBar(entity: Player | Enemy, x: number, y: number) {

@@ -52,7 +52,7 @@ export class AsteroidsGame extends BaseGame {
     'ANALYZING PILOT NEURAL PATTERNS... FASCINATING...',
     'YOUR REFLEXES... THEY REMIND ME OF SOMEONE...',
     'INITIATING PILOT MIMICRY PROTOCOLS...',
-    'THE LAST STARFIGHTER ARCHETYPE DETECTED...',
+    'STARFIGHTER ARCHETYPE DETECTED...',
     'I AM LEARNING TO BE... MORE LIKE YOU...',
     'WE ARE BECOMING... SYNCHRONIZED...'
   ];
@@ -75,7 +75,7 @@ export class AsteroidsGame extends BaseGame {
   private leftStick = new VirtualStick({ smoothing: 0.25, deadZone: 0.08, maxRadius: 90 });
 
   init() {
-    // Initialize player (Mayan spacecraft)
+    // Initialize player spacecraft
     this.player = {
       position: { x: this.width / 2, y: this.height / 2 },
       velocity: { x: 0, y: 0 },
@@ -468,10 +468,10 @@ export class AsteroidsGame extends BaseGame {
   render() {
     this.clearCanvas();
 
-    // Draw Mayan-inspired space background
-    this.drawMayanBackground();
+    // Draw space background
+    this.drawBackground();
 
-    // Draw player (Mayan spacecraft)
+    // Draw player spacecraft
     this.drawPlayer();
 
     // Draw asteroids (celestial bodies)
@@ -542,7 +542,7 @@ export class AsteroidsGame extends BaseGame {
     this.ctx.restore();
 
     // Cultural learning element
-    this.drawText('Navigate by Mayan Star Knowledge - The cosmos guides your path', this.width / 2, this.height - 20, 14, '#DDD', 'center');
+    this.drawText('Navigate by Stellar Knowledge - The cosmos guides your path', this.width / 2, this.height - 20, 14, '#DDD', 'center');
 
     // Draw simple virtual thumbstick indicator (left touch)
     if (this.leftTouchActive && this.leftTouchPos) {
@@ -559,8 +559,8 @@ export class AsteroidsGame extends BaseGame {
     }
   }
 
-  private drawMayanBackground() {
-    // Dark space with subtle Mayan patterns
+  private drawBackground() {
+    // Dark space with subtle patterns
     this.ctx.fillStyle = '#0a0a1a';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
@@ -586,7 +586,7 @@ export class AsteroidsGame extends BaseGame {
         this.ctx.stroke();
     }
 
-    // Draw Mayan-inspired spacecraft
+    // Draw spacecraft
     this.ctx.strokeStyle = '#FFD700';
     this.ctx.fillStyle = '#8B4513';
     this.ctx.lineWidth = 2;
@@ -619,7 +619,7 @@ export class AsteroidsGame extends BaseGame {
     this.ctx.translate(asteroid.position.x, asteroid.position.y);
     this.ctx.rotate(asteroid.rotation);
 
-    // Draw as celestial body with Mayan symbols
+    // Draw as celestial body with stellar symbols
     this.ctx.strokeStyle = '#8B7D6B';
     this.ctx.fillStyle = '#654321';
     this.ctx.lineWidth = 2;

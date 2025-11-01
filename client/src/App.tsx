@@ -29,7 +29,7 @@ function getGameName(stage: number): string {
     'Defender',
     'Lasat',
     'Dance Interlude',
-    'Star Wars',
+    'Space Battle',
     'Betrayal'
   ];
   return gameNames[stage - 1] || 'Unknown';

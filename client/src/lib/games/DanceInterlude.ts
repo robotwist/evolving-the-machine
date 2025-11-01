@@ -144,7 +144,7 @@ export class DanceInterlude extends BaseGame {
           console.warn('Could not play dance music:', e);
         });
 
-        console.log("🎵 PLAYING: Puttin' on the Ritz - Young Frankenstein Edition");
+        console.log("🎵 PLAYING: Performance Protocol");
       }
     } catch (error) {
       console.warn('Dance music system not available:', error);
@@ -600,9 +600,9 @@ export class DanceInterlude extends BaseGame {
       'center'
     );
     
-    // Young Frankenstein tribute
+    // Performance protocol
     this.drawText(
-      '🎭 "Super duper!" - Young Frankenstein Tribute 🎭',
+      '🎭 Performance Protocol Active 🎭',
       this.width / 2,
       this.height - 30,
       14,

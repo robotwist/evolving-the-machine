@@ -32,32 +32,32 @@ export function MainMenu() {
               { 
                 stage: 1, 
                 name: 'Pong Master', 
-                culture: 'Ancient Greece',
-                desc: 'Olympic paddle competition'
+                culture: 'Classic Arena',
+                desc: 'Master paddle combat'
               },
               { 
                 stage: 2, 
                 name: 'Temple Breaker', 
-                culture: 'Greek Evolution',
+                culture: 'Structural Evolution',
                 desc: 'Columns become cosmic blocks'
               },
               { 
                 stage: 3, 
                 name: 'Asteroid Hunter', 
-                culture: 'Mayan Astronomy',
+                culture: 'Stellar Navigation',
                 desc: 'Ship navigates celestial bodies'
               },
               { 
                 stage: 4, 
                 name: 'Defender', 
-                culture: 'Feudal Japan',
-                desc: 'Samurai protection duty'
+                culture: 'Guardian Protocol',
+                desc: 'Protection duty'
               },
               { 
                 stage: 5, 
                 name: 'Lasat Starfighter', 
-                culture: 'Norse Mythology',
-                desc: 'Epic Ragnarok battles'
+                culture: 'Final Evolution',
+                desc: 'Epic space battles'
               }
             ].map(({ stage, name, culture, desc }) => (
               <div key={stage} className="text-center">
@@ -97,25 +97,25 @@ export function MainMenu() {
             </Button>
           </div>
 
-          {/* Cultural Learning Features */}
+          {/* Evolution Features */}
           <div className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 p-4 rounded-lg">
-            <h3 className="text-white font-semibold mb-2">Learn Through Play</h3>
+            <h3 className="text-white font-semibold mb-2">Evolve Through Play</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
               <div>
-                <div className="text-purple-300">🏛️ Ancient Greek Olympics</div>
-                <div>Master competitive sportsmanship</div>
+                <div className="text-purple-300">🏛️ Classic Arena</div>
+                <div>Master competitive mechanics</div>
               </div>
               <div>
-                <div className="text-blue-300">🌟 Mayan Astronomy</div>
+                <div className="text-blue-300">🌟 Stellar Navigation</div>
                 <div>Navigate by celestial knowledge</div>
               </div>
               <div>
-                <div className="text-red-300">⚔️ Samurai Honor Code</div>
-                <div>Protect with dignity and skill</div>
+                <div className="text-red-300">⚔️ Guardian Protocol</div>
+                <div>Protect with honor and skill</div>
               </div>
               <div>
-                <div className="text-yellow-300">🔥 Norse Ragnarok</div>
-                <div>Epic battles of gods and giants</div>
+                <div className="text-yellow-300">🔥 Final Evolution</div>
+                <div>Epic battles in the void</div>
               </div>
             </div>
           </div>

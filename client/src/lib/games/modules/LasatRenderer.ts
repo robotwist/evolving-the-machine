@@ -294,7 +294,7 @@ export class LasatRenderer {
     this.ctx.fillStyle = '#FFD700';
     this.ctx.font = '48px monospace';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('THE LAST STARFIGHTER', this.width / 2, this.height / 2 - 50);
+    this.ctx.fillText('STARFIGHTER', this.width / 2, this.height / 2 - 50);
     
     // Subtitle
     this.ctx.fillStyle = '#FFFFFF';

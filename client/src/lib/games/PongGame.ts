@@ -169,7 +169,7 @@ export class PongGame extends BaseGame {
       damageNumbers: (window as unknown as GameSettings).__CULTURAL_ARCADE_DAMAGE_NUMBERS__ ?? true
     };
 
-    // Initialize paddles with Greek column design
+    // Initialize paddles with classic column design
     const quality = (window as unknown as GameSettings).__CULTURAL_ARCADE_QUALITY__ as 'low' | 'medium' | 'high' | undefined;
     const shadowBlur = quality === 'low' ? 0 : quality === 'medium' ? 5 : 15;
 
@@ -658,11 +658,11 @@ export class PongGame extends BaseGame {
     this.clearCanvas();
 
     // Draw background
-    this.drawGreekBackground();
+    this.drawBackground();
 
     // Draw paddles
-    this.drawGreekPaddle(this.player1);
-    this.drawGreekPaddle(this.player2);
+    this.drawPaddle(this.player1);
+    this.drawPaddle(this.player2);
 
     // Draw ball
     this.drawBall();
@@ -705,8 +705,8 @@ export class PongGame extends BaseGame {
     // no-op for now
   }
 
-  private drawGreekBackground() {
-    // Draw synthwave-inspired Greek background
+  private drawBackground() {
+    // Draw synthwave-inspired background
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
     gradient.addColorStop(0, '#0f0f23');
     gradient.addColorStop(0.5, '#1a1a2e');
@@ -737,7 +737,7 @@ export class PongGame extends BaseGame {
     this.ctx.restore();
   }
 
-  private drawGreekPaddle(paddle: Paddle) {
+  private drawPaddle(paddle: Paddle) {
     this.ctx.save();
     
     // Don't draw destroyed paddles

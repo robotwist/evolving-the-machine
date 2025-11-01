@@ -48,7 +48,7 @@ export class LasatGame extends BaseGame {
   }
 
   async init() {
-    console.log('🎮 Initializing Last Starfighter game...');
+    console.log('🎮 Initializing starfighter game...');
     this.reset();
   }
 
