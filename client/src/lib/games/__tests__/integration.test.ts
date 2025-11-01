@@ -13,7 +13,6 @@ import {
   createMockParticleSystem,
   createMockVisualFeedback,
   createMockProjectile,
-  waitForFrames,
   runGameLoop
 } from '../../utils/__tests__/testUtils';
 
@@ -84,7 +83,6 @@ describe('Game System Integration Tests', () => {
     test('should handle collision system integration', async () => {
       // Spawn enemies
       game['spawnWave']();
-      const initialEnemyCount = game['enemies'].length;
 
       // Position player bullets to hit enemies
       const enemy = game['enemies'][0];

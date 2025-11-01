@@ -1,21 +1,13 @@
 // Stub implementation for advanced state management store
 // TODO: Implement full state management system
 
-export interface ActionTypes {
-  UPDATE_STATE: 'UPDATE_STATE';
-  RESET_STATE: 'RESET_STATE';
-  VALIDATE_STATE: 'VALIDATE_STATE';
-  RESET_PROGRESS: 'RESET_PROGRESS';
-  RESET_SCORES: 'RESET_SCORES';
-}
-
-export const ActionTypes: ActionTypes = {
+export const ActionTypes = {
   UPDATE_STATE: 'UPDATE_STATE',
   RESET_STATE: 'RESET_STATE',
   VALIDATE_STATE: 'VALIDATE_STATE',
   RESET_PROGRESS: 'RESET_PROGRESS',
   RESET_SCORES: 'RESET_SCORES'
-};
+} as const;
 
 export function createAction(type: string, payload?: any) {
   return { type, payload };

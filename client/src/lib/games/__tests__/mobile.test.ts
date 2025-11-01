@@ -63,12 +63,12 @@ describe('Mobile Testing Suite', () => {
       writable: true,
     });
 
-    Object.defineProperty(screen, 'width', {
+    Object.defineProperty(window.screen, 'width', {
       value: mockMobileEnvironment.screen.width,
       writable: true,
     });
 
-    Object.defineProperty(screen, 'height', {
+    Object.defineProperty(window.screen, 'height', {
       value: mockMobileEnvironment.screen.height,
       writable: true,
     });
@@ -109,7 +109,7 @@ describe('Mobile Testing Suite', () => {
     });
 
     test('DefenderGame should handle touch movement', () => {
-      const initialX = defenderGame['player'].position.x;
+      const _initialX = defenderGame['player'].position.x;
       
       // Touch left side should move left
       defenderGame.handlePointerDown(100, 300);
@@ -119,7 +119,7 @@ describe('Mobile Testing Suite', () => {
     });
 
     test('PongGame should handle touch paddle movement', () => {
-      const initialPaddleX = pongGame['player1'].x;
+      const _initialPaddleX = pongGame['player1'].x;
       
       // Touch should move paddle
       pongGame.handlePointerDown(200, 300);
@@ -129,7 +129,7 @@ describe('Mobile Testing Suite', () => {
     });
 
     test('BreakoutGame should handle touch paddle movement', () => {
-      const initialPaddleX = breakoutGame['paddle'].x;
+      const _initialPaddleX = breakoutGame['paddle'].x;
       
       // Touch should move paddle
       breakoutGame.handlePointerDown(200, 300);
@@ -140,8 +140,8 @@ describe('Mobile Testing Suite', () => {
 
     test('should handle multi-touch gestures', () => {
       // Simulate multi-touch
-      const touch1 = createMockTouchEvent(100, 300, 'touchstart');
-      const touch2 = createMockTouchEvent(200, 300, 'touchstart');
+      const _touch1 = createMockTouchEvent(100, 300, 'touchstart');
+      const _touch2 = createMockTouchEvent(200, 300, 'touchstart');
       
       expect(() => {
         defenderGame.handlePointerDown(100, 300);
@@ -256,7 +256,7 @@ describe('Mobile Testing Suite', () => {
         writable: true,
       });
 
-      const result = await navigator.serviceWorker.register('/sw.js');
+      const _result = await navigator.serviceWorker.register('/sw.js');
       expect(mockServiceWorker.register).toHaveBeenCalledWith('/sw.js');
     });
 
@@ -346,7 +346,7 @@ describe('Mobile Testing Suite', () => {
       game.init();
 
       // Mock touch with pressure
-      const mockTouch = {
+      const _mockTouch = {
         clientX: 200,
         clientY: 300,
         force: 0.5, // Pressure
@@ -363,7 +363,7 @@ describe('Mobile Testing Suite', () => {
       game.init();
 
       // Mock touch with size
-      const mockTouch = {
+      const _mockTouch2 = {
         clientX: 200,
         clientY: 300,
         radiusX: 10,
@@ -381,7 +381,7 @@ describe('Mobile Testing Suite', () => {
       game.init();
 
       // Mock touch with angle
-      const mockTouch = {
+      const _mockTouch3 = {
         clientX: 200,
         clientY: 300,
         rotationAngle: 45,
