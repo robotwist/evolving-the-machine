@@ -5,18 +5,18 @@
 
 import { DefenderGame } from '../DefenderGame';
 import { 
-  createMockPlayer,
+  
   createMockEnemy,
   createMockProjectile,
   createMockAudioState,
-  createMockSettings,
-  createMockParticleSystem,
-  createMockVisualFeedback,
+  
+  
+  
   createMockCanvasContext,
   createMockKeyboardEvent,
-  createMockTouchEvent,
-  isColliding,
-  waitForFrames,
+  
+  
+  
   runGameLoop
 } from '../../utils/__tests__/testUtils';
 
@@ -77,21 +77,21 @@ describe('DefenderGame', () => {
 
   describe('Player Movement', () => {
     test('should move player left with A key', () => {
-      const initialX = game['player'].position.x;
+      const _initialX = game['player'].position.x;
       game['keys'].add('KeyA');
       
       game.update(16);
       
-      expect(game['player'].position.x).toBeLessThan(initialX);
+      expect(game['player'].position.x).toBeLessThan(_initialX);
     });
 
     test('should move player right with D key', () => {
-      const initialX = game['player'].position.x;
+      const _initialX = game['player'].position.x;
       game['keys'].add('KeyD');
       
       game.update(16);
       
-      expect(game['player'].position.x).toBeGreaterThan(initialX);
+      expect(game['player'].position.x).toBeGreaterThan(_initialX);
     });
 
     test('should move player up with W key', () => {
@@ -174,7 +174,7 @@ describe('DefenderGame', () => {
     });
 
     test('should handle left side touch for movement', () => {
-      const initialX = game['player'].position.x;
+      const _initialX = game['player'].position.x;
       
       game.handlePointerDown(100, 300); // Left side
       
@@ -183,7 +183,7 @@ describe('DefenderGame', () => {
     });
 
     test('should handle right side touch for movement', () => {
-      const initialX = game['player'].position.x;
+      const _initialX = game['player'].position.x;
       
       game.handlePointerDown(700, 300); // Right side
       
@@ -284,7 +284,7 @@ describe('DefenderGame', () => {
   describe('Kamikaze System', () => {
     test('should create kamikaze bombers', () => {
       game['spawnWave']();
-      const initialEnemies = game['enemies'].length;
+      const _initialEnemies = game['enemies'].length;
       
       game['createKamikazeBomber']();
       

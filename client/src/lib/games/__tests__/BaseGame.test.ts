@@ -3,12 +3,10 @@
  * Tests core game mechanics, lifecycle, and input handling
  */
 
-import { BaseGame } from '../../games/BaseGame';
 import { 
   createMockCanvasContext, 
   createMockKeyboardEvent, 
   createMockTouchEvent,
-  waitForAnimationFrame,
   runGameLoop,
   MockGame
 } from '../../utils/__tests__/testUtils';
@@ -71,7 +69,7 @@ describe('BaseGame', () => {
     });
 
     test('should handle touch input correctly', () => {
-      const touchEvent = createMockTouchEvent(100, 200, 'touchstart');
+      const _touchEvent = createMockTouchEvent(100, 200, 'touchstart');
       
       game.handlePointerDown(100, 200);
       // Touch handling should not throw errors

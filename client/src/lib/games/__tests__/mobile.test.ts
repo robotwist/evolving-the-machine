@@ -292,12 +292,12 @@ describe('Mobile Testing Suite', () => {
       game.init();
 
       // Simulate orientation change
-      Object.defineProperty(screen, 'width', {
+      Object.defineProperty(window.screen, 'width', {
         value: 667, // Portrait width
         writable: true,
       });
 
-      Object.defineProperty(screen, 'height', {
+      Object.defineProperty(window.screen, 'height', {
         value: 375, // Portrait height
         writable: true,
       });

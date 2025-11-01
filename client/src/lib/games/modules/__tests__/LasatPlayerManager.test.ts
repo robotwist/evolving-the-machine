@@ -1,5 +1,4 @@
-import { LasatPlayerManager, PlayerData } from '../LasatPlayerManager';
-import { Vector2 } from '../../types';
+import { LasatPlayerManager } from '../LasatPlayerManager';
 
 describe('LasatPlayerManager', () => {
   let playerManager: LasatPlayerManager;

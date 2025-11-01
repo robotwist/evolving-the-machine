@@ -1,4 +1,4 @@
-import { LasatCombatSystem, ProjectileData, PowerUpData } from '../LasatCombatSystem';
+import { LasatCombatSystem,  } from '../LasatCombatSystem';
 import { Vector2 } from '../../types';
 
 describe('LasatCombatSystem', () => {
