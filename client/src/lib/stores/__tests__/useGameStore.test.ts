@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { gameValidation, ValidationError } from '../../utils/validation';
-import { gameValidators, SecurityError } from '../../utils/security';
+import { gameValidation } from '../../utils/validation';
+import { gameValidators } from '../../utils/security';
 
 const MAX_STAGE = 8;
 
@@ -141,7 +141,7 @@ describe('useGameStore', () => {
 
   describe('Screen Management', () => {
     it('should set and get current screen', () => {
-      const { setCurrentScreen, currentScreen } = useGameStore.getState();
+      const { setCurrentScreen } = useGameStore.getState();
       
       // Start from menu, go to stage-select (valid transition)
       setCurrentScreen('stage-select');
