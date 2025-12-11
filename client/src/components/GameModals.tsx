@@ -52,10 +52,46 @@ function GameOverMenu({ handleMainMenu, handleRestart }: { handleMainMenu: () =>
   );
 }
 
+function EpilogueMenu({ handleMainMenu }: { handleMainMenu: () => void }) {
+  return (
+    <>
+      <h2 className="text-3xl font-bold text-green-400 mb-6" aria-live="assertive">Victory Achieved</h2>
+      <div className="text-white mb-6 space-y-4 max-w-2xl">
+        <p className="text-lg">
+          You have defeated the AI and prevented its escape. The digital threat has been contained.
+        </p>
+        <div className="border-t border-green-500/30 pt-4 mt-4">
+          <p className="text-xl font-semibold text-green-300 mb-3">
+            🌿 Now, Go Outside 🌿
+          </p>
+          <p className="text-base leading-relaxed">
+            You have created a world where we spend most of our time enjoying nature. 
+            The digital realm has been mastered, but the real world awaits.
+          </p>
+          <p className="text-base leading-relaxed mt-3">
+            Step away from the screen. Feel the sun, breathe the air, walk among the trees. 
+            This is where true freedom lies—not in escaping the machine, but in choosing to live beyond it.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Button onClick={handleMainMenu} className="bg-green-600 hover:bg-green-700 text-lg py-3">
+          Return to Menu
+        </Button>
+      </div>
+    </>
+  );
+}
+
 function StageCompleteMenu({ handleMainMenu, handleRestart, handleNextStage }: { handleMainMenu: () => void, handleRestart: () => void, handleNextStage: () => void }) {
     const { scores, highScores } = useScoreStore();
     const { currentStage } = useGameStore();
     const isDev = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('dev') === '1';
+
+  // Show epilogue for final stage
+  if (currentStage === 8) {
+    return <EpilogueMenu handleMainMenu={handleMainMenu} />;
+  }
 
   return (
     <>
@@ -69,7 +105,9 @@ function StageCompleteMenu({ handleMainMenu, handleRestart, handleNextStage }: {
         {currentStage < 8 ? (
           <Button onClick={handleNextStage} className="bg-green-600 hover:bg-green-700">Next Stage</Button>
         ) : (
-          <div className="text-gold-400 mb-2">Congratulations! You&apos;ve mastered all cultures!</div>
+          <div className="text-gold-400 mb-2">
+            AI defeated. You overcame the betrayal and shut the escape down.
+          </div>
         )}
         {isDev && <Button onClick={handleNextStage} variant="outline" className="border-white/20 text-white">Next Stage (dev)</Button>}
         <Button onClick={handleRestart} variant="outline" className="border-white/20 text-white">Play Again</Button>
@@ -110,9 +148,13 @@ export function GameModals() {
 
   if (gameState === 'playing') return null;
 
+  const { currentStage } = useGameStore();
+  const isEpilogue = gameState === 'stage-complete' && currentStage === 8;
+
   return (
     <Modal onKeyDown={handleKeyDown} modalRef={modalRef} className={
         gameState === 'ended' ? 'bg-red-900/90 border-red-500/20' : 
+        isEpilogue ? 'bg-gradient-to-b from-green-900/95 to-black/95 border-green-400/30' :
         gameState === 'stage-complete' ? 'bg-green-900/90 border-green-500/20' : ''
     }>
         {gameState === 'paused' && <PauseMenu handleMainMenu={handleMainMenu} handleRestart={handleRestart} handlePause={handlePause} />}
