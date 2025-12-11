@@ -119,7 +119,7 @@ function StageCompleteMenu({ handleMainMenu, handleRestart, handleNextStage }: {
 
 
 export function GameModals() {
-  const { gameState, setGameState, setCurrentScreen, goToNextStage } = useGameStore();
+  const { gameState, setGameState, setCurrentScreen, goToNextStage, currentStage } = useGameStore();
   const modalRef = useRef<HTMLDivElement>(null);
 
   const handlePause = () => setGameState(gameState === 'paused' ? 'playing' : 'paused');
@@ -148,7 +148,6 @@ export function GameModals() {
 
   if (gameState === 'playing') return null;
 
-  const { currentStage } = useGameStore();
   const isEpilogue = gameState === 'stage-complete' && currentStage === 8;
 
   return (
