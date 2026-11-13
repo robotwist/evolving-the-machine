@@ -29,6 +29,9 @@ interface EnemyShip {
   movePattern: number;
   patternTimer: number;
   alive: boolean;
+  /** Formation slot the ship flies in to; null once it has arrived. */
+  entryTargetY: number | null;
+  entryDelay: number;
 }
 
 interface StarDestroyer {
@@ -38,7 +41,7 @@ interface StarDestroyer {
   phase: number;
   shootCooldown: number;
   specialAttackTimer: number;
-  weakPoints: Array<{x: number, y: number, destroyed: boolean}>;
+  weakPoints: Array<{x: number, y: number, health: number, destroyed: boolean}>;
   alive: boolean;
   size: number;
 }
@@ -61,6 +64,87 @@ interface Bullet {
 
 type PowerupType = 'shield' | 'rapid' | 'spread' | 'speed' | 'invincible' | 'guided' | 'triple' | 'gravitron';
 
+// All rates are per 60 Hz update.
+// Held-key flight: thrust / (1 - friction) sets the cruising speed (~4.9, capped at max speed).
+const PLAYER_THRUST = 0.24;
+const PLAYER_REVERSE_THRUST = 0.16;
+const PLAYER_ROTATION_SPEED = 0.075;
+const PLAYER_FRICTION = 0.951;
+const PLAYER_MAX_SPEED = 4.8;
+const BOOSTED_MAX_SPEED = 7.2;
+/** Touch handlers apply thrust per pointer event / stick sample rather than per update. */
+const TOUCH_THRUST = 0.18;
+const TOUCH_ROTATION_EASE = 0.093;
+const FIRE_COOLDOWN = 17;
+const RAPID_FIRE_COOLDOWN = 8;
+const SHIELD_REGEN = 0.025;
+const SHIELD_REGEN_DELAY_FRAMES = 180;
+/** Brief invulnerability after a hit, so a whole volley can't land at once. */
+const HIT_GRACE_FRAMES = 20;
+
+// Opening: ships fly in from above, then open fire one at a time with a visible charge-up.
+const ENTRY_DISTANCE = 360;
+const ENTRY_SPEED = 3;
+const ENTRY_STAGGER_FRAMES = 8;
+const FIRST_SHOT_FRAMES = 270;
+const FIRST_SHOT_STAGGER_FRAMES = 35;
+const FIRE_TELEGRAPH_FRAMES = 30;
+const ENEMY_FIRE_INTERVAL_MIN = 95;
+const ENEMY_FIRE_INTERVAL_SPREAD = 180;
+const ENEMY_BULLET_SPEED = 3.1;
+const ENEMY_BULLET_DAMAGE = 12;
+const ENEMY_HIT_SCORE = 10;
+/** At the last ship, fire intervals shrink to this fraction. */
+const ENEMY_FIRE_MIN_SCALE = 0.5;
+/**
+ * Player shots deal 20, so fighters take 6 hits, interceptors 4, bombers 8. Speed scales the
+ * flight pattern; shotSpeed scales ENEMY_BULLET_SPEED; bombers fire a 3-shot fan `spread` rad apart.
+ */
+const ENEMY_STATS = {
+  fighter: { size: 18, health: 120, score: 100, speed: 1.4, shotSpeed: 1, spread: 0 },
+  interceptor: { size: 15, health: 80, score: 200, speed: 1.8, shotSpeed: 1.3, spread: 0 },
+  bomber: { size: 20, health: 160, score: 300, speed: 1, shotSpeed: 0.85, spread: 0.3 },
+} as const;
+/** Diving ships circle the player at this range instead of parking on top of it. */
+const DIVER_STANDOFF = 170;
+
+// Command vessel
+const BOSS_HEALTH = 5600;
+const BOSS_ENTRY_SPEED = 1.5;
+const BOSS_STATION_Y = 100;
+const BOSS_FIRST_VOLLEY_FRAMES = 90;
+/** Volley interval by vessel phase (one more phase per destroyed weak point). */
+const BOSS_VOLLEY_INTERVALS = [68, 55, 44];
+const BOSS_BULLET_SPEED = 3.3;
+const BOSS_BULLET_DAMAGE = 15;
+const BOSS_SWEEP_AMPLITUDE = 220;
+/** ~14 s per full sweep. */
+const BOSS_SWEEP_RATE = 0.0075;
+/** Radial burst interval by vessel phase. */
+const BOSS_RING_INTERVALS = [480, 400, 320];
+const BOSS_RING_SHOTS = 16;
+const BOSS_RING_SPEED = 2.2;
+const BOSS_RING_DAMAGE = 14;
+/** Each weak point soaks 27 standard shots; hits there count triple against the vessel. */
+const WEAK_POINT_HEALTH = 540;
+const WEAK_POINT_DAMAGE_MULTIPLIER = 3;
+const WEAK_POINT_HIT_RADIUS = 14;
+/** Armored hull: shots that miss the weak points barely scratch it. */
+const HULL_HIT_DAMAGE = 12;
+/** Hull outline relative to the vessel's position: apex, then the two stern corners. */
+const BOSS_HULL: Array<{ x: number; y: number }> = [{ x: 0, y: -20 }, { x: -60, y: 80 }, { x: 60, y: 80 }];
+/** Longest path across the hull, for tracing shots over it. */
+const BOSS_HULL_DEPTH = 120;
+
+const TRANSITION_FRAMES = 200;
+const VICTORY_FRAMES = 500;
+const POWERUP_INTERVAL_MIN = 600;
+const POWERUP_INTERVAL_SPREAD = 400;
+/** Shorter than the spawn interval, so weapon upgrades are bursts rather than always on. */
+const WEAPON_POWERUP_FRAMES = 600;
+const SPEED_POWERUP_FRAMES = 1000;
+const INVINCIBLE_POWERUP_FRAMES = 400;
+
 interface Powerup {
   position: { x: number; y: number };
   type: PowerupType;
@@ -78,6 +162,12 @@ export class StarWarsGame extends BaseGame {
   private stars: Array<{x: number, y: number, speed: number}> = [];
   private powerups: Powerup[] = [];
   private powerupSpawnTimer = 0;
+  private nextPowerupInterval = POWERUP_INTERVAL_MIN;
+  private hitGraceTimer = 0;
+  private shieldRegenDelay = 0;
+  private bossSweepTimer = 0;
+  private bossVolleyCount = 0;
+  private ended = false;
   private rapidFireTimer = 0;
   private spreadTimer = 0;
   private speedBoostTimer = 0;
@@ -129,9 +219,11 @@ export class StarWarsGame extends BaseGame {
       shield: 100,
       weaponCooldown: 0,
       alive: true,
-      thrust: 0.18,
-      maxSpeed: 4.8
+      thrust: PLAYER_THRUST,
+      maxSpeed: PLAYER_MAX_SPEED
     };
+    this.ended = false;
+    this.nextPowerupInterval = POWERUP_INTERVAL_MIN + Math.floor(Math.random() * POWERUP_INTERVAL_SPREAD);
 
     // Create starfield
     this.createStarField();
@@ -142,15 +234,16 @@ export class StarWarsGame extends BaseGame {
     // Initialize command vessel (inactive until phase 2)
     this.starDestroyer = {
       position: { x: this.width / 2, y: -200 },
-      health: 500,
-      maxHealth: 500,
+      health: BOSS_HEALTH,
+      maxHealth: BOSS_HEALTH,
       phase: 1,
-      shootCooldown: 0,
+      shootCooldown: BOSS_FIRST_VOLLEY_FRAMES,
       specialAttackTimer: 0,
+      // Exposed along the hull's edges so shots can reach them before striking armor
       weakPoints: [
-        {x: -40, y: 20, destroyed: false},
-        {x: 40, y: 20, destroyed: false},
-        {x: 0, y: 40, destroyed: false}
+        {x: -36, y: 52, health: WEAK_POINT_HEALTH, destroyed: false},
+        {x: 36, y: 52, health: WEAK_POINT_HEALTH, destroyed: false},
+        {x: 0, y: 72, health: WEAK_POINT_HEALTH, destroyed: false}
       ],
       alive: true,
       size: 150
@@ -190,19 +283,29 @@ export class StarWarsGame extends BaseGame {
       {x: this.width - 80, y: 250, type: 'fighter'}
     ];
 
+    // Ships open fire one at a time, in a random order
+    const fireOrder = formations.map((_, i) => i);
+    for (let i = fireOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [fireOrder[i], fireOrder[j]] = [fireOrder[j], fireOrder[i]];
+    }
+
     formations.forEach((formation, index) => {
+      const type = formation.type as EnemyShip['type'];
       const ship: EnemyShip = {
-        position: { x: formation.x, y: formation.y },
+        position: { x: formation.x, y: formation.y - ENTRY_DISTANCE },
         velocity: { x: 0, y: 0 },
         rotation: Math.PI / 2,
-        size: formation.type === 'bomber' ? 20 : formation.type === 'interceptor' ? 15 : 18,
-        health: formation.type === 'bomber' ? 30 : formation.type === 'interceptor' ? 15 : 20,
-        maxHealth: formation.type === 'bomber' ? 30 : formation.type === 'interceptor' ? 15 : 20,
-        type: formation.type as 'fighter' | 'interceptor' | 'bomber',
-        shootCooldown: Math.random() * 100,
+        size: ENEMY_STATS[type].size,
+        health: ENEMY_STATS[type].health,
+        maxHealth: ENEMY_STATS[type].health,
+        type,
+        shootCooldown: FIRST_SHOT_FRAMES + fireOrder[index] * FIRST_SHOT_STAGGER_FRAMES + Math.random() * FIRST_SHOT_STAGGER_FRAMES,
         movePattern: index % 3,
         patternTimer: 0,
-        alive: true
+        alive: true,
+        entryTargetY: formation.y,
+        entryDelay: index * ENTRY_STAGGER_FRAMES
       };
       this.enemies.push(ship);
     });
@@ -247,28 +350,38 @@ export class StarWarsGame extends BaseGame {
     this.updateStarField();
     
     // Check game over
-    if (!this.player.alive) {
+    if (!this.player.alive && !this.ended) {
+      this.ended = true;
       this.onGameOver?.();
     }
   }
 
   private updatePlayer() {
     if (!this.player.alive) return;
+
+    this.applyKeyboardControls();
+
+    // Limit velocity to max speed
+    const currentSpeed = Math.sqrt(this.player.velocity.x ** 2 + this.player.velocity.y ** 2);
+    if (currentSpeed > this.player.maxSpeed) {
+      this.player.velocity.x = (this.player.velocity.x / currentSpeed) * this.player.maxSpeed;
+      this.player.velocity.y = (this.player.velocity.y / currentSpeed) * this.player.maxSpeed;
+    }
     
     // Apply velocity to position
     this.player.position.x += this.player.velocity.x;
     this.player.position.y += this.player.velocity.y;
     
     // Apply friction to velocity for smooth movement
-    this.player.velocity.x *= 0.951;
-    this.player.velocity.y *= 0.951;
+    this.player.velocity.x *= PLAYER_FRICTION;
+    this.player.velocity.y *= PLAYER_FRICTION;
     
-    // Smooth rotation towards target
+    // Smooth rotation towards target (set by touch controls)
     const rotationDiff = this.player.targetRotation - this.player.rotation;
     const normalizedDiff = ((rotationDiff % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const shortestRotation = normalizedDiff > Math.PI ? normalizedDiff - Math.PI * 2 : normalizedDiff;
     
-    this.player.rotation += shortestRotation * 0.093;
+    this.player.rotation += shortestRotation * TOUCH_ROTATION_EASE;
     
     // Normalize rotation to 0-2π range
     this.player.rotation = ((this.player.rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
@@ -277,10 +390,13 @@ export class StarWarsGame extends BaseGame {
     if (this.player.weaponCooldown > 0) {
       this.player.weaponCooldown--;
     }
+    if (this.hitGraceTimer > 0) this.hitGraceTimer--;
     
-    // Shield regeneration
-    if (this.player.shield < 100) {
-      this.player.shield += 0.12;
+    // Shield regeneration, after a short lull in incoming fire
+    if (this.shieldRegenDelay > 0) {
+      this.shieldRegenDelay--;
+    } else if (this.player.shield < 100) {
+      this.player.shield = Math.min(100, this.player.shield + SHIELD_REGEN);
     }
     
     // Keep player on screen
@@ -288,9 +404,43 @@ export class StarWarsGame extends BaseGame {
     this.player.position.y = Math.max(25, Math.min(this.height - 25, this.player.position.y));
   }
 
+  /** Held keys: W/↑ thrust, S/↓ reverse, A/D or ←/→ rotate, Space fire. */
+  private applyKeyboardControls() {
+    const p = this.player;
+    const turn = (this.isKeyDown('KeyD', 'ArrowRight') ? 1 : 0) - (this.isKeyDown('KeyA', 'ArrowLeft') ? 1 : 0);
+    if (turn !== 0) {
+      p.rotation += turn * PLAYER_ROTATION_SPEED;
+      p.targetRotation = p.rotation;
+    }
+    const push = (this.isKeyDown('KeyW', 'ArrowUp') ? p.thrust : 0) - (this.isKeyDown('KeyS', 'ArrowDown') ? PLAYER_REVERSE_THRUST : 0);
+    if (push !== 0) {
+      p.velocity.x += Math.cos(p.rotation) * push;
+      p.velocity.y += Math.sin(p.rotation) * push;
+    }
+    if (this.isKeyDown('Space')) this.tryFire();
+  }
+
+  private tryFire() {
+    if (this.player.weaponCooldown > 0) return;
+    this.shootPlayerBullet();
+    this.player.weaponCooldown = this.rapidFireTimer > 0 ? RAPID_FIRE_COOLDOWN : FIRE_COOLDOWN;
+  }
+
   private updateEnemyShips() {
     this.enemies.forEach(enemy => {
       if (!enemy.alive) return;
+
+      // Fly in to the formation slot before engaging
+      if (enemy.entryTargetY !== null) {
+        if (enemy.entryDelay > 0) {
+          enemy.entryDelay--;
+        } else {
+          enemy.position.y = Math.min(enemy.entryTargetY, enemy.position.y + ENTRY_SPEED);
+          if (enemy.position.y >= enemy.entryTargetY) enemy.entryTargetY = null;
+        }
+        enemy.shootCooldown--;
+        return;
+      }
       
       enemy.patternTimer++;
       
@@ -310,56 +460,82 @@ export class StarWarsGame extends BaseGame {
           const dx = this.player.position.x - enemy.position.x;
           const dy = this.player.position.y - enemy.position.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance > 0) {
+          if (distance > DIVER_STANDOFF) {
             enemy.velocity.x = (dx / distance) * 0.9;
             enemy.velocity.y = (dy / distance) * 0.9;
+          } else if (distance > 0) {
+            // Strafe around the player at standoff range
+            enemy.velocity.x = (-dy / distance) * 0.9 - (dx / distance) * 0.3;
+            enemy.velocity.y = (dx / distance) * 0.9 - (dy / distance) * 0.3;
           }
           break;
         }
       }
       
-      enemy.position.x += enemy.velocity.x;
-      enemy.position.y += enemy.velocity.y;
+      const speed = ENEMY_STATS[enemy.type].speed;
+      enemy.position.x += enemy.velocity.x * speed;
+      enemy.position.y += enemy.velocity.y * speed;
+      enemy.position.x = Math.max(enemy.size, Math.min(this.width - enemy.size, enemy.position.x));
       
-      // Shoot at player
+      // Shoot at player, only while visible on screen
       enemy.shootCooldown--;
       if (enemy.shootCooldown <= 0) {
-        this.enemyShoot(enemy);
-        enemy.shootCooldown = 100 + Math.random() * 200;
+        if (this.canEnemyFire(enemy)) {
+          this.enemyShoot(enemy);
+          enemy.shootCooldown = this.enemyFireInterval();
+        } else {
+          // Re-arm so the charge-up glow plays in view before the shot
+          enemy.shootCooldown = FIRE_TELEGRAPH_FRAMES;
+        }
       }
       
-      // Remove ships that go off screen
+      // Ships that leave the bottom loop back in from the top
       if (enemy.position.y > this.height + 50) {
         enemy.position.y = -50;
-        enemy.position.x = Math.random() * this.width;
+        enemy.position.x = enemy.size + Math.random() * (this.width - enemy.size * 2);
       }
     });
+  }
+
+  private canEnemyFire(enemy: EnemyShip): boolean {
+    return enemy.entryTargetY === null && enemy.position.y >= enemy.size && enemy.position.y <= this.height - enemy.size;
   }
 
   private startStarDestroyerPhase() {
     this.phase = 'star-destroyer';
     this.transitioning = true;
-    this.transitionTimer = 200; // ~3.3 seconds
+    this.transitionTimer = TRANSITION_FRAMES;
+    this.clearHostileBullets();
+  }
+
+  private clearHostileBullets() {
+    this.bullets = this.bullets.filter(bullet => bullet.owner === 'player');
   }
 
   private updateStarDestroyer() {
     if (!this.starDestroyer.alive) return;
     
-    // Move command vessel into position
-    if (this.starDestroyer.position.y < 100) {
-      this.starDestroyer.position.y += 0.6;
+    // Move command vessel into position; it holds fire until on station
+    if (this.starDestroyer.position.y < BOSS_STATION_Y) {
+      this.starDestroyer.position.y = Math.min(BOSS_STATION_Y, this.starDestroyer.position.y + BOSS_ENTRY_SPEED);
+      return;
     }
+
+    // Slow broadside sweep, so no flank stays safe for long
+    this.bossSweepTimer++;
+    const sweep = Math.min(BOSS_SWEEP_AMPLITUDE, this.width / 2 - 90);
+    this.starDestroyer.position.x = this.width / 2 + Math.sin(this.bossSweepTimer * BOSS_SWEEP_RATE) * sweep;
     
     // Shooting pattern
     this.starDestroyer.shootCooldown--;
     if (this.starDestroyer.shootCooldown <= 0) {
       this.starDestroyerShoot();
-      this.starDestroyer.shootCooldown = 67;
+      this.starDestroyer.shootCooldown = BOSS_VOLLEY_INTERVALS[this.starDestroyer.phase - 1];
     }
     
     // Special attacks
     this.starDestroyer.specialAttackTimer++;
-    if (this.starDestroyer.specialAttackTimer >= 500) { // Every ~8.3 seconds
+    if (this.starDestroyer.specialAttackTimer >= BOSS_RING_INTERVALS[this.starDestroyer.phase - 1]) {
       this.starDestroyerSpecialAttack();
       this.starDestroyer.specialAttackTimer = 0;
     }
@@ -372,11 +548,13 @@ export class StarWarsGame extends BaseGame {
   private startVictorySequence() {
     this.phase = 'victory';
     this.victoryTimer = 0;
+    this.clearHostileBullets();
   }
 
   private updateVictory() {
     this.victoryTimer++;
-    if (this.victoryTimer >= 500) { // ~8.3 seconds
+    if (this.victoryTimer >= VICTORY_FRAMES && !this.ended) {
+      this.ended = true;
       this.onStageComplete?.();
     }
   }
@@ -393,21 +571,31 @@ export class StarWarsGame extends BaseGame {
     const dy = this.player.position.y - enemy.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    if (distance > 0) {
-      const bullet: Bullet = {
+    if (distance <= 0) return;
+    const { shotSpeed, spread } = ENEMY_STATS[enemy.type];
+    const aim = Math.atan2(dy, dx);
+    const angles = spread > 0 ? [aim - spread, aim, aim + spread] : [aim];
+    for (const angle of angles) {
+      this.bullets.push({
         position: { x: enemy.position.x, y: enemy.position.y + enemy.size },
         velocity: { 
-          x: (dx / distance) * 2.4, 
-          y: (dy / distance) * 2.4 
+          x: Math.cos(angle) * ENEMY_BULLET_SPEED * shotSpeed, 
+          y: Math.sin(angle) * ENEMY_BULLET_SPEED * shotSpeed 
         },
         owner: 'enemy',
         size: 3,
-        damage: 10,
+        damage: ENEMY_BULLET_DAMAGE,
         color: '#FF0000',
         trail: []
-      };
-      this.bullets.push(bullet);
+      });
     }
+  }
+
+  /** The remaining ships fire more often as their squadron thins, so pressure holds through the phase. */
+  private enemyFireInterval(): number {
+    const alive = this.enemies.filter(e => e.alive).length;
+    const scale = ENEMY_FIRE_MIN_SCALE + (1 - ENEMY_FIRE_MIN_SCALE) * (alive / this.TOTAL_ENEMIES);
+    return (ENEMY_FIRE_INTERVAL_MIN + Math.random() * ENEMY_FIRE_INTERVAL_SPREAD) * scale;
   }
 
   private starDestroyerShoot() {
@@ -419,11 +607,14 @@ export class StarWarsGame extends BaseGame {
       {x: 15, y: 80}
     ];
     
+    // Alternate volleys: all banks converge on the player, then fire in parallel as a wall to sidestep
+    this.bossVolleyCount++;
+    const wall = this.bossVolleyCount % 2 === 0;
     positions.forEach(pos => {
-      const dx = this.player.position.x - (this.starDestroyer.position.x + pos.x);
-      const dy = this.player.position.y - (this.starDestroyer.position.y + pos.y);
+      const originY = wall ? 70 : pos.y;
+      const dx = this.player.position.x - (this.starDestroyer.position.x + (wall ? 0 : pos.x));
+      const dy = this.player.position.y - (this.starDestroyer.position.y + originY);
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
       if (distance > 0) {
         const bullet: Bullet = {
           position: { 
@@ -431,12 +622,12 @@ export class StarWarsGame extends BaseGame {
             y: this.starDestroyer.position.y + pos.y 
           },
           velocity: { 
-            x: (dx / distance) * 3, 
-            y: (dy / distance) * 3 
+            x: (dx / distance) * BOSS_BULLET_SPEED, 
+            y: (dy / distance) * BOSS_BULLET_SPEED 
           },
           owner: 'boss',
           size: 5,
-          damage: 15,
+          damage: BOSS_BULLET_DAMAGE,
           color: '#00FF00',
           trail: []
         };
@@ -447,17 +638,17 @@ export class StarWarsGame extends BaseGame {
 
   private starDestroyerSpecialAttack() {
     // Spread shot pattern
-    for (let i = 0; i < 12; i++) {
-      const angle = (i / 12) * Math.PI * 2;
+    for (let i = 0; i < BOSS_RING_SHOTS; i++) {
+      const angle = (i / BOSS_RING_SHOTS) * Math.PI * 2;
       const bullet: Bullet = {
         position: { x: this.starDestroyer.position.x, y: this.starDestroyer.position.y + 40 },
         velocity: { 
-          x: Math.cos(angle) * 1.8, 
-          y: Math.sin(angle) * 1.8 + 1.2 
+          x: Math.cos(angle) * BOSS_RING_SPEED, 
+          y: Math.sin(angle) * BOSS_RING_SPEED 
         },
         owner: 'boss',
         size: 4,
-        damage: 12,
+        damage: BOSS_RING_DAMAGE,
         color: '#FFFF00',
         trail: []
       };
@@ -502,91 +693,56 @@ export class StarWarsGame extends BaseGame {
       if (bullet.trail.length > 5) bullet.trail.shift();
       
       // Check collisions
+      if (bullet.lifetime !== undefined && --bullet.lifetime <= 0) return false;
+
       if (bullet.owner === 'player') {
         // Check enemy collisions
-        this.enemies.forEach(enemy => {
+        for (const enemy of this.enemies) {
           if (enemy.alive && this.checkCollision(bullet.position, bullet.size, enemy.position, enemy.size)) {
-            enemy.health -= bullet.damage;
             this.createExplosion(bullet.position.x, bullet.position.y, 20);
             this.playExplosionSound();
             bullet.size = 0; // Mark for removal
-            
-            if (enemy.health <= 0) {
-              enemy.alive = false;
-              this.enemiesDestroyed++;
-              this.createExplosion(enemy.position.x, enemy.position.y, 40);
-              this.playExplosionSound();
-              this.score += enemy.type === 'bomber' ? 300 : enemy.type === 'interceptor' ? 200 : 100;
-            }
+            this.damageEnemy(enemy, bullet.damage);
+            break;
           }
-        });
+        }
         
         // Check command vessel collisions
-        if (this.phase === 'star-destroyer' && this.starDestroyer.alive) {
-          let hitStarDestroyer = false;
-
-          // Check weak points first
-          this.starDestroyer.weakPoints.forEach(wp => {
-            if (!wp.destroyed) {
-              const wpPos = {
-                x: this.starDestroyer.position.x + wp.x,
-                y: this.starDestroyer.position.y + wp.y
-              };
-              if (this.checkCollision(bullet.position, bullet.size, wpPos, 15)) {
-                wp.destroyed = true;
-                this.starDestroyer.health -= 100;
-                this.createExplosion(wpPos.x, wpPos.y, 30);
-                this.playExplosionSound();
-                bullet.size = 0;
-                this.score += 500;
-                hitStarDestroyer = true;
-
-                if (this.starDestroyer.health <= 0) {
-                  this.starDestroyer.alive = false;
-                  this.createExplosion(this.starDestroyer.position.x, this.starDestroyer.position.y, 80);
-                  this.score += 2000;
-                }
-              }
+        if (bullet.size > 0 && this.phase === 'star-destroyer' && this.starDestroyer.alive) {
+          const sd = this.starDestroyer;
+          // Top-down view: a shot reaching the hull strikes any weak point its path crosses on the way over it
+          const inHull = this.hitsBossHull(bullet.position);
+          const speed = Math.hypot(bullet.velocity.x, bullet.velocity.y);
+          const reach = inHull && speed > 0 ? BOSS_HULL_DEPTH / speed : 0;
+          const from = { x: bullet.position.x - bullet.velocity.x, y: bullet.position.y - bullet.velocity.y };
+          const to = { x: bullet.position.x + bullet.velocity.x * reach, y: bullet.position.y + bullet.velocity.y * reach };
+          const wp = sd.weakPoints.find(w => !w.destroyed &&
+            this.segmentPointDistance(from, to, { x: sd.position.x + w.x, y: sd.position.y + w.y }) < WEAK_POINT_HIT_RADIUS);
+          if (wp) {
+            bullet.size = 0;
+            wp.health -= bullet.damage;
+            this.createExplosion(sd.position.x + wp.x, sd.position.y + wp.y, wp.health > 0 ? 20 : 30);
+            this.playExplosionSound();
+            this.score += 50;
+            if (wp.health <= 0) {
+              wp.destroyed = true;
+              this.score += 500;
             }
-          });
-
-          // If no weak point was hit, check general hull collision
-          if (!hitStarDestroyer && this.checkCollision(bullet.position, bullet.size, this.starDestroyer.position, this.starDestroyer.size)) {
-            // Deal damage and create explosion for hull hits
-            this.starDestroyer.health -= bullet.damage;
+            this.damageBoss(bullet.damage * WEAK_POINT_DAMAGE_MULTIPLIER);
+          } else if (inHull) {
             this.createExplosion(bullet.position.x, bullet.position.y, 25);
             this.playExplosionSound();
             bullet.size = 0;
             this.score += 50; // Smaller score for hull hits
-            hitStarDestroyer = true;
-
-            if (this.starDestroyer.health <= 0) {
-              this.starDestroyer.alive = false;
-              this.createExplosion(this.starDestroyer.position.x, this.starDestroyer.position.y, 80);
-              this.score += 2000;
-            }
+            this.damageBoss(HULL_HIT_DAMAGE);
           }
         }
       } else {
         // Enemy bullet vs player
-        if (this.player.alive && this.invincibleTimer <= 0 && this.checkCollision(bullet.position, bullet.size, this.player.position, this.player.size)) {
-          if (this.player.shield > 0) {
-            this.player.shield -= bullet.damage;
-            if (this.player.shield < 0) {
-              this.player.health += this.player.shield;
-              this.player.shield = 0;
-            }
-          } else {
-            this.player.health -= bullet.damage;
-          }
-          
+        if (this.player.alive && this.phase !== 'victory' && this.checkCollision(bullet.position, bullet.size, this.player.position, this.player.size)) {
           this.createExplosion(bullet.position.x, bullet.position.y, 15);
           bullet.size = 0;
-          
-          if (this.player.health <= 0) {
-            this.player.alive = false;
-            this.createExplosion(this.player.position.x, this.player.position.y, 50);
-          }
+          if (this.invincibleTimer <= 0 && this.hitGraceTimer <= 0) this.damagePlayer(bullet.damage);
         }
       }
       
@@ -600,9 +756,9 @@ export class StarWarsGame extends BaseGame {
   private spawnPowerups() {
     // Spawn a powerup every ~10-17 seconds during combat
     this.powerupSpawnTimer++;
-    const interval = 600 + Math.floor(Math.random() * 400); // More frequent spawning
-    if (this.powerupSpawnTimer >= interval) {
+    if (this.powerupSpawnTimer >= this.nextPowerupInterval) {
       this.powerupSpawnTimer = 0;
+      this.nextPowerupInterval = POWERUP_INTERVAL_MIN + Math.floor(Math.random() * POWERUP_INTERVAL_SPREAD);
 
       // Different powerups based on phase
       let availableTypes: PowerupType[];
@@ -635,8 +791,7 @@ export class StarWarsGame extends BaseGame {
     if (this.gravitronTimer > 0) this.gravitronTimer--;
 
     // Apply speed boost effect
-    const baseMax = 4.8;
-    this.player.maxSpeed = this.speedBoostTimer > 0 ? 7.2 : baseMax;
+    this.player.maxSpeed = this.speedBoostTimer > 0 ? BOOSTED_MAX_SPEED : PLAYER_MAX_SPEED;
 
     // Powerup TTL and collection
     for (let i = this.powerups.length - 1; i >= 0; i--) {
@@ -660,22 +815,22 @@ export class StarWarsGame extends BaseGame {
         this.player.shield = Math.min(100, this.player.shield + 40);
         break;
       case 'rapid':
-        this.rapidFireTimer = 1000; // ~16.7s
+        this.rapidFireTimer = WEAPON_POWERUP_FRAMES;
         break;
       case 'spread':
-        this.spreadTimer = 1000;
+        this.spreadTimer = WEAPON_POWERUP_FRAMES;
         break;
       case 'speed':
-        this.speedBoostTimer = 1000;
+        this.speedBoostTimer = SPEED_POWERUP_FRAMES;
         break;
       case 'invincible':
-        this.invincibleTimer = 400; // ~6.7s
+        this.invincibleTimer = INVINCIBLE_POWERUP_FRAMES;
         break;
       case 'guided':
-        this.guidedMissileTimer = 800; // ~13.3s
+        this.guidedMissileTimer = WEAPON_POWERUP_FRAMES;
         break;
       case 'triple':
-        this.tripleShotTimer = 1000; // ~16.7s
+        this.tripleShotTimer = WEAPON_POWERUP_FRAMES;
         break;
       case 'gravitron':
         this.gravitronTimer = 1; // Instant effect
@@ -707,10 +862,10 @@ export class StarWarsGame extends BaseGame {
 
           // Deal damage based on proximity
           const damage = Math.max(10, 50 - (distance / 10));
-          enemy.health -= damage;
 
           // Create smaller explosions on affected enemies
           this.createExplosion(enemy.position.x, enemy.position.y, 15);
+          this.damageEnemy(enemy, damage);
         }
 
         // Cap enemy velocity to prevent them from flying off screen
@@ -730,11 +885,10 @@ export class StarWarsGame extends BaseGame {
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance > 0) {
-        const pullForce = 3;
-        // Apply less force to command vessel but more damage
+        // Command vessel resists the pull but takes more damage
         const damage = Math.max(20, 100 - (distance / 5));
-        this.starDestroyer.health -= damage;
         this.createExplosion(this.starDestroyer.position.x, this.starDestroyer.position.y, 25);
+        this.damageBoss(damage);
       }
     }
 
@@ -757,6 +911,60 @@ export class StarWarsGame extends BaseGame {
 
   private createExplosion(x: number, y: number, maxSize: number) {
     this.explosions.spawn(x, y, maxSize);
+  }
+
+  private damageEnemy(enemy: EnemyShip, damage: number) {
+    if (!enemy.alive) return;
+    enemy.health -= damage;
+    this.score += ENEMY_HIT_SCORE;
+    if (enemy.health > 0) return;
+    enemy.alive = false;
+    this.enemiesDestroyed++;
+    this.createExplosion(enemy.position.x, enemy.position.y, 40);
+    this.playExplosionSound();
+    this.score += ENEMY_STATS[enemy.type].score;
+  }
+
+  private damageBoss(damage: number) {
+    const sd = this.starDestroyer;
+    if (!sd.alive) return;
+    sd.health -= damage;
+    if (sd.health > 0) return;
+    sd.health = 0;
+    sd.alive = false;
+    this.createExplosion(sd.position.x, sd.position.y, 80);
+    this.score += 2000;
+  }
+
+  private damagePlayer(damage: number) {
+    const p = this.player;
+    this.hitGraceTimer = HIT_GRACE_FRAMES;
+    this.shieldRegenDelay = SHIELD_REGEN_DELAY_FRAMES;
+    const absorbed = Math.min(p.shield, damage);
+    p.shield -= absorbed;
+    p.health -= damage - absorbed;
+    if (p.health <= 0) {
+      p.health = 0;
+      p.alive = false;
+      this.createExplosion(p.position.x, p.position.y, 50);
+    }
+  }
+
+  private hitsBossHull(point: { x: number; y: number }): boolean {
+    const px = point.x - this.starDestroyer.position.x;
+    const py = point.y - this.starDestroyer.position.y;
+    const [a, b, c] = BOSS_HULL;
+    const side = (p1: { x: number; y: number }, p2: { x: number; y: number }) =>
+      (p2.x - p1.x) * (py - p1.y) - (p2.y - p1.y) * (px - p1.x);
+    const d1 = side(a, b), d2 = side(b, c), d3 = side(c, a);
+    return (d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0);
+  }
+
+  private segmentPointDistance(a: { x: number; y: number }, b: { x: number; y: number }, p: { x: number; y: number }): number {
+    const abx = b.x - a.x, aby = b.y - a.y;
+    const len2 = abx * abx + aby * aby;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2)) : 0;
+    return Math.hypot(a.x + abx * t - p.x, a.y + aby * t - p.y);
   }
 
   private checkCollision(pos1: {x: number, y: number}, size1: number, pos2: {x: number, y: number}, size2: number): boolean {
@@ -916,6 +1124,7 @@ export class StarWarsGame extends BaseGame {
     if (!this.player.alive) return;
     
     this.ctx.save();
+    if (this.hitGraceTimer > 0 && Math.floor(this.hitGraceTimer / 4) % 2 === 0) this.ctx.globalAlpha = 0.4;
     this.ctx.translate(this.player.position.x, this.player.position.y);
     this.ctx.rotate(this.player.rotation);
     
@@ -969,6 +1178,18 @@ export class StarWarsGame extends BaseGame {
       }
       
       this.ctx.restore();
+
+      // Charge-up glow: this ship is about to fire
+      if (enemy.entryTargetY === null && enemy.shootCooldown <= FIRE_TELEGRAPH_FRAMES) {
+        const charge = 1 - Math.max(0, enemy.shootCooldown) / FIRE_TELEGRAPH_FRAMES;
+        this.ctx.save();
+        this.ctx.strokeStyle = `rgba(255, 60, 60, ${0.3 + 0.6 * charge})`;
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(enemy.position.x, enemy.position.y + enemy.size, 3 + 6 * (1 - charge), 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
       
       // Health bar
       if (enemy.health < enemy.maxHealth) {
@@ -1093,6 +1314,11 @@ export class StarWarsGame extends BaseGame {
         this.ctx.arc(wp.x, wp.y, 8, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.stroke();
+        // Integrity ring shrinks as the weak point takes hits
+        this.ctx.strokeStyle = '#FFAA00';
+        this.ctx.beginPath();
+        this.ctx.arc(wp.x, wp.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (wp.health / WEAK_POINT_HEALTH));
+        this.ctx.stroke();
       }
     });
     
@@ -1149,6 +1375,18 @@ export class StarWarsGame extends BaseGame {
     ];
     if (this.phase === 'enemy-ships') {
       stats.push({ label: 'Enemies', value: this.TOTAL_ENEMIES - this.enemiesDestroyed });
+    } else if (this.phase === 'star-destroyer') {
+      const sd = this.starDestroyer;
+      stats.push({ label: 'Vessel', meter: { value: Math.max(0, sd.health), max: sd.maxHealth }, tone: 'danger' });
+      stats.push({ label: 'Weak Points', value: sd.weakPoints.filter(wp => !wp.destroyed).length });
+    }
+    const powers: Array<[string, number]> = [
+      ['Rapid', this.rapidFireTimer], ['Spread', this.spreadTimer], ['Triple', this.tripleShotTimer],
+      ['Guided', this.guidedMissileTimer], ['Speed', this.speedBoostTimer], ['Invincible', this.invincibleTimer],
+    ];
+    const active = powers.filter(([, frames]) => frames > 0);
+    if (active.length > 0) {
+      stats.push({ label: 'Power', value: active.map(([name, frames]) => `${name} ${Math.ceil(frames / 60)}s`).join(' · ') });
     }
     return stats;
   }
@@ -1165,7 +1403,7 @@ export class StarWarsGame extends BaseGame {
   }
 
   private drawTransition() {
-    const alpha = 1 - (this.transitionTimer / 200);
+    const alpha = 1 - (this.transitionTimer / TRANSITION_FRAMES);
     this.ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.7})`;
     this.ctx.fillRect(0, 0, this.width, this.height);
     
@@ -1175,50 +1413,10 @@ export class StarWarsGame extends BaseGame {
     }
   }
 
+  /** Movement and held fire are polled from `keys` each update; a keydown only fires a quick Space tap. */
   handleInput(event: KeyboardEvent) {
-    if (!this.player.alive) return;
-    
-    const thrust = this.player.thrust;
-    const maxSpeed = this.player.maxSpeed;
-    
-    switch (event.code) {
-      case 'KeyW':
-      case 'ArrowUp':
-        // Apply forward thrust based on current rotation
-        this.player.velocity.x += Math.cos(this.player.rotation) * thrust;
-        this.player.velocity.y += Math.sin(this.player.rotation) * thrust;
-        break;
-      case 'KeyS':
-      case 'ArrowDown':
-        // Apply backward thrust
-        this.player.velocity.x -= Math.cos(this.player.rotation) * thrust;
-        this.player.velocity.y -= Math.sin(this.player.rotation) * thrust;
-        break;
-      case 'KeyA':
-      case 'ArrowLeft':
-        // Rotate left
-        this.player.targetRotation -= 0.2;
-        break;
-      case 'KeyD':
-      case 'ArrowRight':
-        // Rotate right
-        this.player.targetRotation += 0.2;
-        break;
-      case 'Space':
-        if (this.player.weaponCooldown <= 0) {
-          this.shootPlayerBullet();
-          // Rapid fire reduces cooldown
-          this.player.weaponCooldown = this.rapidFireTimer > 0 ? 8 : 17;
-        }
-        break;
-    }
-    
-    // Limit velocity to max speed
-    const currentSpeed = Math.sqrt(this.player.velocity.x ** 2 + this.player.velocity.y ** 2);
-    if (currentSpeed > maxSpeed) {
-      this.player.velocity.x = (this.player.velocity.x / currentSpeed) * maxSpeed;
-      this.player.velocity.y = (this.player.velocity.y / currentSpeed) * maxSpeed;
-    }
+    if (!this.player.alive || this.transitioning || this.phase === 'victory') return;
+    if (event.code === 'Space') this.tryFire();
   }
 
   private shootPlayerBullet() {
@@ -1363,7 +1561,7 @@ export class StarWarsGame extends BaseGame {
       this.player.targetRotation = Math.atan2(normalizedY, normalizedX);
 
       // Apply smooth thrust based on drag distance (further drag = more thrust)
-      const maxThrust = this.player.thrust;
+      const maxThrust = TOUCH_THRUST;
       const thrustMultiplier = Math.min(1, distanceFromStart / (this.width * 0.15));
       const thrust = maxThrust * thrustMultiplier;
 
@@ -1395,7 +1593,7 @@ export class StarWarsGame extends BaseGame {
   // Mobile-specific controls
   handleMobileMove(x: number, y: number) {
     // Convert virtual stick input to ship movement
-    const thrust = this.player.thrust;
+    const thrust = TOUCH_THRUST;
     const maxSpeed = this.player.maxSpeed;
     
     // Apply thrust based on stick input
@@ -1420,7 +1618,7 @@ export class StarWarsGame extends BaseGame {
     
     if (this.player.weaponCooldown <= 0) {
       this.shootPlayerBullet();
-      this.player.weaponCooldown = 17;
+      this.player.weaponCooldown = FIRE_COOLDOWN;
     }
   }
 
