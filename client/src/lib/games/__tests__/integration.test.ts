@@ -257,7 +257,7 @@ describe('Game System Integration Tests', () => {
       const initialPaddleWidth = game['paddle'].width;
       
       // Destroy enough bricks to trigger evolution
-      const bricksToDestroy = Math.floor(game['bricks'].length * 0.5);
+      const bricksToDestroy = Math.floor(game['bricks'].length * 0.7);
       for (let i = 0; i < bricksToDestroy; i++) {
         if (game['bricks'][i]) {
           game['bricks'][i].destroyed = true;

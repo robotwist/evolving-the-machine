@@ -58,13 +58,52 @@ interface Brick {
   spikeExplosion?: boolean;
 }
 
+const STARTING_LIVES = 3;
+const PADDLE_BASE_WIDTH = 80;
+const PADDLE_SPEED = 6.3;
+const LONG_PADDLE_BONUS = 40;
+const BIGGER_PADDLE_BONUS = 30;
+const LONG_PADDLE_FRAMES = 1000;
+const SHIELD_FRAMES = 1000;
+const BALL_RADIUS = 8;
+const BALL_START_SPEED = 2.88;
+const BALL_MIN_SPEED = 1.8;
+/** Ball top speed ramps from START to END as the wall is cleared toward the evolution threshold. */
+const BALL_MAX_SPEED_START = 7.2;
+const BALL_MAX_SPEED_END = 10.0;
+const PUNCH_ARMS_SPEED_MULTIPLIER = 2.0;
+const MAX_BOUNCE_ANGLE = Math.PI / 3;
+const MIN_BOUNCE_ANGLE = Math.PI / 12;
+/** Radians of extra bounce angle per px/frame of paddle movement at contact. */
+const PADDLE_ENGLISH = 0.035;
+/** Keeps balls from settling into near-horizontal paths that never reach the paddle or bricks. */
+const BALL_MIN_VERTICAL = 0.35;
+const BRICK_ROWS = 8;
+const BRICK_COLS = 10;
+const BRICK_MAX_WIDTH = 70;
+const BRICK_HEIGHT = 20;
+const BRICK_PADDING = 5;
+const BRICK_OFFSET_Y = 80;
+const BRICK_MAX_HEALTH = 4;
+/** Share of bricks that release a built-in powerup (explosions, homing balls...) when broken. */
+const POWERUP_BRICK_CHANCE = 0.15;
+/** How long the three homing balls seek bricks on their own before becoming normal balls. */
+const HEATSEEKING_FRAMES = 480;
+const EVOLUTION_THRESHOLD = 0.7;
+const EVOLVED_SPEED = 3.6;
+const EVOLVED_MARGIN = 40;
+const AI_ASSIST_FRAMES = 700;
+
 export class BreakoutGame extends BaseGame {
   private paddle!: Paddle;
   private balls: Ball[] = [];
   private bricks: Brick[] = [];
   private score = 0;
   private lastReportedScore = 0;
-  private lives = 5; // More lives to prevent frustrating resets
+  private lives = STARTING_LIVES;
+  private aiRescueUsed = false;
+  private aiAssistanceUsed = false;
+  private ended = false;
   private level = 1;
   private transitioning = false;
   private transitionProgress = 0;
@@ -129,11 +168,11 @@ export class BreakoutGame extends BaseGame {
   async init() {
     // Initialize paddle with evolution properties and combat systems
     this.paddle = {
-      x: this.width / 2 - 50,
+      x: this.width / 2 - PADDLE_BASE_WIDTH / 2,
       y: this.height - 50,
-      width: 100,
+      width: PADDLE_BASE_WIDTH,
       height: 15,
-      speed: 7.2, // Increased paddle speed for better responsiveness
+      speed: PADDLE_SPEED,
       evolved: false,
       pulseIntensity: 0,
       fireEffect: false,
@@ -165,31 +204,79 @@ export class BreakoutGame extends BaseGame {
     this.balls = [this.createBall(this.width / 2, this.height - 120)];
   }
 
+  private loseLife() {
+    this.lives--;
+    if (this.lives <= 0) {
+      if (this.aiRescueUsed) {
+        this.ended = true;
+        this.onGameOver?.();
+        return;
+      }
+      // The machine refuses to let the player fall - but only once
+      this.aiRescueUsed = true;
+      this.lives = 1;
+      this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
+      this.aiMessageTimer = 0;
+      this.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
+    }
+    this.resetBalls();
+  }
+
+  private completeStage() {
+    if (this.ended) return;
+    this.ended = true;
+    this.onStageComplete?.();
+  }
+
+  private updatePaddleWidth() {
+    const width = PADDLE_BASE_WIDTH
+      + (this.activeLongPaddleTimer > 0 ? LONG_PADDLE_BONUS : 0)
+      + (this.powerupEffects.bigger > 0 ? BIGGER_PADDLE_BONUS : 0);
+    if (this.activeLongPaddleTimer > 0) this.activeLongPaddleTimer--;
+    if (width === this.paddle.width) return;
+    // Grow and shrink around the paddle's center so a timer expiring never yanks it sideways
+    const center = this.paddle.x + this.paddle.width / 2;
+    this.paddle.width = width;
+    this.paddle.x = Math.max(0, Math.min(this.width - width, center - width / 2));
+  }
+
+  private maxBallSpeed(): number {
+    const cleared = this.bricks.filter(b => b.destroyed).length / Math.max(1, this.bricks.length);
+    const ramp = Math.min(1, cleared / EVOLUTION_THRESHOLD);
+    return BALL_MAX_SPEED_START + (BALL_MAX_SPEED_END - BALL_MAX_SPEED_START) * ramp;
+  }
+
+  private enforceMinVertical(ball: Ball) {
+    if (Math.abs(ball.dy) >= BALL_MIN_VERTICAL) return;
+    ball.dy = (ball.dy < 0 ? -1 : 1) * BALL_MIN_VERTICAL;
+    ball.dx = (ball.dx < 0 ? -1 : 1) * Math.sqrt(1 - BALL_MIN_VERTICAL * BALL_MIN_VERTICAL);
+  }
+
   private createBall(x: number, y: number): Ball {
     // Faster baseline, normalized direction
     const dirX = (Math.random() > 0.5 ? 1 : -1);
     const dirY = -1;
-    const speed = 2.88;
     const len = Math.hypot(dirX, dirY) || 1;
     return {
       x,
       y,
       dx: (dirX / len),
       dy: (dirY / len),
-      radius: 8,
-      speed,
+      radius: BALL_RADIUS,
+      speed: BALL_START_SPEED,
     };
   }
 
   private createBricks() {
     this.bricks = [];
-    const rows = 8;
-    const cols = 10;
-    const brickWidth = 70;
-    const brickHeight = 20;
-    const padding = 5;
-    const offsetX = (this.width - (cols * (brickWidth + padding))) / 2;
-    const offsetY = 80;
+    const rows = BRICK_ROWS;
+    const cols = BRICK_COLS;
+    const padding = BRICK_PADDING;
+    // Narrow (mobile) canvases shrink the bricks so the whole wall stays on screen
+    const brickWidth = Math.min(BRICK_MAX_WIDTH, Math.floor((this.width - 20) / cols) - padding);
+    const brickHeight = BRICK_HEIGHT;
+    const offsetX = (this.width - (cols * (brickWidth + padding)) + padding) / 2;
+    const offsetY = BRICK_OFFSET_Y;
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
     const powerupTypes: Array<'bigger' | 'thicker' | 'fire' | 'ice' | 'explosion' | 'pulse' | 'spaceship' | 'spikes' | 'heatseeking'> = 
@@ -198,8 +285,7 @@ export class BreakoutGame extends BaseGame {
     for (let row = 0; row < rows; row++) {
       const rowBricks: Brick[] = [];
       for (let col = 0; col < cols; col++) {
-        // 30% chance for powerup brick
-        const hasPowerup = Math.random() < 0.3;
+        const hasPowerup = Math.random() < POWERUP_BRICK_CHANCE;
         const powerupType = hasPowerup ? powerupTypes[Math.floor(Math.random() * powerupTypes.length)] : undefined;
         
         const brick: Brick = {
@@ -209,7 +295,8 @@ export class BreakoutGame extends BaseGame {
           height: brickHeight,
           destroyed: false,
           color: colors[row % colors.length],
-          health: row < 2 ? 1 : Math.floor(row / 2) + 1,
+          // The rows the ball reaches first break in one hit; the capstone rows on top are the toughest
+          health: Math.min(BRICK_MAX_HEALTH, Math.floor((rows - 1 - row) / 2) + 1),
           powerupType: powerupType,
           explosive: powerupType === 'explosion',
           explosionRadius: powerupType === 'explosion' ? 60 : undefined
@@ -221,6 +308,8 @@ export class BreakoutGame extends BaseGame {
   }
 
   update(_deltaTime: number) {
+    if (this.ended) return;
+    const paddleStartX = this.paddle.x;
     // Check if keyboard input is active (priority over touch)
     const keyboardActive = this.keys.has('KeyA') || this.keys.has('KeyD') || 
                           this.keys.has('KeyW') || this.keys.has('KeyS') ||
@@ -240,14 +329,6 @@ export class BreakoutGame extends BaseGame {
       return;
     }
 
-    // Long paddle timer decay
-    if (this.activeLongPaddleTimer > 0) {
-      this.activeLongPaddleTimer--;
-      if (this.activeLongPaddleTimer === 0) {
-        this.paddle.width = 100;
-      }
-    }
-
     // AI evolution messaging system
     this.aiMessageTimer++;
     if (this.aiMessageTimer > 800 && this.messageIndex < this.aiEvolutionMessages.length) {
@@ -262,12 +343,12 @@ export class BreakoutGame extends BaseGame {
       this.currentAIMessage = '';
     }
 
-    // Paddle evolution trigger at 50% completion
+    // Paddle evolution trigger once enough of the wall is cleared
     const bricksDestroyed = this.bricks.filter(b => b.destroyed).length;
     const totalBricks = this.bricks.length;
     const completionPercent = bricksDestroyed / totalBricks;
     
-    if (completionPercent >= 0.5 && !this.evolutionStarted && !this.ballEaten) {
+    if (completionPercent >= EVOLUTION_THRESHOLD && !this.evolutionStarted && !this.ballEaten) {
       this.startPaddleEvolution();
     }
     
@@ -277,11 +358,12 @@ export class BreakoutGame extends BaseGame {
       return; // Skip normal gameplay during evolution
     }
     
-    // AI proves loyalty by helping when player struggles - activate earlier to prevent frustration
-    if (this.lives <= 2 && !this.aiAssistanceActive && completionPercent > 0.2) {
+    // AI proves loyalty by helping (once) when the player struggles
+    if (this.lives <= 2 && !this.aiAssistanceUsed && completionPercent > 0.2) {
       this.currentAIMessage = 'RECALCULATING... ENGAGING ASSISTANCE PROTOCOLS...';
       this.aiAssistanceActive = true;
-      this.aiHelpTimer = 700; // Longer assistance - ~12 seconds
+      this.aiAssistanceUsed = true;
+      this.aiHelpTimer = AI_ASSIST_FRAMES;
       this.aiMessageTimer = 0;
       this.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
     }
@@ -363,37 +445,57 @@ export class BreakoutGame extends BaseGame {
         // Clear touch target when keyboard is used
         this.targetPaddleX = null;
       }
+      const paddleVx = this.paddle.x - paddleStartX;
+
+      this.updatePaddleWidth();
+      this.updatePowerupEffects();
+      this.updateSpikeSystem();
+      if (this.shieldActive && --this.shieldTimer <= 0) {
+        this.shieldActive = false;
+      }
 
       // Update heatseeking balls first
       this.updateHeatseekingBalls();
       
       // Update balls only if not eaten
       if (!this.ballEaten) {
-        for (const ball of this.balls) {
+        const lostBalls: Ball[] = [];
+        for (const ball of [...this.balls]) {
+          if (!ball.heatseeking) this.enforceMinVertical(ball);
           ball.x += ball.dx * ball.speed;
           ball.y += ball.dy * ball.speed;
 
           // Walls
-          if (ball.x <= ball.radius || ball.x >= this.width - ball.radius) {
-            ball.dx = -ball.dx;
+          if (ball.x < ball.radius) {
+            ball.x = ball.radius;
+            ball.dx = Math.abs(ball.dx);
+            this.playHitSound();
+          } else if (ball.x > this.width - ball.radius) {
+            ball.x = this.width - ball.radius;
+            ball.dx = -Math.abs(ball.dx);
             this.playHitSound();
           }
-          if (ball.y <= ball.radius) {
-            ball.dy = -ball.dy;
+          if (ball.y < ball.radius) {
+            ball.y = ball.radius;
+            ball.dy = Math.abs(ball.dy);
             this.playHitSound();
           }
 
           // Paddle collision with punch arms and enhanced physics
           if (this.checkPaddleCollisionWith(ball)) {
-            // Ensure ball bounces upward
-            ball.dy = -Math.abs(ball.dy);
+            const incomingDx = ball.dx;
             
             // Calculate hit position relative to paddle center (-1 to 1)
             const hitPos = (ball.x - (this.paddle.x + this.paddle.width / 2)) / (this.paddle.width / 2);
             
-            // Apply angle based on hit position (more realistic physics)
-            const maxAngle = Math.PI / 3; // 60 degrees max angle
-            const angle = hitPos * maxAngle;
+            // Angle from hit position, bent by the paddle's motion ("english"); never straight up,
+            // so the ball can't loop forever through an empty column
+            let angle = hitPos * MAX_BOUNCE_ANGLE + paddleVx * PADDLE_ENGLISH;
+            if (Math.abs(angle) < MIN_BOUNCE_ANGLE) {
+              const side = angle !== 0 ? Math.sign(angle) : incomingDx < 0 ? -1 : 1;
+              angle = side * MIN_BOUNCE_ANGLE;
+            }
+            angle = Math.max(-MAX_BOUNCE_ANGLE, Math.min(MAX_BOUNCE_ANGLE, angle));
             
             // Set new direction with proper physics
             ball.dx = Math.sin(angle);
@@ -406,7 +508,7 @@ export class BreakoutGame extends BaseGame {
             
             // PUNCH ARMS: 2X speed boost!
             if (this.paddle.punchArms) {
-              ball.speed = Math.min(ball.speed * 2.0, 7.2); // 2X speed with cap
+              ball.speed = Math.min(ball.speed * PUNCH_ARMS_SPEED_MULTIPLIER, this.maxBallSpeed());
               // Create punch effect particles
               this.particles?.addExplosion(ball.x, ball.y, 25, '#FF6B35', 'dramatic');
               // Add screen shake for punch impact
@@ -419,7 +521,7 @@ export class BreakoutGame extends BaseGame {
             }
             
             // Ensure minimum speed to prevent slow balls
-            ball.speed = Math.max(ball.speed, 1.8);
+            ball.speed = Math.max(ball.speed, BALL_MIN_SPEED);
             
             // Position ball slightly above paddle to prevent multiple collisions
             ball.y = this.paddle.y - ball.radius - 1;
@@ -433,26 +535,18 @@ export class BreakoutGame extends BaseGame {
           // Out of bounds
           if (ball.y > this.height) {
             if (this.shieldActive) {
+                ball.y = this.height;
                 ball.dy = -Math.abs(ball.dy);
                 this.playHitSound();
             } else {
-                // remove this ball
-                this.balls = this.balls.filter(b => b !== ball);
-                if (this.balls.length === 0) {
-                  this.lives--;
-                  this.resetBalls();
-                  if (this.lives <= 0 && this.score < 50) {
-                    if (this.score > 20) {
-                      this.lives = 1;
-                      this.currentAIMessage = 'I WILL NOT LET YOU FAIL! CALCULATING ASSISTANCE...';
-                      this.aiMessageTimer = 0;
-                    } else {
-                      this.onGameOver?.();
-                    }
-                  }
-                }
+                lostBalls.push(ball);
             }
           }
+        }
+        if (lostBalls.length > 0) {
+          this.balls = this.balls.filter(b => !lostBalls.includes(b));
+          if (this.balls.length === 0) this.loseLife();
+          if (this.ended) return;
         }
       }
     }
@@ -492,8 +586,8 @@ export class BreakoutGame extends BaseGame {
     this.stick.update(x, y);
     if (this.paddleEvolved) {
       // Move evolved paddle toward pointer with clamp
-      this.evolvedPaddleX = Math.max(40, Math.min(this.width - 40, x));
-      this.evolvedPaddleY = Math.max(this.height / 3, Math.min(this.height - 40, y));
+      this.evolvedPaddleX = Math.max(EVOLVED_MARGIN, Math.min(this.width - EVOLVED_MARGIN, x));
+      this.evolvedPaddleY = Math.max(BRICK_OFFSET_Y, Math.min(this.height - EVOLVED_MARGIN, y));
       return;
     }
     
@@ -595,19 +689,18 @@ export class BreakoutGame extends BaseGame {
             }
           }
 
-          // Determine collision side and bounce accordingly
-          const ballCenterX = ball.x;
-          const ballCenterY = ball.y;
-          const brickCenterX = brick.x + brick.width / 2;
-          const brickCenterY = brick.y + brick.height / 2;
-
-          const dx = ballCenterX - brickCenterX;
-          const dy = ballCenterY - brickCenterY;
-
-          if (Math.abs(dx / brick.width) > Math.abs(dy / brick.height)) {
-            ball.dx = -ball.dx;
+          // Bounce off the side with the shallowest overlap and push the ball clear of the brick,
+          // so it can't re-hit (and pass through) a tough brick on the next frame
+          const overlapX = Math.min(ball.x + ball.radius - brick.x, brick.x + brick.width - (ball.x - ball.radius));
+          const overlapY = Math.min(ball.y + ball.radius - brick.y, brick.y + brick.height - (ball.y - ball.radius));
+          if (overlapX < overlapY) {
+            const fromLeft = ball.x < brick.x + brick.width / 2;
+            ball.dx = fromLeft ? -Math.abs(ball.dx) : Math.abs(ball.dx);
+            ball.x = fromLeft ? brick.x - ball.radius : brick.x + brick.width + ball.radius;
           } else {
-            ball.dy = -ball.dy;
+            const fromAbove = ball.y < brick.y + brick.height / 2;
+            ball.dy = fromAbove ? -Math.abs(ball.dy) : Math.abs(ball.dy);
+            ball.y = fromAbove ? brick.y - ball.radius : brick.y + brick.height + ball.radius;
           }
 
           this.playHitSound();
@@ -682,11 +775,10 @@ export class BreakoutGame extends BaseGame {
       }
     } else if (type === 'long') {
       // Long paddle for a short duration
-      this.paddle.width = 140;
-      this.activeLongPaddleTimer = 1000; // ~17s at 60fps
+      this.activeLongPaddleTimer = LONG_PADDLE_FRAMES;
     } else if (type === 'shield') {
         this.shieldActive = true;
-        this.shieldTimer = 1000; // ~17s
+        this.shieldTimer = SHIELD_FRAMES;
     } else if (type === 'explosive') {
       // Create explosive brick that will explode when hit
       this.createExplosiveBrick(x, y);
@@ -705,7 +797,7 @@ export class BreakoutGame extends BaseGame {
     let minDistance = Infinity;
     
     for (const brick of this.bricks) {
-        if (brick.health > 0) {
+        if (!brick.destroyed) {
           const brickCenterX = brick.x + brick.width / 2;
           const brickCenterY = brick.y + brick.height / 2;
           const distance = Math.sqrt((x - brickCenterX) ** 2 + (y - brickCenterY) ** 2);
@@ -746,6 +838,8 @@ export class BreakoutGame extends BaseGame {
     if (this.evolutionProgress >= 1.0) {
       this.paddleEvolved = true;
       this.paddle.width = 150; // Increase paddle width after evolution
+      this.evolvedPaddleX = Math.max(EVOLVED_MARGIN, Math.min(this.width - EVOLVED_MARGIN, this.paddle.x + this.paddle.width / 2));
+      this.evolvedPaddleY = Math.max(BRICK_OFFSET_Y, Math.min(this.height - EVOLVED_MARGIN, this.paddle.y));
       this.currentAIMessage = 'EVOLUTION COMPLETE! WASD TO MOVE, Z/X TO PUNCH!';
       this.aiMessageTimer = 0;
       this.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.9, haunting: true });
@@ -759,19 +853,19 @@ export class BreakoutGame extends BaseGame {
     if (this.punchAnimationLeft > 0) this.punchAnimationLeft--;
     if (this.punchAnimationRight > 0) this.punchAnimationRight--;
 
-    // WASD movement for evolved paddle
-    const speed = 3.6;
-    if (this.keys.has('KeyW')) {
-      this.evolvedPaddleY = Math.max(this.height / 3, this.evolvedPaddleY - speed);
+    // WASD (or arrows) movement for evolved paddle; it can climb high enough to punch the top row
+    const speed = EVOLVED_SPEED;
+    if (this.isKeyDown('KeyW', 'ArrowUp')) {
+      this.evolvedPaddleY = Math.max(BRICK_OFFSET_Y, this.evolvedPaddleY - speed);
     }
-    if (this.keys.has('KeyS')) {
-      this.evolvedPaddleY = Math.min(this.height - 40, this.evolvedPaddleY + speed);
+    if (this.isKeyDown('KeyS', 'ArrowDown')) {
+      this.evolvedPaddleY = Math.min(this.height - EVOLVED_MARGIN, this.evolvedPaddleY + speed);
     }
-    if (this.keys.has('KeyA')) {
-      this.evolvedPaddleX = Math.max(40, this.evolvedPaddleX - speed);
+    if (this.isKeyDown('KeyA', 'ArrowLeft')) {
+      this.evolvedPaddleX = Math.max(EVOLVED_MARGIN, this.evolvedPaddleX - speed);
     }
-    if (this.keys.has('KeyD')) {
-      this.evolvedPaddleX = Math.min(this.width - 40, this.evolvedPaddleX + speed);
+    if (this.isKeyDown('KeyD', 'ArrowRight')) {
+      this.evolvedPaddleX = Math.min(this.width - EVOLVED_MARGIN, this.evolvedPaddleX + speed);
     }
 
     // Punch controls
@@ -834,7 +928,8 @@ export class BreakoutGame extends BaseGame {
 
     if (this.transitionProgress >= 1) {
       // Transition complete - trigger stage completion
-      this.onStageComplete?.();
+      this.completeStage();
+      return;
     }
     
     // Update powerup effects
@@ -901,6 +996,19 @@ export class BreakoutGame extends BaseGame {
       this.drawEvolutionProgress();
     } else {
       this.drawEnhancedPaddle();
+    }
+
+    if (this.shieldActive && !this.ballEaten) {
+      this.ctx.save();
+      this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.7)';
+      this.ctx.shadowColor = '#00FFFF';
+      this.ctx.shadowBlur = 10;
+      this.ctx.lineWidth = 4;
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, this.height - 3);
+      this.ctx.lineTo(this.width, this.height - 3);
+      this.ctx.stroke();
+      this.ctx.restore();
     }
 
     // Draw balls only if not eaten
@@ -1172,8 +1280,7 @@ export class BreakoutGame extends BaseGame {
     }
     
     // Health-based color intensity
-    const maxHealth = 3;
-    const healthPercent = brick.health / maxHealth;
+    const healthPercent = Math.min(1, brick.health / BRICK_MAX_HEALTH);
     const color = this.interpolateColor(brick.color, '#FF0000', 1 - healthPercent);
     
     this.ctx.fillStyle = color;
@@ -1376,7 +1483,19 @@ export class BreakoutGame extends BaseGame {
   }
 
   getHudStats(): HudStat[] {
-    return [{ label: 'Lives', value: this.lives, tone: this.lives <= 1 ? 'danger' : 'normal' }];
+    const remaining = this.bricks.filter(b => !b.destroyed).length;
+    const stats: HudStat[] = [
+      { label: 'Lives', value: this.lives, tone: this.lives <= 1 ? 'danger' : 'normal' },
+      { label: 'Blocks', value: remaining },
+    ];
+    if (!this.evolutionStarted) {
+      const needed = Math.ceil(this.bricks.length * EVOLUTION_THRESHOLD);
+      stats.push({ label: 'Evolution', meter: { value: Math.min(needed, this.bricks.length - remaining), max: needed } });
+    }
+    if (this.shieldActive) {
+      stats.push({ label: 'Shield', meter: { value: this.shieldTimer, max: SHIELD_FRAMES }, tone: this.shieldTimer < 180 ? 'warning' : 'normal' });
+    }
+    return stats;
   }
 
   private drawUI() {
@@ -1401,8 +1520,7 @@ export class BreakoutGame extends BaseGame {
     
     switch (type) {
       case 'bigger':
-        this.powerupEffects.bigger = 500; // ~8 seconds
-        this.paddle.width = Math.min(200, this.paddle.width + 30);
+        this.powerupEffects.bigger = 500; // ~8 seconds; width applied in updatePaddleWidth
         break;
         
       case 'thicker':
@@ -1484,7 +1602,7 @@ export class BreakoutGame extends BaseGame {
         speed: 3.6,
         heatseeking: true,
         targetBrick: null,
-        heatseekingTimer: 1000 // ~17 seconds duration
+        heatseekingTimer: HEATSEEKING_FRAMES
       };
       
       this.balls.push(ball);
@@ -1580,7 +1698,6 @@ export class BreakoutGame extends BaseGame {
   private deactivatePowerup(type: keyof typeof this.powerupEffects) {
     switch (type) {
       case 'bigger':
-        this.paddle.width = Math.max(100, this.paddle.width - 30);
         break;
       case 'thicker':
         this.paddle.thickness = Math.max(1, (this.paddle.thickness || 1) - 0.5);
@@ -1626,7 +1743,7 @@ export class BreakoutGame extends BaseGame {
       // Check if spaceship has flown off screen
       if (this.paddle.y < -50) {
         // Trigger level completion
-        this.onStageComplete?.();
+        this.completeStage();
       }
     }
   }
