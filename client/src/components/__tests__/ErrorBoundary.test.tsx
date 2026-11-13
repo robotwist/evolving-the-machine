@@ -121,10 +121,16 @@ describe('ErrorBoundary', () => {
   });
 
   it('should reload page when restart button is clicked', () => {
-    // Mock window.location.reload
-    const mockReload = jest.fn();
-    delete (window as any).location;
-    (window as any).location = { reload: mockReload };
+    // jsdom's window.location is non-configurable, so reload() can't be mocked;
+    // instead assert on the "navigation not implemented" error jsdom emits.
+    const virtualConsole = (window as unknown as {
+      _virtualConsole: {
+        on: (event: string, listener: (error: Error) => void) => void;
+        off: (event: string, listener: (error: Error) => void) => void;
+      };
+    })._virtualConsole;
+    const jsdomErrors: string[] = [];
+    const recordError = (error: Error) => jsdomErrors.push(error.message);
 
     render(
       React.createElement(ErrorBoundary, {},
@@ -132,11 +138,16 @@ describe('ErrorBoundary', () => {
       )
     );
 
+    virtualConsole.on('jsdomError', recordError);
     fireEvent.click(screen.getByRole('button', { name: 'Restart System' }));
-    expect(mockReload).toHaveBeenCalled();
+    virtualConsole.off('jsdomError', recordError);
+
+    expect(jsdomErrors).toContain('Not implemented: navigation (except hash changes)');
   });
 
   it('should handle error through useErrorHandler hook', () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const consoleGroupSpy = jest.spyOn(console, 'group').mockImplementation(() => {});
     const consoleGroupEndSpy = jest.spyOn(console, 'groupEnd').mockImplementation(() => {});
@@ -153,5 +164,6 @@ describe('ErrorBoundary', () => {
     consoleSpy.mockRestore();
     consoleGroupSpy.mockRestore();
     consoleGroupEndSpy.mockRestore();
+    process.env.NODE_ENV = originalEnv;
   });
 });

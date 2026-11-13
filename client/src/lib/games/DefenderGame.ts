@@ -504,18 +504,22 @@ export class DefenderGame extends BaseGame {
 
     this.enemies.forEach(enemy => {
       if (enemy.kamikazeMode && enemy.alive) {
-        // Kamikaze bombers dive straight at the player
-        const dx = this.player.position.x - enemy.position.x;
-        const dy = this.player.position.y - enemy.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance > 0) {
-          const speed = 4 + (this.wave * 0.5); // Faster dive each wave
-          enemy.velocity.x = (dx / distance) * speed;
-          enemy.velocity.y = (dy / distance) * speed;
-        }
+        this.aimKamikazeAtPlayer(enemy);
       }
     });
+  }
+
+  private aimKamikazeAtPlayer(enemy: Enemy) {
+    // Kamikaze bombers dive straight at the player
+    const dx = this.player.position.x - enemy.position.x;
+    const dy = this.player.position.y - enemy.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 0) {
+      const speed = 4 + (this.wave * 0.5); // Faster dive each wave
+      enemy.velocity.x = (dx / distance) * speed;
+      enemy.velocity.y = (dy / distance) * speed;
+    }
   }
 
   private createKamikazeBomber() {
@@ -536,6 +540,7 @@ export class DefenderGame extends BaseGame {
       // Convert to kamikaze mode
       kamikaze.kamikazeMode = true;
       kamikaze.type = 'kamikaze';
+      this.aimKamikazeAtPlayer(kamikaze);
       
       // Visual effect - make it glow red
       console.log('🚀 KAMIKAZE BOMBER DEPLOYED!', kamikaze.position);

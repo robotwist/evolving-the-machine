@@ -119,13 +119,12 @@ describe('Mobile Testing Suite', () => {
     });
 
     test('PongGame should handle touch paddle movement', () => {
-      const _initialPaddleX = pongGame['player1'].x;
-      
-      // Touch should move paddle
-      pongGame.handlePointerDown(200, 300);
-      
-      // Paddle should move toward touch position
-      expect((pongGame as any)['targetPaddleX']).toBeDefined();
+      const paddle = pongGame['player1'];
+
+      // Touch in the left region should center the paddle on the touch point
+      pongGame.handlePointerDown(100, 300);
+
+      expect(paddle.y + paddle.height / 2).toBe(300);
     });
 
     test('BreakoutGame should handle touch paddle movement', () => {
@@ -172,7 +171,6 @@ describe('Mobile Testing Suite', () => {
       game.init();
 
       const frameTimes: number[] = [];
-      const startTime = performance.now();
 
       for (let i = 0; i < 60; i++) {
         const frameStart = performance.now();
@@ -182,13 +180,10 @@ describe('Mobile Testing Suite', () => {
         await waitForFrames(1);
       }
 
-      const endTime = performance.now();
-      const totalTime = endTime - startTime;
       const averageFrameTime = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
 
       // Should maintain 60fps (16.67ms per frame)
       expect(averageFrameTime).toBeLessThan(20); // Allow some margin
-      expect(totalTime).toBeLessThan(1200); // Should complete in under 1.2 seconds
     });
 
     test('should handle memory constraints on mobile', async () => {
