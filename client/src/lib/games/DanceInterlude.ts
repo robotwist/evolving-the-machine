@@ -22,13 +22,66 @@ interface RhythmTarget {
   hit: boolean;
   missed: boolean;
   active: boolean;
+  hitAt: number;
 }
+
+interface DanceSequence {
+  name: string;
+  start: number; // in frames
+  duration: number; // in frames
+  targetEveryBeats: number; // 0 = no rhythm targets
+}
+
+const DANCE_DURATION_FRAMES = 10800; // 3 minutes at 60fps
+const BEAT_FRAMES = 30; // 120 BPM grid; every sequence and target lands on a beat
+
+// Lengths in beats; CURTAIN_CALL takes whatever remains of the 3 minutes.
+const SEQUENCE_PLAN: Array<{ name: string; beats: number; targetEveryBeats: number }> = [
+  { name: 'CURTAIN_RISE', beats: 10, targetEveryBeats: 0 },
+  { name: 'OPENING_BOW', beats: 16, targetEveryBeats: 4 },
+  { name: 'TOP_HAT_TRICKS', beats: 32, targetEveryBeats: 4 },
+  { name: 'CANE_TWIRLING', beats: 40, targetEveryBeats: 4 },
+  { name: 'TAP_DANCE_ROUTINE', beats: 64, targetEveryBeats: 2 },
+  { name: 'HIGH_KICKS', beats: 32, targetEveryBeats: 4 },
+  { name: 'CHARLESTON_MOVES', beats: 48, targetEveryBeats: 4 },
+  { name: 'CANE_BALANCE', beats: 32, targetEveryBeats: 4 },
+  { name: 'SPIN_SPECTACULAR', beats: 40, targetEveryBeats: 4 },
+  { name: 'FINAL_BOW', beats: 24, targetEveryBeats: 4 },
+  { name: 'CURTAIN_CALL', beats: 0, targetEveryBeats: 0 },
+];
+
+function buildSequences(): DanceSequence[] {
+  let start = 0;
+  return SEQUENCE_PLAN.map((plan, i) => {
+    const isLast = i === SEQUENCE_PLAN.length - 1;
+    const duration = isLast ? DANCE_DURATION_FRAMES - start : plan.beats * BEAT_FRAMES;
+    const seq = { name: plan.name, start, duration, targetEveryBeats: plan.targetEveryBeats };
+    start += duration;
+    return seq;
+  });
+}
+
+// A target lives for 4 beats, shrinking from TARGET_START_RADIUS to TARGET_END_RADIUS.
+const TARGET_LIFETIME_FRAMES = 4 * BEAT_FRAMES;
+const TARGET_START_RADIUS = 50;
+const TARGET_END_RADIUS = 20;
+// Fading targets stay visible: they remain hittable until they expire.
+const TARGET_MIN_ALPHA = 0.35;
+const TARGET_AREA = { minX: 0.2, maxX: 0.8, minY: 0.3, maxY: 0.7 };
+// Keeps a new target clear of the ones still on screen so taps are unambiguous.
+const MIN_TARGET_SPACING_PX = 140;
+const TARGET_PLACEMENT_ATTEMPTS = 12;
+const HIT_FLASH_FRAMES = 20;
+
+// Points per hit = HIT_POINTS × min(combo, MAX_COMBO_MULTIPLIER). A perfect run must stay
+// under the score store's 20,000 anti-cheat ceiling for this stage (98 targets → 19,300).
+const HIT_POINTS = 50;
+const MAX_COMBO_MULTIPLIER = 4;
 
 export class DanceInterlude extends BaseGame {
   private dancer!: Dancer;
   private danceTimer = 0;
-  private sequencePhase = 0;
-  private readonly DANCE_DURATION = 10800; // 3 minutes at 60fps
+  private readonly DANCE_DURATION = DANCE_DURATION_FRAMES;
   private stageLights: Array<{x: number, y: number, intensity: number, color: string}> = [];
   private curtains = 0;
   private applauseTimer = 0;
@@ -38,22 +91,14 @@ export class DanceInterlude extends BaseGame {
   private combo = 0;
   private playerPerformance = 1.0; // 0.0 (bad) to 1.0 (perfect)
   private rhythmTargets: RhythmTarget[] = [];
-  private beatMap: Array<{time: number, x: number, y: number}> = [];
+  // Target positions are fractions of the canvas so they survive a resize
+  private beatMap: Array<{time: number, fx: number, fy: number}> = [];
+  private nextBeatIndex = 0;
+  private completed = false;
+  private skipRequested = false;
 
   // Dance sequence breakdown
-  private readonly sequences = [
-    { name: 'CURTAIN_RISE', duration: 300, start: 0 },
-    { name: 'OPENING_BOW', duration: 240, start: 300 },
-    { name: 'TOP_HAT_TRICKS', duration: 600, start: 540 },
-    { name: 'CANE_TWIRLING', duration: 720, start: 1140 },
-    { name: 'TAP_DANCE_ROUTINE', duration: 1200, start: 1860 },
-    { name: 'HIGH_KICKS', duration: 600, start: 3060 },
-    { name: 'CHARLESTON_MOVES', duration: 900, start: 3660 },
-    { name: 'CANE_BALANCE', duration: 480, start: 4560 },
-    { name: 'SPIN_SPECTACULAR', duration: 720, start: 5040 },
-    { name: 'FINAL_BOW', duration: 360, start: 5760 },
-    { name: 'CURTAIN_CALL', duration: 300, start: 6120 }
-  ];
+  private readonly sequences = buildSequences();
 
   init() {
     // Initialize AI dancer (humanoid bot)
@@ -78,18 +123,36 @@ export class DanceInterlude extends BaseGame {
 
   private createBeatMap() {
     // Correlate beats with dance sequences
+    this.beatMap = [];
+    this.nextBeatIndex = 0;
     this.sequences.forEach(seq => {
-        if (seq.name === 'CURTAIN_RISE' || seq.name === 'CURTAIN_CALL') return;
+        if (seq.targetEveryBeats <= 0) return;
 
-        const beats = seq.name.includes('TAP_DANCE') ? 16 : 8;
-        for (let i = 0; i < beats; i++) {
-            this.beatMap.push({
-                time: seq.start + (i * (seq.duration / beats)),
-                x: this.width * (0.2 + Math.random() * 0.6),
-                y: this.height * (0.3 + Math.random() * 0.4)
-            });
+        const interval = seq.targetEveryBeats * BEAT_FRAMES;
+        for (let time = seq.start; time < seq.start + seq.duration; time += interval) {
+            this.beatMap.push({ time, ...this.pickTargetPosition(time) });
         }
     });
+  }
+
+  /** Random spot in the target area, kept apart from targets that will still be on screen. */
+  private pickTargetPosition(time: number): { fx: number; fy: number } {
+    const onScreen = this.beatMap.filter(beat => time - beat.time < TARGET_LIFETIME_FRAMES);
+    let best = { fx: 0.5, fy: 0.5 };
+    let bestClearance = -1;
+    for (let attempt = 0; attempt < TARGET_PLACEMENT_ATTEMPTS; attempt++) {
+      const fx = TARGET_AREA.minX + Math.random() * (TARGET_AREA.maxX - TARGET_AREA.minX);
+      const fy = TARGET_AREA.minY + Math.random() * (TARGET_AREA.maxY - TARGET_AREA.minY);
+      const clearance = Math.min(Infinity, ...onScreen.map(beat =>
+        Math.hypot((fx - beat.fx) * this.width, (fy - beat.fy) * this.height)
+      ));
+      if (clearance > bestClearance) {
+        best = { fx, fy };
+        bestClearance = clearance;
+      }
+      if (clearance >= MIN_TARGET_SPACING_PX) break;
+    }
+    return best;
   }
 
   private initializeStageLights() {
@@ -102,6 +165,11 @@ export class DanceInterlude extends BaseGame {
   }
 
   update(_deltaTime: number) {
+    if (this.completed) return;
+    if (this.skipRequested) {
+      this.finishDance();
+      return;
+    }
     this.reportScore(this.score);
     this.danceTimer++;
 
@@ -123,14 +191,18 @@ export class DanceInterlude extends BaseGame {
     // Update stage effects
     this.updateStageEffects();
 
-    // End dance after duration
+    // End dance after duration. This is a breather stage: it always completes, whatever the score.
     if (this.danceTimer >= this.DANCE_DURATION) {
-      if (this.score > 5000) { // Require a minimum score to pass
-          this.onStageComplete?.();
-      } else {
-          this.onGameOver?.();
-      }
+      this.finishDance();
     }
+  }
+
+  private finishDance() {
+    if (this.completed) return;
+    this.completed = true;
+    this.reportScore(this.score);
+    this.danceMusic?.pause();
+    this.onStageComplete?.();
   }
 
   protected cleanup() {
@@ -326,18 +398,19 @@ export class DanceInterlude extends BaseGame {
 
   private updateRhythmTargets() {
     // Spawn targets from beatmap
-    const upcomingBeats = this.beatMap.filter(beat => beat.time >= this.danceTimer && beat.time < this.danceTimer + 1);
-    upcomingBeats.forEach(beat => {
+    while (this.nextBeatIndex < this.beatMap.length && this.beatMap[this.nextBeatIndex].time <= this.danceTimer) {
+        const beat = this.beatMap[this.nextBeatIndex++];
         this.rhythmTargets.push({
-            x: beat.x,
-            y: beat.y,
+            x: this.width * beat.fx,
+            y: this.height * beat.fy,
             time: this.danceTimer,
-            duration: 120, // 2 seconds to hit
+            duration: TARGET_LIFETIME_FRAMES,
             hit: false,
             missed: false,
-            active: true
+            active: true,
+            hitAt: -1
         });
-    });
+    }
 
     // Update existing targets
     for (let i = this.rhythmTargets.length - 1; i >= 0; i--) {
@@ -345,7 +418,7 @@ export class DanceInterlude extends BaseGame {
         if (!target.active) continue;
 
         const age = this.danceTimer - target.time;
-        if (age > target.duration) {
+        if (age >= target.duration) {
             target.missed = true;
             target.active = false;
             this.combo = 0;
@@ -558,25 +631,48 @@ export class DanceInterlude extends BaseGame {
     }
   }
 
+  /** Shrinks as time runs out; the drawn circle is exactly the hit area. */
+  private targetRadius(target: RhythmTarget): number {
+    const progress = Math.min(1, (this.danceTimer - target.time) / target.duration);
+    return TARGET_END_RADIUS + (1 - progress) * (TARGET_START_RADIUS - TARGET_END_RADIUS);
+  }
+
   private drawRhythmTargets() {
+    // Outline thickens on every beat so targets pulse with the music
+    const beatPulse = 1 - (this.danceTimer % BEAT_FRAMES) / BEAT_FRAMES;
+
     this.rhythmTargets.forEach(target => {
+        if (target.hit && this.danceTimer - target.hitAt < HIT_FLASH_FRAMES) {
+          this.drawHitFlash(target);
+          return;
+        }
         if (!target.active) return;
 
-        const age = this.danceTimer - target.time;
-        const progress = age / target.duration;
-        const radius = 20 + (1 - progress) * 30; // Shrinks as time runs out
-        const alpha = 1 - progress;
+        const progress = (this.danceTimer - target.time) / target.duration;
+        const radius = this.targetRadius(target);
+        const alpha = TARGET_MIN_ALPHA + (1 - TARGET_MIN_ALPHA) * (1 - progress);
 
         this.ctx.save();
         this.ctx.strokeStyle = `rgba(255, 215, 0, ${alpha})`;
         this.ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.3})`;
-        this.ctx.lineWidth = 3;
+        this.ctx.lineWidth = 3 + beatPulse * 2;
         this.ctx.beginPath();
         this.ctx.arc(target.x, target.y, radius, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.stroke();
         this.ctx.restore();
     });
+  }
+
+  private drawHitFlash(target: RhythmTarget) {
+    const t = (this.danceTimer - target.hitAt) / HIT_FLASH_FRAMES;
+    this.ctx.save();
+    this.ctx.strokeStyle = `rgba(255, 105, 180, ${1 - t})`;
+    this.ctx.lineWidth = 4;
+    this.ctx.beginPath();
+    this.ctx.arc(target.x, target.y, TARGET_END_RADIUS + t * TARGET_START_RADIUS, 0, Math.PI * 2);
+    this.ctx.stroke();
+    this.ctx.restore();
   }
 
   getHudStats(): HudStat[] {
@@ -633,35 +729,43 @@ export class DanceInterlude extends BaseGame {
   }
 
   handleInput(event: KeyboardEvent) {
-    // Allow skipping with spacebar
+    // Allow skipping with spacebar; completes on the next update
     if (event.code === 'Space') {
-      this.danceTimer = this.DANCE_DURATION;
+      this.skipRequested = true;
     }
   }
 
   handlePointerDown(x: number, y: number) {
-    for (let i = this.rhythmTargets.length - 1; i >= 0; i--) {
-        const target = this.rhythmTargets[i];
-        if (target.active) {
-            const dx = x - target.x;
-            const dy = y - target.y;
-            const age = this.danceTimer - target.time;
-            const progress = age / target.duration;
-            const radius = 20 + (1 - progress) * 30;
+    if (this.completed) return;
 
-            if (Math.sqrt(dx * dx + dy * dy) < radius) {
-                target.hit = true;
-                target.active = false;
-                this.combo++;
-                this.score += 100 * this.combo;
-                this.playerPerformance = Math.min(1, this.playerPerformance + 0.05);
-                // Play a success sound
-                return;
-            }
+    // Hit the target whose center is closest to the tap, if the tap is inside it
+    let best: RhythmTarget | null = null;
+    let bestDistance = Infinity;
+    let anyActive = false;
+    for (const target of this.rhythmTargets) {
+        if (!target.active) continue;
+        anyActive = true;
+        const distance = Math.hypot(x - target.x, y - target.y);
+        if (distance < this.targetRadius(target) && distance < bestDistance) {
+            best = target;
+            bestDistance = distance;
         }
     }
 
-    // Missed click
+    if (best) {
+        best.hit = true;
+        best.active = false;
+        best.hitAt = this.danceTimer;
+        this.combo++;
+        this.score += HIT_POINTS * Math.min(this.combo, MAX_COMBO_MULTIPLIER);
+        this.playerPerformance = Math.min(1, this.playerPerformance + 0.05);
+        this.reportScore(this.score);
+        this.playHitSound();
+        return;
+    }
+
+    // Missed click; taps while no target is showing are harmless
+    if (!anyActive) return;
     this.combo = 0;
     this.playerPerformance = Math.max(0, this.playerPerformance - 0.02);
   }
