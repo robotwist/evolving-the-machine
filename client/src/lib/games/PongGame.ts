@@ -79,6 +79,7 @@ export class PongGame extends BaseGame {
   private player1!: Paddle;
   private player2!: Paddle;
   private ball!: Ball;
+  private ballPrevX = 0;
   private winScore = PONG_CONSTANTS.WIN_SCORE; // Faster games for testing later stages
   private aiAggression = PONG_CONSTANTS.AI_BASE_AGGRESSION;
   private aiTauntTimer = 0;
@@ -330,6 +331,7 @@ export class PongGame extends BaseGame {
     else if (this.ball.type === 'missile') speedMultiplier = 2.2;
 
     // Update ball position
+    this.ballPrevX = this.ball.x;
     this.ball.x += this.ball.dx * speedMultiplier;
     this.ball.y += this.ball.dy * speedMultiplier;
 
@@ -346,21 +348,34 @@ export class PongGame extends BaseGame {
     // Safety check for tests
     if (!this.ball) return;
 
-    // Ball collision with top/bottom walls
-    if (this.ball.y <= this.ball.radius || this.ball.y >= this.height - this.ball.radius) {
-      this.ball.dy = -this.ball.dy;
+    // Ball collision with top/bottom walls: clamp inside and point dy away from the wall,
+    // so a ball that is still past the wall next update can't bounce back out again
+    const hitTop = this.ball.y <= this.ball.radius && this.ball.dy < 0;
+    const hitBottom = this.ball.y >= this.height - this.ball.radius && this.ball.dy > 0;
+    if (hitTop || hitBottom) {
+      this.ball.y = hitTop ? this.ball.radius : this.height - this.ball.radius;
+      this.ball.dy = hitTop ? Math.abs(this.ball.dy) : -Math.abs(this.ball.dy);
       this.playHitSound();
       this.vibrate('hit');
       if (this.getSettings().hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y);
     }
 
     // Ball collision with paddles
-    const collideP1 = this.checkPaddleCollision(this.player1);
+    const collideP1 = this.checkPaddleHit(this.player1, 'left');
     const penetrateAI = this.ball.type === 'missile' || this.ball.type === 'fire';
-    const collideP2 = penetrateAI ? false : this.checkPaddleCollision(this.player2);
+    const collideP2 = penetrateAI ? false : this.checkPaddleHit(this.player2, 'right');
 
     if (collideP1 || collideP2) {
-      this.ball.dx = -this.ball.dx * 1.05;
+      // Send the ball away from the paddle it hit and move it clear of the paddle face,
+      // so one contact counts as exactly one hit even if the paddle keeps pushing forward
+      const paddle = collideP1 ? this.player1 : this.player2;
+      if (collideP1) {
+        this.ball.dx = Math.abs(this.ball.dx) * 1.05;
+        this.ball.x = paddle.x + paddle.width + this.ball.radius;
+      } else {
+        this.ball.dx = -Math.abs(this.ball.dx) * 1.05;
+        this.ball.x = paddle.x - this.ball.radius;
+      }
       this.playHitSound();
       
       this.vibrate('hit');
@@ -597,6 +612,26 @@ export class PongGame extends BaseGame {
     
     // Audio explosion
     this.playStinger('defender_explosion');
+  }
+
+  /**
+   * A paddle hit only counts while the ball travels toward that paddle. Besides overlap,
+   * it also catches a fast ball that crossed the paddle face during this update.
+   */
+  private checkPaddleHit(paddle: Paddle, side: 'left' | 'right'): boolean {
+    if (paddle.destroyed) return false;
+    const { x, y, dx, radius } = this.ball;
+    if (side === 'left' ? dx >= 0 : dx <= 0) return false;
+
+    const verticalOverlap = y + radius > paddle.y && y - radius < paddle.y + paddle.height;
+    if (!verticalOverlap) return false;
+    if (this.checkPaddleCollision(paddle)) return true;
+
+    if (side === 'left') {
+      const face = paddle.x + paddle.width;
+      return this.ballPrevX - radius >= face && x - radius < face;
+    }
+    return this.ballPrevX + radius <= paddle.x && x + radius > paddle.x;
   }
 
   private checkPaddleCollision(paddle: Paddle): boolean {
