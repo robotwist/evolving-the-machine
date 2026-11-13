@@ -42,6 +42,7 @@ To test on a phone on the same network, run `npm run dev -- --host`.
 | `npm run build` | Production build into `dist/public` |
 | `npm start` | Preview the production build |
 | `npm test` | Jest test suite |
+| `PLAYABILITY=1 npx jest playability` | Headless playtests: a human-like bot plays every stage and checks win rate, length and fairness |
 | `npm run lint` | ESLint |
 | `npm run check` | TypeScript type check |
 

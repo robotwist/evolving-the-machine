@@ -9,6 +9,7 @@ export interface MobileControlCallbacks {
 
 export class MobileControlsManager {
   private canvas: HTMLCanvasElement;
+  private listenerController = new AbortController();
   private controls: TouchControls;
   private callbacks: MobileControlCallbacks;
   private touchIdMap = new Map<number, 'primary' | 'secondary' | 'action' | 'pause'>();
@@ -109,21 +110,23 @@ export class MobileControlsManager {
   }
 
   private setupEventListeners() {
+    const { signal } = this.listenerController;
+
     // Touch events
-    this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
-    this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-    this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+    this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false, signal });
+    this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false, signal });
+    this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false, signal });
 
     // Mouse events (for testing on desktop)
     if (!this.isMobile) {
-      this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-      this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-      this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+      this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this), { signal });
+      this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this), { signal });
+      this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this), { signal });
     }
 
     // Window resize for responsive controls
-    window.addEventListener('resize', this.updateControlPositions.bind(this));
-    window.addEventListener('orientationchange', this.updateControlPositions.bind(this));
+    window.addEventListener('resize', this.updateControlPositions.bind(this), { signal });
+    window.addEventListener('orientationchange', this.updateControlPositions.bind(this), { signal });
   }
 
   private getTouchZone(x: number, y: number): 'primary' | 'secondary' | 'action' | 'pause' | 'none' {
@@ -297,19 +300,7 @@ export class MobileControlsManager {
 
   // Cleanup
   destroy() {
-    this.canvas.removeEventListener('touchstart', this.handleTouchStart.bind(this));
-    this.canvas.removeEventListener('touchmove', this.handleTouchMove.bind(this));
-    this.canvas.removeEventListener('touchend', this.handleTouchEnd.bind(this));
-
-    if (!this.isMobile) {
-      this.canvas.removeEventListener('mousedown', this.handleMouseDown.bind(this));
-      this.canvas.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-      this.canvas.removeEventListener('mouseup', this.handleMouseUp.bind(this));
-    }
-
-    window.removeEventListener('resize', this.updateControlPositions.bind(this));
-    window.removeEventListener('orientationchange', this.updateControlPositions.bind(this));
-
+    this.listenerController.abort();
     this.touchIdMap.clear();
   }
 }

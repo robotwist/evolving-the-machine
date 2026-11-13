@@ -6,13 +6,13 @@ import { Button } from './ui/button';
 
 const tutorials: Record<StageId, string> = {
   1: 'Drag on the left to move. Hit the ball with your paddle’s edge to angle it past the AI. First to 5 wins; fire and missile balls pierce the AI paddle.',
-  2: 'Drag near the bottom to move the paddle. Clear blocks; lives are generous; evolve mid‑level.',
+  2: 'Drag near the bottom to move the paddle. Angle your hits toward the remaining blocks; clear 70% of the wall to evolve and punch your way through the rest.',
   3: 'Left touch steers and thrusts toward your touch. Tap right side to shoot. Avoid collisions.',
-  4: 'Move, jump, and shoot to protect civilians. Watch for enemy bullets; settings can reduce motion.',
+  4: 'Move, jump, and shoot to protect civilians. When a bomber flashes and marks the ground, get off the marker before it dives, or shoot it down.',
   5: 'WASD or touch to move; Space to fire; use abilities when charged. Target key structures.',
   6: 'Tap the glowing targets on the beat to build your combo. Press Space to skip the dance.',
-  7: 'W/S to thrust, A/D to rotate, Space to fire. Grab powerups and destroy the capital ship’s weak points.',
-  8: 'WASD to move, Space to fire. Dodge the laser sweeps, clear the minions, and bring the AI down.',
+  7: 'W/S to thrust, A/D to rotate, Space to fire. Ships glow red before they shoot. Then break the command vessel’s weak points; they take many hits.',
+  8: 'A/D to rotate, W to thrust, Space to fire. When the laser’s aim line appears, get clear before it fires. The AI can’t be hurt while it escapes.',
 };
 
 export function TutorialOverlay() {
