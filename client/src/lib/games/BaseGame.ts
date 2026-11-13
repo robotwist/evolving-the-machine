@@ -16,6 +16,14 @@ const MAX_STEPS_PER_FRAME = 5;
 // so a 60 Hz display runs exactly one update per frame despite timer jitter.
 const VSYNC_SNAP_MS = 1;
 
+/** A stat shown in the shared React HUD: a plain value, or a meter drawn as a bar. */
+export interface HudStat {
+  label: string;
+  value?: string | number;
+  meter?: { value: number; max: number };
+  tone?: 'normal' | 'warning' | 'danger';
+}
+
 function isTextEntryTarget(target: unknown): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
@@ -31,6 +39,7 @@ export abstract class BaseGame {
   protected lastFrameTimeMs: number | null = null;
   protected frameAccumulatorMs = 0;
   private lastRenderMs: number | null = null;
+  private hudReportedScore: number | null = null;
   protected director: AdaptiveNarrativeDirector;
   /** Codes (KeyboardEvent.code) of keys currently held down. */
   protected keys: Set<string> = new Set();
@@ -59,6 +68,18 @@ export abstract class BaseGame {
   abstract init(): Promise<void> | void;
   abstract update(deltaTime: number): void;
   abstract render(): void;
+
+  /** Game-specific stats (lives, health, wave...) for the shared HUD; score is reported separately. */
+  getHudStats(): HudStat[] {
+    return [];
+  }
+
+  /** Reports the score to the HUD when it changes. */
+  protected reportScore(score: number) {
+    if (score === this.hudReportedScore) return;
+    this.hudReportedScore = score;
+    this.onScoreUpdate?.(score);
+  }
 
   /** Called for each keydown while the game is running. Held keys are tracked in `keys`. */
   handleInput(_event: KeyboardEvent): void {}

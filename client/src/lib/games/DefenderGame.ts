@@ -1,5 +1,4 @@
-import { BaseGame } from './BaseGame';
-import { arcadeFont } from './engine/fonts';
+import { BaseGame, type HudStat } from './BaseGame';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { WindowExtensions } from '@shared/types';
 import { isAudioMuted } from './engine/audio';
@@ -849,7 +848,7 @@ export class DefenderGame extends BaseGame {
     gradient.addColorStop(0.3, '#FFD93D');
     gradient.addColorStop(1, '#6BCF7F');
     this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(0, 0, this.worldWidth, this.height * 0.7);
+    this.ctx.fillRect(0, 0, this.worldWidth, this.height - 40);
 
     // Ground
     this.ctx.fillStyle = '#8B4513';
@@ -1136,20 +1135,19 @@ export class DefenderGame extends BaseGame {
     this.ctx.restore();
   }
 
+  getHudStats(): HudStat[] {
+    if (!this.player) return [];
+    const stats: HudStat[] = [
+      { label: 'Health', meter: { value: Math.max(0, this.player.health), max: this.player.maxHealth } },
+      { label: 'Wave', value: `${Math.min(this.wave, 5)}/5` },
+      { label: 'Rescued', value: this.civiliansRescued },
+    ];
+    const kamikazeCount = this.enemies.filter(e => e.alive && e.kamikazeMode).length;
+    if (kamikazeCount > 0) stats.push({ label: 'Kamikaze', value: kamikazeCount, tone: 'danger' });
+    return stats;
+  }
+
   private drawUI() {
-    this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
-    this.drawText(`Wave: ${this.wave}/5`, 20, 60, 20, '#FFD700');
-    this.drawText(`Rescued: ${this.civiliansRescued}`, 20, 90, 20, '#FFD700');
-    
-    // Kamikaze warning
-    const kamikazeCount = this.enemies.filter(e => e.kamikazeMode).length;
-    if (kamikazeCount > 0) {
-      this.drawText(`KAMIKAZE: ${kamikazeCount}`, 20, 120, 18, '#FF0000');
-    }
-    
-    // Player health bar
-    this.drawHealthBar(this.player, 20, kamikazeCount > 0 ? 150 : 120);
-    
     // Enemy health bars (for visible enemies)
     this.enemies.forEach((enemy, index) => {
       if (enemy.alive && enemy.health < enemy.maxHealth) {
@@ -1162,33 +1160,6 @@ export class DefenderGame extends BaseGame {
     
     // Guardian protocol
     this.drawText('Guardian Protocol: Protect the innocent with honor and courage', this.width / 2, this.height - 20, 14, '#FFF', 'center');
-  }
-
-  private drawHealthBar(entity: Player | Enemy, x: number, y: number) {
-    const barWidth = 200;
-    const barHeight = 20;
-    const healthPercent = entity.health / entity.maxHealth;
-    
-    // Background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(x, y, barWidth, barHeight);
-    
-    // Health bar
-    const healthColor = healthPercent > 0.6 ? '#00FF00' : healthPercent > 0.3 ? '#FFD700' : '#FF0000';
-    this.ctx.fillStyle = healthColor;
-    this.ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
-    
-    // Border
-    this.ctx.strokeStyle = '#FFF';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(x, y, barWidth, barHeight);
-    
-    // Text
-    this.ctx.fillStyle = '#FFF';
-    this.ctx.font = arcadeFont(14, 'body');
-    this.ctx.textAlign = 'left';
-    const label = 'health' in entity ? 'Player Health' : 'Enemy Health';
-    this.ctx.fillText(`${label}: ${Math.round(entity.health)}/${entity.maxHealth}`, x, y - 5);
   }
 
   private drawEnemyHealthBar(enemy: Enemy, x: number, y: number) {

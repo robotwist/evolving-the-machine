@@ -1,4 +1,4 @@
-import { BaseGame } from './BaseGame';
+import { BaseGame, type HudStat } from './BaseGame';
 import { isAudioMuted } from './engine/audio';
 
 interface Dancer {
@@ -102,6 +102,7 @@ export class DanceInterlude extends BaseGame {
   }
 
   update(_deltaTime: number) {
+    this.reportScore(this.score);
     this.danceTimer++;
 
     // Start music on first frame
@@ -576,6 +577,10 @@ export class DanceInterlude extends BaseGame {
         this.ctx.stroke();
         this.ctx.restore();
     });
+  }
+
+  getHudStats(): HudStat[] {
+    return [{ label: 'Combo', value: this.combo, tone: this.combo >= 5 ? 'warning' : 'normal' }];
   }
 
   private drawDanceInfo() {

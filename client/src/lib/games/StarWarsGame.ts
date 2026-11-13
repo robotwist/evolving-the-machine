@@ -1,4 +1,4 @@
-import { BaseGame } from './BaseGame';
+import { BaseGame, type HudStat } from './BaseGame';
 import { arcadeFont } from './engine/fonts';
 import { FlashExplosions } from './engine/FlashExplosions';
 
@@ -209,6 +209,7 @@ export class StarWarsGame extends BaseGame {
   }
 
   update(_deltaTime: number) {
+    this.reportScore(this.score);
     if (this.transitioning) {
       this.updateTransition();
       return;
@@ -1140,25 +1141,27 @@ export class StarWarsGame extends BaseGame {
     this.ctx.fillRect(x - width/2, y, width * healthPercent, height);
   }
 
-  private drawUI() {
-    // Score and health
-    this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
-    this.drawText(`Health: ${Math.max(0, this.player.health)}`, 20, 60, 16, '#00FF00');
-    this.drawText(`Shield: ${Math.max(0, Math.floor(this.player.shield))}`, 20, 85, 16, '#00AAFF');
-    
-    // Phase info
+  getHudStats(): HudStat[] {
+    if (!this.player) return [];
+    const stats: HudStat[] = [
+      { label: 'Health', meter: { value: Math.max(0, this.player.health), max: this.player.maxHealth } },
+      { label: 'Shield', meter: { value: Math.max(0, this.player.shield), max: 100 } },
+    ];
     if (this.phase === 'enemy-ships') {
-      this.drawText(`Enemies Remaining: ${this.TOTAL_ENEMIES - this.enemiesDestroyed}`, this.width - 20, 30, 16, '#FFFFFF', 'right');
-    } else if (this.phase === 'star-destroyer') {
+      stats.push({ label: 'Enemies', value: this.TOTAL_ENEMIES - this.enemiesDestroyed });
+    }
+    return stats;
+  }
+
+  private drawUI() {
+    // Phase info
+    if (this.phase === 'star-destroyer') {
       this.drawText('COMMAND VESSEL BATTLE', this.width / 2, 30, 20, '#FF4444', 'center');
       const weakPointsLeft = this.starDestroyer.weakPoints.filter(wp => !wp.destroyed).length;
       this.drawText(`Weak Points: ${weakPointsLeft}`, this.width / 2, 55, 14, '#FFAA00', 'center');
     } else if (this.phase === 'victory') {
       this.drawText('VICTORY! Enemy Fleet Retreats!', this.width / 2, this.height / 2, 24, '#00FF00', 'center');
     }
-    
-    // Controls
-    this.drawText('W: Thrust Forward | A/D: Rotate | S: Reverse | SPACE: Shoot', this.width / 2, this.height - 20, 14, '#CCCCCC', 'center');
   }
 
   private drawTransition() {

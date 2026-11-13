@@ -1,4 +1,4 @@
-import { BaseGame } from './BaseGame';
+import { BaseGame, type HudStat } from './BaseGame';
 import { arcadeFont } from './engine/fonts';
 import { VirtualStick } from '../controls/VirtualStick';
 import { ParticleSystem } from '../utils/ParticleSystem';
@@ -1375,31 +1375,11 @@ export class BreakoutGame extends BaseGame {
     this.ctx.restore();
   }
 
+  getHudStats(): HudStat[] {
+    return [{ label: 'Lives', value: this.lives, tone: this.lives <= 1 ? 'danger' : 'normal' }];
+  }
+
   private drawUI() {
-    this.drawText(`Score: ${this.score}`, 20, 30, 20, '#FFD700');
-    this.drawText(`Lives: ${this.lives}`, 20, 60, 20, '#FFD700');
-    
-    // Debug: Show control status
-    const keyboardActive = this.keys.has('KeyA') || this.keys.has('KeyD') || 
-                          this.keys.has('KeyW') || this.keys.has('KeyS') ||
-                          this.keys.has('ArrowLeft') || this.keys.has('ArrowRight') ||
-                          this.keys.has('ArrowUp') || this.keys.has('ArrowDown');
-    
-    if (keyboardActive) {
-      this.drawText('Keyboard Active', this.width - 150, 30, 14, '#00FF00');
-    } else if (this.targetPaddleX !== null) {
-      this.drawText('Touch Active', this.width - 150, 30, 14, '#00BFFF');
-    }
-    
-    // Show paddle speed and position
-    this.drawText(`Speed: ${this.paddle.speed}`, this.width - 150, 50, 12, '#FFD700');
-    this.drawText(`Pos: ${Math.round(this.paddle.x)}, ${Math.round(this.paddle.y)}`, this.width - 150, 70, 12, '#FFD700');
-    
-    // Show punch arms status
-    if (this.paddle.punchArms) {
-      this.drawText('Punch Arms Active', this.width - 150, 90, 12, '#FF6B35');
-    }
-    
     if (!this.transitioning) {
       if (this.paddleEvolved) {
         this.drawText('EVOLVED! WASD to move, Z/X to punch blocks!', this.width / 2, this.height - 40, 16, '#00FF00', 'center');

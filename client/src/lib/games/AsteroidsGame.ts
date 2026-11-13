@@ -1,4 +1,4 @@
-import { BaseGame } from './BaseGame';
+import { BaseGame, type HudStat } from './BaseGame';
 import { arcadeFont } from './engine/fonts';
 import { VirtualStick } from '../controls/VirtualStick';
 interface Vector2 {
@@ -457,6 +457,17 @@ export class AsteroidsGame extends BaseGame {
     return distance < (obj1.size + obj2.size) / 2;
   }
 
+  getHudStats(): HudStat[] {
+    const stats: HudStat[] = [
+      { label: 'Lives', value: this.lives, tone: this.lives <= 1 ? 'danger' : 'normal' },
+      { label: 'Level', value: this.level },
+    ];
+    if (this.narcissusProgress > 0) {
+      stats.push({ label: 'AI Sync', value: `${Math.round(this.narcissusProgress * 100)}%`, tone: this.narcissusProgress > 0.5 ? 'danger' : 'warning' });
+    }
+    return stats;
+  }
+
   render() {
     this.clearCanvas();
 
@@ -502,27 +513,9 @@ export class AsteroidsGame extends BaseGame {
       this.ctx.restore();
     }
 
-    // Last Starfighter-style HUD with mirroring indicators
     this.ctx.save();
-    this.ctx.fillStyle = 'rgba(0, 20, 40, 0.8)';
-    this.ctx.fillRect(10, 10, 250, 120);
-    this.ctx.strokeStyle = '#00FFFF';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(10, 10, 250, 120);
-    
-    // UI text with mirroring effects
-    const uiColor = this.narcissusProgress > 0.5 ? '#FF4444' : '#FFD700';
-    this.drawText(`PILOT STATUS`, 20, 30, 14, '#00FFFF');
-    this.drawText(`Score: ${this.score}`, 20, 50, 16, uiColor);
-    this.drawText(`Lives: ${this.lives}`, 20, 70, 16, uiColor);
-    this.drawText(`Level: ${this.level}`, 20, 90, 16, uiColor);
-    
-    // AI mirroring progress indicator
-    if (this.narcissusProgress > 0) {
-      this.drawText(`AI SYNC: ${Math.round(this.narcissusProgress * 100)}%`, 20, 110, 12, '#FF0000');
-    }
-    
-    // Last Starfighter-style targeting system
+
+    // Targeting system
     if (this.lastStarfighterMode && this.targetingComputerActive) {
       // Draw targeting reticle on nearest asteroid
       const nearestAsteroid = this.findNearestAsteroid();

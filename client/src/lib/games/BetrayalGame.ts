@@ -1,4 +1,4 @@
-import { BaseGame } from './BaseGame';
+import { BaseGame, type HudStat } from './BaseGame';
 import { FlashExplosions } from './engine/FlashExplosions';
 
 interface Vector2 {
@@ -1036,33 +1036,27 @@ export class BetrayalGame extends BaseGame {
     this.ctx.restore();
   }
 
+  getHudStats(): HudStat[] {
+    if (!this.player) return [];
+    return [
+      { label: 'Health', meter: { value: Math.max(0, this.player.health), max: this.player.maxHealth } },
+      { label: 'Shield', meter: { value: Math.max(0, this.player.shield), max: 100 } },
+      { label: 'Phase', value: this.gamePhase.toUpperCase() },
+    ];
+  }
+
   private drawUI() {
-    // Player health bar
-    this.ctx.fillStyle = '#FF0000';
-    this.ctx.fillRect(20, 20, 200, 20);
-    this.ctx.fillStyle = '#00FF00';
-    this.ctx.fillRect(20, 20, (this.player.health / this.player.maxHealth) * 200, 20);
-    this.drawText('HEALTH', 25, 35, 12, '#FFFFFF');
-
-    // Player shield bar
-    this.ctx.fillStyle = '#666666';
-    this.ctx.fillRect(20, 45, 200, 15);
-    this.ctx.fillStyle = '#0080FF';
-    this.ctx.fillRect(20, 45, (this.player.shield / 100) * 200, 15);
-    this.drawText('SHIELD', 25, 57, 10, '#FFFFFF');
-
-    // AI Boss health bar
+    // AI boss health bar, centered at the top of the arena (player stats live in the shared HUD)
+    const barWidth = 300;
+    const barX = this.width / 2 - barWidth / 2;
     this.ctx.fillStyle = '#330000';
-    this.ctx.fillRect(this.width - 220, 20, 200, 25);
+    this.ctx.fillRect(barX, 20, barWidth, 16);
     this.ctx.fillStyle = '#FF0000';
-    this.ctx.fillRect(this.width - 220, 20, (this.aiBoss.health / this.aiBoss.maxHealth) * 200, 25);
-    this.drawText('AI BOSS', this.width - 215, 37, 12, '#FFFFFF');
-
-    // Score
-    this.drawText(`Score: ${this.score}`, 20, this.height - 20, 16, '#FFD700');
-
-    // Game phase indicator
-    this.drawText(`Phase: ${this.gamePhase.toUpperCase()}`, this.width - 150, this.height - 20, 14, '#FFFFFF');
+    this.ctx.fillRect(barX, 20, Math.max(0, this.aiBoss.health / this.aiBoss.maxHealth) * barWidth, 16);
+    this.ctx.strokeStyle = '#FFFFFF';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(barX, 20, barWidth, 16);
+    this.drawText('AI BOSS', this.width / 2, 52, 14, '#FF3131', 'center');
   }
 
   // Touch/pointer: tap to shoot toward the touch point, drag to steer

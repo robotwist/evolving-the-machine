@@ -1,4 +1,4 @@
-import { BaseGame } from './BaseGame';
+import { BaseGame, type HudStat } from './BaseGame';
 import { arcadeFont } from './engine/fonts';
 interface Vector2 {
   x: number;
@@ -2379,22 +2379,21 @@ export class LasatGame extends BaseGame {
     this.ctx.restore();
   }
 
-  private drawUI() {
-    // Player stats
-    this.drawText(`Health: ${this.player.health}/${this.player.maxHealth}`, 20, 30, 16, '#FF0000');
-    this.drawText(`Energy: ${this.player.energy}/${this.player.maxEnergy}`, 20, 50, 16, '#00FF00');
-    this.drawText(`Weapon: ${this.player.weaponType.toUpperCase()}`, 20, 70, 16, '#FFFF00');
-    this.drawText(`Score: ${this.score}`, 20, 90, 16, '#FFD700');
-    this.drawText(`Phase: ${this.ragnarokPhase}/5`, 20, 110, 16, '#FFD700');
-
-    // Shield indicator
+  getHudStats(): HudStat[] {
+    if (!this.player || this.gameState !== 'playing') return [];
+    const stats: HudStat[] = [
+      { label: 'Health', meter: { value: Math.max(0, this.player.health), max: this.player.maxHealth } },
+      { label: 'Energy', meter: { value: this.player.energy, max: this.player.maxEnergy } },
+      { label: 'Weapon', value: this.player.weaponType.toUpperCase() },
+      { label: 'Phase', value: `${Math.min(this.ragnarokPhase, 5)}/5` },
+    ];
     if (this.player.shieldActive) {
-      this.drawText(`SHIELD ACTIVE: ${Math.ceil(this.player.shieldTimer / 60)}s`, this.width - 200, 30, 16, '#00BFFF');
+      stats.push({ label: 'Shield', value: `${Math.ceil(this.player.shieldTimer / 60)}s`, tone: 'warning' });
     }
+    return stats;
+  }
 
-    // Controls
-    this.drawText('WASD: Move | Space: Laser | X: Ion Cannon | Z: Death Blossom', this.width / 2, this.height - 60, 12, '#DDD', 'center');
-    
+  private drawUI() {
     // Targeting explanation
     this.drawText('CENTRAL TARGETING: Move ship to aim reticle at enemies for auto-lock', this.width / 2, this.height - 40, 10, '#00FF00', 'center');
     
