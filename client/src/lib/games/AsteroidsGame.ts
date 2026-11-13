@@ -1,7 +1,5 @@
 import { BaseGame } from './BaseGame';
 import { VirtualStick } from '../controls/VirtualStick';
-import { AudioOptions, AudioState } from '@shared/types';
-
 interface Vector2 {
   x: number;
   y: number;
@@ -39,7 +37,6 @@ export class AsteroidsGame extends BaseGame {
   private asteroids: Asteroid[] = [];
   private bullets: Bullet[] = [];
   private powerups: Powerup[] = [];
-  private keys: Set<string> = new Set();
   private score = 0;
   private lastReportedScore = 0;
   private lives = 3;
@@ -228,10 +225,7 @@ export class AsteroidsGame extends BaseGame {
       this.messageIndex++;
       this.narcissusProgress = this.messageIndex / this.aiMessages.length; // Track mirroring progress
       this.aiNarrativeTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
     }
     
     // Clear message after display time
@@ -248,10 +242,7 @@ export class AsteroidsGame extends BaseGame {
       ];
       this.currentAIMessage = betrayalMessages[Math.floor(Math.random() * betrayalMessages.length)];
       this.aiNarrativeTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
     }
 
     // Add moments where AI questions its own loyalty and betrayal impulses
@@ -730,25 +721,6 @@ export class AsteroidsGame extends BaseGame {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  private playStinger(stinger: string) {
-    try {
-        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-            audioState.playStinger(stinger);
-        }
-    } catch (e) {
-        console.warn(`${stinger} sound failed:`, e);
-    }
-  }
-
-  handleInput(event: KeyboardEvent) {
-    if (event.type === 'keydown') {
-      this.keys.add(event.code);
-    } else if (event.type === 'keyup') {
-      this.keys.delete(event.code);
-    }
-  }
-
   // Touch/pointer controls: left half = steer+thrust towards touch; right half tap = shoot
   handlePointerDown(x: number, y: number) {
     if (x < this.width * 0.5) {
@@ -787,32 +759,5 @@ export class AsteroidsGame extends BaseGame {
     this.virtualThrust = false;
     this.virtualRotation = null;
     this.leftStick.end();
-  }
-
-  private playHitSound() {
-    const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: { isMuted: boolean; playHit: () => void } }).__CULTURAL_ARCADE_AUDIO__;
-    if (audioState && !audioState.isMuted) {
-      audioState.playHit();
-    }
-  }
-
-  protected setupEventListeners() {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (this.isRunning && !this.isPaused) {
-        this.keys.add(e.code);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      this.keys.delete(e.code);
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
-    this.cleanup = () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-    };
   }
 }

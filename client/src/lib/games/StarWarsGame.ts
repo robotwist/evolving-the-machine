@@ -1,5 +1,5 @@
 import { BaseGame } from './BaseGame';
-import { WindowExtensions } from '@shared/types';
+import { FlashExplosions } from './engine/FlashExplosions';
 
 interface Player {
   position: { x: number; y: number };
@@ -58,14 +58,6 @@ interface Bullet {
   lifetime?: number;
 }
 
-interface Explosion {
-  position: { x: number; y: number };
-  size: number;
-  maxSize: number;
-  timer: number;
-  maxTimer: number;
-}
-
 type PowerupType = 'shield' | 'rapid' | 'spread' | 'speed' | 'invincible' | 'guided' | 'triple' | 'gravitron';
 
 interface Powerup {
@@ -81,7 +73,7 @@ export class StarWarsGame extends BaseGame {
   private enemies: EnemyShip[] = [];
   private starDestroyer!: StarDestroyer;
   private bullets: Bullet[] = [];
-  private explosions: Explosion[] = [];
+  private explosions = new FlashExplosions();
   private stars: Array<{x: number, y: number, speed: number}> = [];
   private powerups: Powerup[] = [];
   private powerupSpawnTimer = 0;
@@ -748,11 +740,7 @@ export class StarWarsGame extends BaseGame {
   }
 
   private updateExplosions() {
-    this.explosions = this.explosions.filter(explosion => {
-      explosion.timer--;
-      explosion.size = (explosion.timer / explosion.maxTimer) * explosion.maxSize;
-      return explosion.timer > 0;
-    });
+    this.explosions.update();
   }
 
   private updateStarField() {
@@ -766,13 +754,7 @@ export class StarWarsGame extends BaseGame {
   }
 
   private createExplosion(x: number, y: number, maxSize: number) {
-    this.explosions.push({
-      position: { x, y },
-      size: maxSize,
-      maxSize,
-      timer: 30,
-      maxTimer: 30
-    });
+    this.explosions.spawn(x, y, maxSize);
   }
 
   private checkCollision(pos1: {x: number, y: number}, size1: number, pos2: {x: number, y: number}, size2: number): boolean {
@@ -1142,18 +1124,7 @@ export class StarWarsGame extends BaseGame {
   }
 
   private drawExplosions() {
-    this.explosions.forEach(explosion => {
-      const alpha = explosion.timer / explosion.maxTimer;
-      this.ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`;
-      this.ctx.beginPath();
-      this.ctx.arc(explosion.position.x, explosion.position.y, explosion.size, 0, Math.PI * 2);
-      this.ctx.fill();
-      
-      this.ctx.fillStyle = `rgba(255, 255, 100, ${alpha * 0.7})`;
-      this.ctx.beginPath();
-      this.ctx.arc(explosion.position.x, explosion.position.y, explosion.size * 0.6, 0, Math.PI * 2);
-      this.ctx.fill();
-    });
+    this.explosions.render(this.ctx, { core: true });
   }
 
   private drawHealthBar(x: number, y: number, health: number, maxHealth: number) {
@@ -1322,27 +1293,11 @@ export class StarWarsGame extends BaseGame {
   }
 
   private playLaserSound() {
-    try {
-      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-      if (!audioState.isMuted) {
-        audioState.playStinger('starwars_laser');
-      }
-      }
-    } catch (e) {
-      console.warn('Laser sound failed:', e);
-    }
+    this.playStinger('starwars_laser');
   }
 
   private playExplosionSound() {
-    try {
-      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playStinger('starwars_explosion');
-      }
-    } catch (e) {
-      console.warn('Explosion sound failed:', e);
-    }
+    this.playStinger('starwars_explosion');
   }
 
   // Touch/pointer controls for mobile
@@ -1371,10 +1326,7 @@ export class StarWarsGame extends BaseGame {
         // Reduced cooldown for better responsiveness on mobile
         this.player.weaponCooldown = this.rapidFireTimer > 0 ? 3 : 6;
 
-        // Haptic feedback if available
-        if ('vibrate' in navigator) {
-          navigator.vibrate(50);
-        }
+        this.vibrate('hit');
       }
     }
 

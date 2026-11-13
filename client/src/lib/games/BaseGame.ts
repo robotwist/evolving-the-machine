@@ -1,5 +1,17 @@
+import type { AudioOptions } from "@shared/types";
 import { AdaptiveNarrativeDirector } from "../utils/AdaptiveNarrativeDirector";
 import { performanceMonitor } from "../utils/PerformanceMonitor";
+import * as audio from "./engine/audio";
+import { vibrate, type HapticPreset } from "./engine/haptics";
+import { ScreenShake } from "./engine/ScreenShake";
+import { getGameSettings, type GameSettingsSnapshot } from "./engine/settings";
+
+const SCROLL_KEYS = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+
+function isTextEntryTarget(target: unknown): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
 
 export abstract class BaseGame {
   protected ctx: CanvasRenderingContext2D;
@@ -11,7 +23,10 @@ export abstract class BaseGame {
   protected lastFrameTimeMs: number | null = null;
   protected frameAccumulatorMs = 0;
   protected director: AdaptiveNarrativeDirector;
-  protected keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  /** Codes (KeyboardEvent.code) of keys currently held down. */
+  protected keys: Set<string> = new Set();
+  protected screenShake: ScreenShake;
+  private removeInputListeners: (() => void) | null = null;
   
   // Event callbacks
   onScoreUpdate?: (score: number) => void;
@@ -28,14 +43,18 @@ export abstract class BaseGame {
     this.width = width;
     this.height = height;
     this.director = new AdaptiveNarrativeDirector();
+    this.screenShake = new ScreenShake(ctx);
     this.setupEventListeners();
   }
 
   abstract init(): Promise<void> | void;
   abstract update(deltaTime: number): void;
   abstract render(): void;
-  abstract handleInput(event: KeyboardEvent): void;
-  // Optional pointer/touch hooks
+
+  /** Called for each keydown while the game is running. Held keys are tracked in `keys`. */
+  handleInput(_event: KeyboardEvent): void {}
+
+  // Optional pointer/touch hooks, in canvas CSS pixels
   handlePointerDown?(x: number, y: number): void;
   handlePointerMove?(x: number, y: number): void;
   handlePointerUp?(): void;
@@ -50,6 +69,7 @@ export abstract class BaseGame {
 
   pause() {
     this.isPaused = true;
+    this.keys.clear();
   }
 
   resume() {
@@ -76,8 +96,7 @@ export abstract class BaseGame {
   protected gameLoop() {
     if (!this.isRunning) return;
     const now = performance.now();
-    const targetFps = (window as unknown as { __CULTURAL_ARCADE_FPS_CAP__?: number }).__CULTURAL_ARCADE_FPS_CAP__ ?? 60;
-    const minFrameMs = 1000 / Math.max(1, targetFps);
+    const minFrameMs = 1000 / Math.max(1, getGameSettings().fpsCap);
 
     if (this.lastFrameTimeMs == null) {
       this.lastFrameTimeMs = now;
@@ -102,22 +121,64 @@ export abstract class BaseGame {
   }
 
   protected setupEventListeners() {
-    // Store the handler so we can remove it later
-    this.keydownHandler = (e: KeyboardEvent) => {
-      if (this.isRunning && !this.isPaused) {
-        this.handleInput(e);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!this.isRunning || this.isPaused) return;
+      if (SCROLL_KEYS.has(e.code) && !isTextEntryTarget(e.target)) {
+        e.preventDefault();
       }
+      this.keys.add(e.code);
+      this.handleInput(e);
     };
-    document.addEventListener('keydown', this.keydownHandler);
+    const onKeyUp = (e: KeyboardEvent) => {
+      this.keys.delete(e.code);
+    };
+    // Keyup never arrives for keys held while the window loses focus
+    const onBlur = () => this.keys.clear();
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+
+    this.removeInputListeners = () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
   }
 
+  /** Releases listeners and resources. Subclasses that override must call super.cleanup(). */
   protected cleanup() {
-    // Remove event listener to prevent memory leaks
-    if (this.keydownHandler) {
-      document.removeEventListener('keydown', this.keydownHandler);
-      this.keydownHandler = null;
-    }
-    // Override in subclasses if needed
+    this.removeInputListeners?.();
+    this.removeInputListeners = null;
+    this.keys.clear();
+  }
+
+  protected isKeyDown(...codes: string[]): boolean {
+    return codes.some(code => this.keys.has(code));
+  }
+
+  protected getSettings(): GameSettingsSnapshot {
+    return getGameSettings();
+  }
+
+  protected playStinger(stinger: string) {
+    audio.playStinger(stinger);
+  }
+
+  protected playVO(text: string, options: AudioOptions = {}) {
+    audio.playVO(text, options);
+  }
+
+  protected playHitSound() {
+    audio.playHit();
+  }
+
+  protected playSuccessSound() {
+    audio.playSuccess();
+  }
+
+  protected vibrate(pattern: HapticPreset | number | number[]) {
+    vibrate(pattern);
   }
 
   protected drawText(text: string, x: number, y: number, size = 16, color = 'white', align: CanvasTextAlign = 'left') {

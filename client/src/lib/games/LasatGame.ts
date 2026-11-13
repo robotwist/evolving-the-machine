@@ -1,6 +1,4 @@
 import { BaseGame } from './BaseGame';
-import { AudioState, WindowExtensions } from '@shared/types';
-
 interface Vector2 {
   x: number;
   y: number;
@@ -94,7 +92,6 @@ export class LasatGame extends BaseGame {
   private playerProjectiles: Projectile[] = [];
   private enemyProjectiles: Projectile[] = [];
   private powerUps: PowerUp[] = [];
-  private keys: Set<string> = new Set();
   private score = 0;
   private lastReportedScore = 0;
   private wave = 1;
@@ -160,8 +157,6 @@ export class LasatGame extends BaseGame {
     aiLaughTimer: 0,
     vincentPriceLaugh: false
   };
-
-  private screenShake = 0; // Screen shake effect
 
   init() {
     // Initialize game state
@@ -1151,7 +1146,7 @@ export class LasatGame extends BaseGame {
             this.addBossDamageEffect(enemy.position.x, enemy.position.y, proj.damage);
             
             // Screen shake for boss hits
-            this.screenShake = Math.max(this.screenShake, proj.damage * 2);
+            this.screenShake.trigger(8);
             
             // Dramatic hit sound
             this.playStinger('boss_hit');
@@ -1225,17 +1220,6 @@ export class LasatGame extends BaseGame {
     const dy = obj1.position.y - obj2.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (obj1.size + obj2.size) / 2;
-  }
-
-  private playStinger(stinger: string) {
-    try {
-        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-            audioState.playStinger(stinger);
-        }
-    } catch (e) {
-        console.warn('Stinger sound failed:', e);
-    }
   }
 
   // EPIC FINALE SEQUENCE METHODS
@@ -1348,7 +1332,7 @@ export class LasatGame extends BaseGame {
     this.playStinger('final_explosion');
     
     // Massive screen shake
-    this.screenShake = 50;
+    this.screenShake.trigger(50);
   }
 
   private updateFinalExplosion() {
@@ -1356,7 +1340,7 @@ export class LasatGame extends BaseGame {
     this.finaleSequence.finalExplosionRadius += 8;
     
     // Continue screen shake
-    this.screenShake = Math.max(this.screenShake - 1, 10);
+    this.screenShake.trigger(10);
     
     // Add explosion particles
     if (this.finaleSequence.timer % 5 === 0) {
@@ -1475,33 +1459,25 @@ export class LasatGame extends BaseGame {
         break;
     }
     
-    const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-    if (audioState && !audioState.isMuted) {
-      audioState.playSuccess();
-    }
+    this.playSuccessSound();
   }
 
   render() {
     this.clearCanvas();
+    this.screenShake.begin(this.finaleSequence.active ? 3 : 1);
 
     // Handle different game states
     if (this.gameState === 'start') {
       this.drawStartScreen();
-      return;
-    }
-    
-    if (this.gameState === 'select') {
+    } else if (this.gameState === 'select') {
       this.drawSelectScreen();
-      return;
-    }
-    
-    if (this.gameState === 'gameOver') {
+    } else if (this.gameState === 'gameOver') {
       this.drawGameOverScreen();
-      return;
+    } else {
+      this.drawGameplay();
     }
 
-    // Playing state - normal game rendering
-    this.drawGameplay();
+    this.screenShake.end();
   }
 
   private drawStartScreen() {
@@ -2474,37 +2450,6 @@ export class LasatGame extends BaseGame {
       this.ctx.shadowBlur = 0;
       this.ctx.restore();
     }
-  }
-
-  handleInput(_event: KeyboardEvent) {
-    // Handled in update method through keys Set
-  }
-
-  private playHitSound() {
-    const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-    if (audioState && !audioState.isMuted) {
-      audioState.playHit();
-    }
-  }
-
-  protected setupEventListeners() {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (this.isRunning && !this.isPaused) {
-        this.keys.add(e.code);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      this.keys.delete(e.code);
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
-    this.cleanup = () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-    };
   }
 
   // Touch/pointer controls for mobile

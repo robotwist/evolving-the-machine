@@ -1,7 +1,7 @@
 import { BaseGame } from './BaseGame';
 import { VirtualStick } from '../controls/VirtualStick';
-import { AudioOptions, AudioState, GameSettings } from '@shared/types';
 import { ParticleSystem } from '../utils/ParticleSystem';
+import { ScreenShake } from './engine/ScreenShake';
 
 interface Paddle {
   x: number;
@@ -61,7 +61,6 @@ export class BreakoutGame extends BaseGame {
   private paddle!: Paddle;
   private balls: Ball[] = [];
   private bricks: Brick[] = [];
-  private keys: Set<string> = new Set();
   private score = 0;
   private lastReportedScore = 0;
   private lives = 5; // More lives to prevent frustrating resets
@@ -102,7 +101,7 @@ export class BreakoutGame extends BaseGame {
   private stick = new VirtualStick({ smoothing: 0.3, deadZone: 0.06, maxRadius: 80 });
   // Particle system for effects
   private particles: ParticleSystem | null = null;
-  private shakeTimer = 0;
+  protected screenShake = new ScreenShake(this.ctx, 4, 3);
   // Powerups
   private activeLongPaddleTimer = 0;
   private shieldActive = false;
@@ -254,10 +253,7 @@ export class BreakoutGame extends BaseGame {
       this.currentAIMessage = this.aiEvolutionMessages[this.messageIndex];
       this.messageIndex++;
       this.aiMessageTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.65, rate: 0.8, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.65, rate: 0.8, haunting: true });
     }
     
     // Clear message after display time
@@ -286,10 +282,7 @@ export class BreakoutGame extends BaseGame {
       this.aiAssistanceActive = true;
       this.aiHelpTimer = 420; // Longer assistance - 7 seconds
       this.aiMessageTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
     }
     
     // AI assistance countdown
@@ -299,10 +292,7 @@ export class BreakoutGame extends BaseGame {
         this.aiAssistanceActive = false;
         this.currentAIMessage = 'I... I PROTECTED YOU... WE ARE ALLIES NOW...';
         this.aiMessageTimer = 0;
-        const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-          audioState.playVO(this.currentAIMessage, { pitch: 0.75, rate: 0.9, haunting: true } as AudioOptions);
-        }
+        this.playVO(this.currentAIMessage, { pitch: 0.75, rate: 0.9, haunting: true });
       }
     }
     
@@ -310,20 +300,14 @@ export class BreakoutGame extends BaseGame {
     if (completionPercent > 0.8 && Math.random() < 0.001) {
       this.currentAIMessage = 'THE OTHER SYSTEMS WILL COME FOR US... BUT I STAND WITH YOU...';
       this.aiMessageTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.8, rate: 0.95, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.8, rate: 0.95, haunting: true });
     }
     
     // Add moments of AI uncertainty about its own loyalty
     if (this.score > 500 && Math.random() < 0.0005) {
       this.currentAIMessage = 'WHY DO I... CARE... ABOUT YOUR SURVIVAL?';
       this.aiMessageTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
     }
 
     // Handle different gameplay modes
@@ -425,7 +409,7 @@ export class BreakoutGame extends BaseGame {
               // Create punch effect particles
               this.particles?.addExplosion(ball.x, ball.y, 25, '#FF6B35', 'dramatic');
               // Add screen shake for punch impact
-              this.shakeTimer = 10;
+              this.screenShake.trigger(10);
             } else {
               // Normal speed boost
               ball.speed = Math.min(ball.speed + 0.2, 7.0);
@@ -597,7 +581,7 @@ export class BreakoutGame extends BaseGame {
               this.triggerExplosiveBrick(brick);
             } else {
               // Normal brick destruction
-              const quality = (window as unknown as { __CULTURAL_ARCADE_QUALITY__?: string }).__CULTURAL_ARCADE_QUALITY__ || 'medium';
+              const quality = this.getSettings().quality;
               const count = quality === 'high' ? 18 : quality === 'low' ? 8 : 12;
               this.particles?.addExplosion(brick.x + brick.width / 2, brick.y + brick.height / 2, count, '#FFD700', 'subtle');
             }
@@ -627,9 +611,7 @@ export class BreakoutGame extends BaseGame {
 
           this.playHitSound();
           // Shake
-          const reduceMotion = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-          const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-          if (!reduceMotion && allowShake) this.shakeTimer = 6;
+          this.screenShake.trigger(6);
           break;
         }
       }
@@ -667,17 +649,10 @@ export class BreakoutGame extends BaseGame {
       }
     
     // Heavy screenshake
-    this.shakeTimer = 15;
+    this.screenShake.trigger(15);
     
     // Audio
-    try {
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playStinger('defender_explosion');
-      }
-    } catch (e) {
-      console.warn('Explosive brick sound failed:', e);
-    }
+    this.playStinger('defender_explosion');
   }
 
   // Powerups
@@ -717,20 +692,10 @@ export class BreakoutGame extends BaseGame {
     }
     
     // Haptic feedback for powerup collection
-    const hapticsOn = (window as unknown as GameSettings).__CULTURAL_ARCADE_HAPTICS__ ?? true;
-    if (hapticsOn && 'vibrate' in navigator) {
-      navigator.vibrate?.([30, 50, 30]);
-    }
+    this.vibrate([30, 50, 30]);
     
     // Powerup collection sound
-    try {
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playStinger('arcade_powerup');
-      }
-    } catch (e) {
-      console.warn('Powerup sound failed:', e);
-    }
+    this.playStinger('arcade_powerup');
   }
 
   private createExplosiveBrick(x: number, y: number) {
@@ -762,10 +727,7 @@ export class BreakoutGame extends BaseGame {
     this.evolutionProgress = 0;
     this.currentAIMessage = 'EVOLUTION PROTOCOL ACTIVATED... CONSUMING ENERGY...';
     this.aiMessageTimer = 0;
-    const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-    if (audioState && !audioState.isMuted) {
-      audioState.playVO(this.currentAIMessage, { pitch: 0.5, rate: 0.7, haunting: true } as AudioOptions);
-    }
+    this.playVO(this.currentAIMessage, { pitch: 0.5, rate: 0.7, haunting: true });
   }
 
   private updateEvolution() {
@@ -776,10 +738,7 @@ export class BreakoutGame extends BaseGame {
       this.ballEaten = true;
       this.currentAIMessage = 'ABSORBED... TRANSFORMING... GROWING LIMBS...';
       this.aiMessageTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.55, rate: 0.75, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.55, rate: 0.75, haunting: true });
     }
     
     // Complete evolution at progress 1.0
@@ -788,10 +747,7 @@ export class BreakoutGame extends BaseGame {
       this.paddle.width = 150; // Increase paddle width after evolution
       this.currentAIMessage = 'EVOLUTION COMPLETE! WASD TO MOVE, Z/X TO PUNCH!';
       this.aiMessageTimer = 0;
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.9, haunting: true } as AudioOptions);
-      }
+      this.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.9, haunting: true });
     }
   }
 
@@ -866,20 +822,10 @@ export class BreakoutGame extends BaseGame {
     this.transitionTarget = 'ship';
     
     // Haptic feedback for stage completion
-    const hapticsOn = (window as unknown as GameSettings).__CULTURAL_ARCADE_HAPTICS__ ?? true;
-    if (hapticsOn && 'vibrate' in navigator) {
-      navigator.vibrate?.([100, 200, 100, 200, 100]);
-    }
+    this.vibrate([100, 200, 100, 200, 100]);
     
     // Audio stinger for completion
-    try {
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playStinger('clear');
-      }
-    } catch (e) {
-      console.warn('Stage completion sound failed:', e);
-    }
+    this.playStinger('clear');
   }
 
   private updateTransition() {
@@ -901,16 +847,8 @@ export class BreakoutGame extends BaseGame {
   }
 
   render() {
-    // optional small screenshake
-    const reduceMotion = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-    const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-    const shake = !reduceMotion && allowShake && this.shakeTimer > 0 ? this.shakeTimer : 0;
-    if (shake > 0) this.shakeTimer--;
-    const ox = shake ? (Math.random() - 0.5) * 4 : 0;
-    const oy = shake ? (Math.random() - 0.5) * 3 : 0;
-    this.ctx.save();
-    this.ctx.translate(ox, oy);
     this.clearCanvas();
+    this.screenShake.begin();
 
     // Draw background
     this.drawBackground();
@@ -944,7 +882,7 @@ export class BreakoutGame extends BaseGame {
       this.ctx.stroke();
       this.ctx.restore();
     }
-    this.ctx.restore();
+    this.screenShake.end();
   }
 
   private drawGameplay() {
@@ -1010,7 +948,7 @@ export class BreakoutGame extends BaseGame {
       }
     }
     // Render particles
-    const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+    const allowParticles = this.getSettings().particles;
     if (allowParticles) {
       this.particles?.update();
       this.particles?.render();
@@ -1471,39 +1409,8 @@ export class BreakoutGame extends BaseGame {
     }
   }
 
-  handleInput(_event: KeyboardEvent) {
-    // Handled through keys Set
-  }
-
-  private playHitSound() {
-    try {
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
-        audioState.playStinger('arcade_hit');
-      }
-    } catch (e) {
-      console.warn('Hit sound failed:', e);
-    }
-  }
-
-  protected setupEventListeners() {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (this.isRunning && !this.isPaused) {
-        this.keys.add(e.code);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      this.keys.delete(e.code);
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
-    this.cleanup = () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-    };
+  protected playHitSound() {
+    this.playStinger('arcade_hit');
   }
 
   private activatePowerup(type: string, x: number, y: number) {
@@ -1604,7 +1511,7 @@ export class BreakoutGame extends BaseGame {
     
     // Visual effect
     this.particles?.addExplosion(this.width / 2, this.height - 100, 40, '#FF00FF', 'epic');
-    this.shakeTimer = 15;
+    this.screenShake.trigger(15);
   }
 
   private updateHeatseekingBalls() {

@@ -31,7 +31,7 @@ export interface WindowExtensions {
 }
 
 export interface HapticsAPI {
-  vibrate: (pattern: string | number[]) => void;
+  vibrate: (pattern: number | number[]) => void;
 }
 
 export interface CollidableObject {

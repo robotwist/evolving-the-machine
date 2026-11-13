@@ -1,5 +1,5 @@
 import { BaseGame } from './BaseGame';
-import { AudioState } from '@shared/types';
+import { isAudioMuted } from './engine/audio';
 
 interface Dancer {
   x: number;
@@ -33,6 +33,7 @@ export class DanceInterlude extends BaseGame {
   private curtains = 0;
   private applauseTimer = 0;
   private musicStarted = false;
+  private danceMusic: HTMLAudioElement | null = null;
   private score = 0;
   private combo = 0;
   private playerPerformance = 1.0; // 0.0 (bad) to 1.0 (perfect)
@@ -131,19 +132,23 @@ export class DanceInterlude extends BaseGame {
     }
   }
 
+  protected cleanup() {
+    super.cleanup();
+    this.danceMusic?.pause();
+    this.danceMusic = null;
+  }
+
   private startDanceMusic() {
     // Play "Puttin' on the Ritz" music
     try {
-      const audioState = (window as unknown as { __CULTURAL_ARCADE_AUDIO__?: AudioState }).__CULTURAL_ARCADE_AUDIO__;
-      if (audioState && !audioState.isMuted) {
+      if (!isAudioMuted() && !this.danceMusic) {
         // Load and play the dance music
-        const danceMusic = new Audio('/sounds/puttin-on-the-ritz.mp3');
-        danceMusic.loop = true;
-        danceMusic.volume = 0.6; // Slightly lower volume for dance music
-        danceMusic.play().catch(e => {
+        this.danceMusic = new Audio('/sounds/puttin-on-the-ritz.mp3');
+        this.danceMusic.loop = true;
+        this.danceMusic.volume = 0.6; // Slightly lower volume for dance music
+        this.danceMusic.play().catch(e => {
           console.warn('Could not play dance music:', e);
         });
-
       }
     } catch (error) {
       console.warn('Dance music system not available:', error);

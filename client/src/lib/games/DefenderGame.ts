@@ -1,6 +1,7 @@
 import { BaseGame } from './BaseGame';
 import { ParticleSystem } from '../utils/ParticleSystem';
-import { GameSettings, WindowExtensions } from '@shared/types';
+import { WindowExtensions } from '@shared/types';
+import { isAudioMuted } from './engine/audio';
 
 interface Vector2 {
   x: number;
@@ -56,7 +57,6 @@ export class DefenderGame extends BaseGame {
   private powerups: Powerup[] = [];
   private camera: { x: number } = { x: 0 };
   private worldWidth = 2048;
-  private keys: Set<string> = new Set();
   private score = 0;
   private lastScore = 0; // Track last score to prevent infinite updates
   private wave = 1;
@@ -75,7 +75,6 @@ export class DefenderGame extends BaseGame {
     messageIndex: 0,
     narcissusStage: 0 // 0-5, how much AI mirrors the user
   };
-  private shakeTimer = 0;
   private playerShootCooldown = 0;
   private kamikazeTimer = 0; // Timer for kamikaze bombers (10 seconds = 600 frames)
   private kamikazeInterval = 600; // 10 seconds in frames
@@ -223,11 +222,7 @@ export class DefenderGame extends BaseGame {
       this.wave++;
       this.spawnWave();
       if (this.wave > 5) { // Complete after 5 waves
-        // Play success sound through window global
-        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-          audioState.playSuccess();
-        }
+        this.playSuccessSound();
         // Complete the stage
         this.onStageComplete?.();
       }
@@ -557,10 +552,8 @@ export class DefenderGame extends BaseGame {
           bullet.alive = false;
           
           // Effects
-          const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-          const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-          const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-          if (!reduce && allowShake) this.shakeTimer = 5;
+          const allowParticles = this.getSettings().particles;
+          this.screenShake.trigger(5);
           if (allowParticles && this.particles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 12, '#FF4444', 'dramatic');
           this.playHitSound();
           
@@ -588,10 +581,8 @@ export class DefenderGame extends BaseGame {
             bullet.alive = false;
             
             // Effects
-            const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-            const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-            const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
-            if (!reduce && allowShake) this.shakeTimer = 7;
+            const allowParticles = this.getSettings().particles;
+            this.screenShake.trigger(7);
             if (allowParticles && this.particles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 20, '#FF0000', 'dramatic');
             this.playHitSound();
             
@@ -604,7 +595,7 @@ export class DefenderGame extends BaseGame {
         }
       }
       // Trails for enemy bullets
-      const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+      const allowParticles = this.getSettings().particles;
       if (allowParticles && bullet.owner === 'enemy' && this.particles) {
         this.particles.addTrail(bullet.position.x, bullet.position.y, bullet.velocity.x, bullet.velocity.y, '#FF4500');
       }
@@ -617,11 +608,7 @@ export class DefenderGame extends BaseGame {
         civilian.alive = false;
         this.score += 500;
         this.civiliansRescued++;
-        // Play success sound through window global
-        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-          audioState.playSuccess();
-        }
+        this.playSuccessSound();
       }
     });
   }
@@ -690,16 +677,8 @@ export class DefenderGame extends BaseGame {
   }
 
   render() {
-    // screenshake
-    const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
-    const allowShake = (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true;
-    const shake = !reduce && allowShake && this.shakeTimer > 0 ? this.shakeTimer : 0;
-    if (shake > 0) this.shakeTimer--;
-    const ox = shake ? (Math.random() - 0.5) * 6 : 0;
-    const oy = shake ? (Math.random() - 0.5) * 4 : 0;
-    this.ctx.save();
-    this.ctx.translate(ox, oy);
     this.clearCanvas();
+    this.screenShake.begin();
 
     // Save context for camera transform
     this.ctx.save();
@@ -735,7 +714,7 @@ export class DefenderGame extends BaseGame {
     this.ctx.restore();
 
     // particles overlay
-    const allowParticles = (window as unknown as GameSettings).__CULTURAL_ARCADE_PARTICLES__ ?? true;
+    const allowParticles = this.getSettings().particles;
     if (allowParticles && this.particles) {
       this.particles.update();
       this.particles.render();
@@ -746,10 +725,12 @@ export class DefenderGame extends BaseGame {
 
     // Draw UI (not affected by camera)
     this.drawUI();
+
+    this.screenShake.end();
   }
 
   private drawSpookyOverlays() {
-    const reduce = (window as unknown as GameSettings).__CULTURAL_ARCADE_REDUCE_MOTION__ ?? false;
+    const reduce = this.getSettings().reduceMotion;
     // Pulsating vignette
     const t = Date.now() * 0.001;
     const pulse = reduce ? 0.08 : 0.12 + 0.06 * (Math.sin(t * 0.7) * 0.5 + 0.5);
@@ -802,7 +783,7 @@ export class DefenderGame extends BaseGame {
   private startWhispers() {
     try {
       if (this.audioCtx) return;
-      if ((window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__?.isMuted) return;
+      if (isAudioMuted()) return;
       // Create audio context and noise source
       const AudioCtx = (window as unknown as WindowExtensions).AudioContext || (window as unknown as WindowExtensions).webkitAudioContext;
       if (!AudioCtx) return;
@@ -1267,64 +1248,16 @@ export class DefenderGame extends BaseGame {
     // For now, we'll keep it simple with just tap-to-shoot
   }
 
-  private playHitSound() {
-    const audio = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-    if (audio) {
-      audio.playHit();
-    }
-  }
-
   private playShootSound() {
-    try {
-      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-      if (!audioState?.isMuted) {
-        audioState?.playStinger('defender_shoot');
-      }
-    } catch (e) {
-      console.warn('Shoot sound failed:', e);
-    }
+    this.playStinger('defender_shoot');
   }
 
   private playExplosionSound() {
-    try {
-      const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-      if (!audioState?.isMuted) {
-        audioState?.playStinger('defender_explosion');
-      }
-    } catch (e) {
-      console.warn('Explosion sound failed:', e);
-    }
+    this.playStinger('defender_explosion');
   }
 
-  private playStinger(stinger: string) {
-    try {
-        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-            audioState.playStinger(stinger);
-        }
-    } catch (e) {
-        console.warn(`${stinger} sound failed:`, e);
-    }
-  }
-
-  protected setupEventListeners() {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (this.isRunning && !this.isPaused) {
-        this.keys.add(e.code);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      this.keys.delete(e.code);
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
-    this.cleanup = () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-      this.stopWhispers();
-    };
+  protected cleanup() {
+    super.cleanup();
+    this.stopWhispers();
   }
 }

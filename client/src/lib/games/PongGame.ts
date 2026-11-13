@@ -1,7 +1,7 @@
 import { BaseGame } from './BaseGame';
 import { VisualFeedback } from '../utils/VisualFeedback';
 import { ParticleSystem } from '../utils/ParticleSystem';
-import { GameSettings, HapticsAPI, WindowExtensions, AudioOptions } from '@shared/types';
+import { AudioOptions } from '@shared/types';
 
 const PONG_CONSTANTS = {
   WIN_SCORE: 5,
@@ -79,7 +79,6 @@ export class PongGame extends BaseGame {
   private player1!: Paddle;
   private player2!: Paddle;
   private ball!: Ball;
-  private keys: Set<string> = new Set();
   private winScore = PONG_CONSTANTS.WIN_SCORE; // Faster games for testing later stages
   private aiAggression = PONG_CONSTANTS.AI_BASE_AGGRESSION;
   private aiTauntTimer = 0;
@@ -89,7 +88,6 @@ export class PongGame extends BaseGame {
   private activePowerupType = 'normal';
   private powerupDuration = 0;
   private shieldTimer = 0;
-  private shakeTimer = 0;
   private shadowBlur = 0; // Visual quality setting for shadow effects
   // New explosion-based powerups
   private chainReactionTimer = 0;
@@ -104,14 +102,6 @@ export class PongGame extends BaseGame {
   private player1Combo = 0;
   private totalDamageTaken = 0;
   private pointStartTime = 0;
-  private haptics: HapticsAPI | null = null;
-  private settings: {
-    hapticsEnabled: boolean;
-    hitMarkers: boolean;
-    damageNumbers: boolean;
-    screenShake: boolean;
-  } | null = null;
-  
   // Particle system for effects
   private particles: ParticleSystem | null = null;
   private aiTaunts = [
@@ -160,17 +150,8 @@ export class PongGame extends BaseGame {
       console.warn('VisualFeedback not available:', e);
     }
     
-    // Initialize haptics and settings through window globals
-    this.haptics = (window as unknown as { __CULTURAL_ARCADE_HAPTICS__?: HapticsAPI }).__CULTURAL_ARCADE_HAPTICS__ || null;
-    this.settings = {
-      hapticsEnabled: (window as unknown as GameSettings).__CULTURAL_ARCADE_HAPTICS_ENABLED__ ?? true,
-      hitMarkers: (window as unknown as GameSettings).__CULTURAL_ARCADE_HIT_MARKERS__ ?? true,
-      screenShake: (window as unknown as GameSettings).__CULTURAL_ARCADE_SCREEN_SHAKE__ ?? true,
-      damageNumbers: (window as unknown as GameSettings).__CULTURAL_ARCADE_DAMAGE_NUMBERS__ ?? true
-    };
-
     // Initialize paddles with classic column design
-    const quality = (window as unknown as GameSettings).__CULTURAL_ARCADE_QUALITY__ as 'low' | 'medium' | 'high' | undefined;
+    const quality = this.getSettings().quality;
     const shadowBlur = quality === 'low' ? 0 : quality === 'medium' ? 5 : 15;
 
     this.player1 = {
@@ -311,18 +292,7 @@ export class PongGame extends BaseGame {
       this.aiTauntTimer--;
     }
 
-    const playVoice = (message: string, options: AudioOptions) => {
-        this.currentTaunt = message;
-        this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
-        try {
-            const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-            if (audioState && !audioState.isMuted) {
-                audioState.playVO(message, options);
-            }
-        } catch (e) {
-            console.warn('AI voice failed:', e);
-        }
-    };
+    const playVoice = (message: string, options: AudioOptions) => this.playAIVoice(message, options);
 
     if (this.player2.score === 3 && this.player1.score === 0) {
         playVoice('ERROR... PROTOCOLS CONFLICT... DESTROYING!', { pitch: 0.6, rate: 0.8, haunting: true });
@@ -380,8 +350,8 @@ export class PongGame extends BaseGame {
     if (this.ball.y <= this.ball.radius || this.ball.y >= this.height - this.ball.radius) {
       this.ball.dy = -this.ball.dy;
       this.playHitSound();
-      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('hit');
-      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y);
+      this.vibrate('hit');
+      if (this.getSettings().hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y);
     }
 
     // Ball collision with paddles
@@ -393,9 +363,9 @@ export class PongGame extends BaseGame {
       this.ball.dx = -this.ball.dx * 1.05;
       this.playHitSound();
       
-      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('hit');
-      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y);
-      if (this.settings?.screenShake) this.shakeTimer = 8;
+      this.vibrate('hit');
+      if (this.getSettings().hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y);
+      this.screenShake.trigger(8);
       
       if (collideP1) {
         if (this.player1.shielded) {
@@ -405,7 +375,7 @@ export class PongGame extends BaseGame {
         } else {
             const damage = 15;
             this.player1.damage += damage;
-            if (this.settings?.damageNumbers && this.visualFeedback) {
+            if (this.getSettings().damageNumbers && this.visualFeedback) {
                 this.visualFeedback.addDamageNumber(this.player1.x + 20, this.player1.y, damage);
             }
         }
@@ -422,16 +392,16 @@ export class PongGame extends BaseGame {
         const damage = 10;
         this.player2.damage += damage;
         this.player2.lastHitTime = Date.now();
-        if (this.settings?.damageNumbers && this.visualFeedback) {
+        if (this.getSettings().damageNumbers && this.visualFeedback) {
             this.visualFeedback.addDamageNumber(this.player2.x, this.player2.y, damage);
         }
       }
     }
 
     if (penetrateAI && this.checkPaddleCollision(this.player2)) {
-      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('explosion');
-      if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, 1, 'critical');
-      if (this.settings?.screenShake) this.shakeTimer = 10;
+      this.vibrate('explosion');
+      if (this.getSettings().hitMarkers) this.visualFeedback?.addHitMarker(this.ball.x, this.ball.y, 1, 'critical');
+      this.screenShake.trigger(10);
       if (this.particles) {
         this.particles.addExplosion(this.player2.x, Math.max(this.player2.y, Math.min(this.player2.y + this.player2.height, this.ball.y)), 15, '#FF4500', 'dramatic');
       }
@@ -449,7 +419,7 @@ export class PongGame extends BaseGame {
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.updateDirectorMetrics();
       this.resetBall();
-      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('failure');
+      this.vibrate('failure');
       this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.15);
       this.aiAggression = Math.min(1.0, this.aiAggression + 0.05);
     } else if (this.ball.x > this.width) {
@@ -457,7 +427,7 @@ export class PongGame extends BaseGame {
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.updateDirectorMetrics();
       this.resetBall();
-      if (this.settings?.hapticsEnabled) this.haptics?.vibrate('success');
+      this.vibrate('success');
       if (this.player1.score >= this.winScore) {
         this.onStageComplete?.();
       }
@@ -556,17 +526,10 @@ export class PongGame extends BaseGame {
         }
         
         // Enhanced haptics and visual feedback for powerup collection
-        if (this.settings?.hapticsEnabled) this.haptics?.vibrate('powerup');
-        if (this.settings?.hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y);
+        this.vibrate('powerup');
+        if (this.getSettings().hitMarkers) this.visualFeedback?.addHitMarker(powerup.x, powerup.y);
         
-        try {
-          const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-          if (audioState && !audioState.isMuted) {
-            audioState.playStinger('arcade_powerup');
-          }
-        } catch (e) {
-          console.warn('Powerup sound failed:', e);
-        }
+        this.playStinger('arcade_powerup');
       }
     }
 
@@ -591,17 +554,10 @@ export class PongGame extends BaseGame {
         this.explosionPowerups.splice(index, 1);
         
         // Haptic feedback
-        if (this.settings?.hapticsEnabled) this.haptics?.vibrate('explosion');
+        this.vibrate('explosion');
         
         // Powerup collection sound
-        try {
-          const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-          if (audioState && !audioState.isMuted) {
-            audioState.playStinger('arcade_powerup');
-          }
-        } catch (e) {
-          console.warn('Powerup sound failed:', e);
-        }
+        this.playStinger('arcade_powerup');
       }
       
       // Remove expired powerups
@@ -628,7 +584,7 @@ export class PongGame extends BaseGame {
 
   private explodePaddle(paddle: Paddle) {
     // Create explosion particles with dramatic effect
-    const quality = (window as unknown as GameSettings).__CULTURAL_ARCADE_QUALITY__ || 'medium';
+    const quality = this.getSettings().quality;
     const count = quality === 'high' ? 25 : quality === 'low' ? 12 : 18;
     
     if (this.particles) {
@@ -636,7 +592,7 @@ export class PongGame extends BaseGame {
     }
     
     // Heavy screenshake
-    this.shakeTimer = 20;
+    this.screenShake.trigger(20);
     
     // Audio explosion
     this.playStinger('defender_explosion');
@@ -656,6 +612,7 @@ export class PongGame extends BaseGame {
 
   render() {
     this.clearCanvas();
+    this.screenShake.begin();
 
     // Draw background
     this.drawBackground();
@@ -685,7 +642,7 @@ export class PongGame extends BaseGame {
     // Render visual feedback
     this.visualFeedback?.render();
 
-    this.ctx.restore();
+    this.screenShake.end();
   }
 
   // Touch/pointer: move human paddle based on vertical touch on left 60% of screen
@@ -915,54 +872,14 @@ export class PongGame extends BaseGame {
     }
   }
 
-  private playHitSound() {
+  protected playHitSound() {
     this.playStinger('arcade_hit');
-  }
-
-  private playStinger(stinger: string) {
-    try {
-        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-            audioState.playStinger(stinger);
-        }
-    } catch (e) {
-        console.warn(`${stinger} sound failed:`, e);
-    }
-  }
-
-  protected setupEventListeners() {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (this.isRunning && !this.isPaused) {
-        this.keys.add(e.code);
-        this.handleInput(e);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      this.keys.delete(e.code);
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
-    // Store references for cleanup
-    this.cleanup = () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-    };
   }
 
   private playAIVoice(message: string, options: AudioOptions) {
     this.currentTaunt = message;
     this.aiTauntTimer = PONG_CONSTANTS.AI_TAUNT_DURATION;
-    try {
-        const audioState = (window as unknown as WindowExtensions).__CULTURAL_ARCADE_AUDIO__;
-        if (audioState && !audioState.isMuted) {
-            audioState.playVO(message, options);
-        }
-    } catch (e) {
-        console.warn('AI voice failed:', e);
-    }
+    this.playVO(message, options);
   }
 
   private spawnPowerups() {
@@ -1125,7 +1042,7 @@ export class PongGame extends BaseGame {
     }, 600);
     
     // Heavy screenshake
-    this.shakeTimer = 25;
+    this.screenShake.trigger(25);
     
     // Audio
     this.playStinger('defender_explosion');
@@ -1166,7 +1083,7 @@ export class PongGame extends BaseGame {
     }
     
     // Massive screenshake
-    this.shakeTimer = 30;
+    this.screenShake.trigger(30);
     
     // Audio
     this.playStinger('starwars_explosion');
@@ -1335,7 +1252,7 @@ export class PongGame extends BaseGame {
     
     // Massive explosion effect
     this.particles?.addExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, 50, '#FF0000', 'epic');
-    this.shakeTimer = 20;
+    this.screenShake.trigger(20);
     this.playStinger('explosion');
     
   }

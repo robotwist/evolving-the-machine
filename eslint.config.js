@@ -137,6 +137,8 @@ export default [
       'no-case-declarations': 'warn',
       'no-empty': 'warn',
       'no-console': ['error', { allow: ['warn', 'error', 'info', 'group', 'groupEnd'] }],
+      // TypeScript already reports undefined identifiers, using real DOM/lib types
+      'no-undef': 'off',
     },
     settings: {
       react: {
