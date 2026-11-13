@@ -8,6 +8,13 @@ import { getGameSettings, type GameSettingsSnapshot } from "./engine/settings";
 
 const SCROLL_KEYS = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
+/** Games are tuned in units per update, so the simulation always advances in fixed 60 Hz steps. */
+export const SIMULATION_STEP_MS = 1000 / 60;
+const MAX_STEPS_PER_FRAME = 5;
+// Frame gaps within this distance of a whole number of steps are treated as exact,
+// so a 60 Hz display runs exactly one update per frame despite timer jitter.
+const VSYNC_SNAP_MS = 1;
+
 function isTextEntryTarget(target: unknown): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
@@ -22,6 +29,7 @@ export abstract class BaseGame {
   protected animationId: number | null = null;
   protected lastFrameTimeMs: number | null = null;
   protected frameAccumulatorMs = 0;
+  private lastRenderMs: number | null = null;
   protected director: AdaptiveNarrativeDirector;
   /** Codes (KeyboardEvent.code) of keys currently held down. */
   protected keys: Set<string> = new Set();
@@ -75,6 +83,7 @@ export abstract class BaseGame {
   resume() {
     this.isPaused = false;
     if (!this.animationId) {
+      this.lastFrameTimeMs = null;
       this.gameLoop();
     }
   }
@@ -96,28 +105,50 @@ export abstract class BaseGame {
   protected gameLoop() {
     if (!this.isRunning) return;
     const now = performance.now();
-    const minFrameMs = 1000 / Math.max(1, getGameSettings().fpsCap);
-
     if (this.lastFrameTimeMs == null) {
       this.lastFrameTimeMs = now;
     }
     const deltaMs = now - this.lastFrameTimeMs;
     this.lastFrameTimeMs = now;
 
-    // Update performance monitor
     performanceMonitor.update();
 
     if (!this.isPaused) {
-      this.frameAccumulatorMs += deltaMs;
-      if (this.frameAccumulatorMs >= minFrameMs) {
-        const clampedDt = Math.min(this.frameAccumulatorMs, 1000 / 30); // cap dt to ~33ms to avoid huge jumps
-        this.update(clampedDt);
-        this.render();
-        this.frameAccumulatorMs = 0;
-      }
+      this.advance(deltaMs, now);
     }
 
     this.animationId = requestAnimationFrame(() => this.gameLoop());
+  }
+
+  /** Runs as many fixed simulation steps as `deltaMs` covers, then renders (subject to the FPS cap). */
+  protected advance(deltaMs: number, now = performance.now()) {
+    const steps = Math.round(deltaMs / SIMULATION_STEP_MS);
+    const snapped = steps * SIMULATION_STEP_MS;
+    const frameMs = steps > 0 && Math.abs(deltaMs - snapped) < VSYNC_SNAP_MS ? snapped : deltaMs;
+
+    this.frameAccumulatorMs += frameMs;
+    let stepsRun = 0;
+    while (this.frameAccumulatorMs >= SIMULATION_STEP_MS - 0.01 && stepsRun < MAX_STEPS_PER_FRAME) {
+      this.update(SIMULATION_STEP_MS);
+      this.frameAccumulatorMs -= SIMULATION_STEP_MS;
+      stepsRun++;
+    }
+    if (stepsRun === MAX_STEPS_PER_FRAME) {
+      // After a long stall (tab switch, debugger), drop the backlog instead of fast-forwarding
+      this.frameAccumulatorMs = 0;
+    }
+    this.frameAccumulatorMs = Math.max(0, this.frameAccumulatorMs);
+
+    if (stepsRun > 0 && this.renderAllowed(now)) {
+      this.render();
+      this.lastRenderMs = now;
+    }
+  }
+
+  private renderAllowed(now: number): boolean {
+    const fpsCap = getGameSettings().fpsCap;
+    if (!fpsCap || this.lastRenderMs == null) return true;
+    return now - this.lastRenderMs >= 1000 / fpsCap - VSYNC_SNAP_MS;
   }
 
   protected setupEventListeners() {

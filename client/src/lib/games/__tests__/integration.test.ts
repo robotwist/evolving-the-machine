@@ -262,7 +262,7 @@ describe('Game System Integration Tests', () => {
         }
       }
 
-      await runGameLoop(game, 60);
+      await runGameLoop(game, 100);
 
       // Paddle should have evolved
       expect(game['paddle'].width).toBeGreaterThan(initialPaddleWidth);

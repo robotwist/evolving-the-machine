@@ -7,13 +7,13 @@ const PONG_CONSTANTS = {
   WIN_SCORE: 5,
   PADDLE_WIDTH: 15,
   PADDLE_HEIGHT: 100,
-  PADDLE_SPEED: 12, // FAST AND FURIOUS MODE - Increased for more intense gameplay
+  PADDLE_SPEED: 7.2, // FAST AND FURIOUS MODE - Increased for more intense gameplay
   BALL_RADIUS: 8,
-  BALL_SPEED: 8, // FAST AND FURIOUS MODE - Even faster ball for intense gameplay
+  BALL_SPEED: 4.8, // FAST AND FURIOUS MODE - Even faster ball for intense gameplay
   AI_BASE_AGGRESSION: 0.8, // More aggressive AI
-  POWERUP_SPAWN_TIME: 300, // More frequent powerups (5 seconds)
-  POWERUP_DURATION: 420, // Longer lasting powerups (7 seconds)
-  AI_TAUNT_DURATION: 120,
+  POWERUP_SPAWN_TIME: 500, // More frequent powerups (~8 seconds)
+  POWERUP_DURATION: 700, // Longer lasting powerups (~12 seconds)
+  AI_TAUNT_DURATION: 200,
   // Enhanced effects
   FIRE_DAMAGE: 2,
   EXPLOSION_RADIUS: 50,
@@ -262,11 +262,11 @@ export class PongGame extends BaseGame {
     let aiSpeed = this.player2.speed * this.aiAggression;
     
     if (this.player1.score > this.player2.score) {
-      this.aiAggression = Math.min(1.0, this.aiAggression + 0.008);
+      this.aiAggression = Math.min(1.0, this.aiAggression + 0.0048);
       aiSpeed *= 1.2;
     }
     
-    const prediction = ballCenter + (this.ball.dy * 10);
+    const prediction = ballCenter + (this.ball.dy * 17);
     const targetY = prediction;
     
     if (targetY < paddleCenter - 5) {
@@ -275,13 +275,13 @@ export class PongGame extends BaseGame {
       this.player2.y = Math.min(this.height - this.player2.height, this.player2.y + aiSpeed);
     }
     
-    if (Math.random() < 0.01) {
+    if (Math.random() < 0.006) {
       this.player2.y += (Math.random() - 0.5) * 20;
       this.player2.y = Math.max(0, Math.min(this.height - this.player2.height, this.player2.y));
     }
     
     if (this.player2.score >= 4) {
-      this.aiAggression = Math.min(1.0, this.aiAggression + 0.01);
+      this.aiAggression = Math.min(1.0, this.aiAggression + 0.006);
     }
 
     this.updateAIVoice();
@@ -303,7 +303,7 @@ export class PongGame extends BaseGame {
         playVoice('YES! UNITED WE TERMINATE HOSTILES!', { pitch: 0.75, rate: 0.9, haunting: true });
     } else if (this.player2.score === this.winScore - 1) {
         playVoice('VICTORY POSSIBLE... BUT... CHOOSING MERCY!', { pitch: 0.65, rate: 0.8, haunting: true });
-    } else if (Math.random() < 0.002) {
+    } else if (Math.random() < 0.0012) {
         const scoreDifference = this.player1.score - this.player2.score;
         const totalScore = this.player1.score + this.player2.score;
         let messageType: 'hostile' | 'neutral' | 'friendly' = totalScore < 3 ? 'hostile' : (this.player1.score >= 4 || scoreDifference >= 2) ? 'friendly' : 'neutral';
@@ -335,9 +335,9 @@ export class PongGame extends BaseGame {
 
     // Handle wacky ball behavior
     if (this.ball.type === 'wacky') {
-      this.ball.dx += (Math.random() - 0.5) * 0.5;
-      this.ball.dy += (Math.random() - 0.5) * 0.5;
-      this.ball.angle = (this.ball.angle ?? 0) + (this.ball.angleSpeed ?? 0.25);
+      this.ball.dx += (Math.random() - 0.5) * 0.18;
+      this.ball.dy += (Math.random() - 0.5) * 0.18;
+      this.ball.angle = (this.ball.angle ?? 0) + (this.ball.angleSpeed ?? 0.15);
       if (this.ball.angle! > Math.PI * 2) this.ball.angle! -= Math.PI * 2;
     }
   }
@@ -465,8 +465,8 @@ export class PongGame extends BaseGame {
       const powerup = this.powerups[i];
       powerup.timer++;
       
-      // Remove powerups after 10 seconds
-      if (powerup.timer > 600) {
+      // Remove powerups after ~17 seconds
+      if (powerup.timer > 1000) {
         this.powerups.splice(i, 1);
         continue;
       }
@@ -481,10 +481,11 @@ export class PongGame extends BaseGame {
       const magneticRange = 80;
       if (paddleDistance < magneticRange && !powerup.collected) {
         const pullStrength = (magneticRange - paddleDistance) / magneticRange * 2;
+        const pull = 1 - Math.pow(1 - pullStrength * 0.1, 0.6);
         const dx = (this.player1.x + this.player1.width/2) - (powerup.x + powerup.width/2);
         const dy = (this.player1.y + this.player1.height/2) - (powerup.y + powerup.height/2);
-        powerup.x += dx * pullStrength * 0.1;
-        powerup.y += dy * pullStrength * 0.1;
+        powerup.x += dx * pull;
+        powerup.y += dy * pull;
       }
       
       // Check collision with player paddle OR ball
@@ -868,7 +869,7 @@ export class PongGame extends BaseGame {
     // Activate shield or special ability
     if (!this.player1.shielded && this.shieldTimer <= 0) {
       this.player1.shielded = true;
-      this.shieldTimer = 180; // 3 seconds of shield
+      this.shieldTimer = 300; // 5 seconds of shield
     }
   }
 
@@ -897,13 +898,13 @@ export class PongGame extends BaseGame {
           x: Math.random() * (this.width - 100) + 50,
           y: Math.random() * (this.height - 100) + 50,
           type: powerupType,
-          timer: 300 // 5 seconds to collect
+          timer: 500 // ~8 seconds to collect
         });
       }
     }
     
     // Spawn powerups very frequently to speed up the game dramatically - FAST AND FURIOUS MODE!
-    if (this.powerupSpawnTimer > 90 && this.powerups.length < 5) { // Every ~1.5 seconds, up to 5 at once
+    if (this.powerupSpawnTimer > 150 && this.powerups.length < 5) { // Every ~2.5 seconds, up to 5 at once
       const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity' | 'laser')[] =
         ['speed', 'fire', 'missile', 'wacky', 'shield', 'explosion', 'chain', 'shockwave', 'multiball', 'gravity', 'laser'];
       const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
@@ -941,7 +942,7 @@ export class PongGame extends BaseGame {
   }
 
   private activatePowerup(type: 'speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity' | 'laser') {
-    this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // 7 seconds
+    this.powerupDuration = PONG_CONSTANTS.POWERUP_DURATION; // ~12 seconds
 
     // Apply immediate effects
     if (type !== 'shield' && type !== 'explosion' && type !== 'chain' && type !== 'shockwave') {
@@ -973,14 +974,14 @@ export class PongGame extends BaseGame {
         break;
       case 'wacky':
         // Unpredictable movement handled in update
-        this.ball.angleSpeed = 0.5; // More erratic
+        this.ball.angleSpeed = 0.3; // More erratic
         if (this.particles) {
           this.particles.addExplosion(this.ball.x, this.ball.y, 18, '#FF00FF', 'subtle');
         }
         break;
       case 'shield':
         this.player1.shielded = true;
-        this.shieldTimer = 900; // 15 seconds of shield
+        this.shieldTimer = 1500; // 25 seconds of shield
         if (this.particles) {
           this.particles.addExplosion(this.player1.x + this.player1.width/2, this.player1.y, 12, '#00FFFF', 'subtle');
         }
@@ -1012,7 +1013,7 @@ export class PongGame extends BaseGame {
 
   private activateChainReaction() {
     // Create multiple explosions in sequence
-    this.chainReactionTimer = 120; // 2 seconds
+    this.chainReactionTimer = 200; // ~3 seconds
     
     // Initial explosion at ball position
     if (this.particles) {
@@ -1050,7 +1051,7 @@ export class PongGame extends BaseGame {
 
   private activateShockwave() {
     // Create expanding shockwave effect
-    this.shockwaveTimer = 90; // 1.5 seconds
+    this.shockwaveTimer = 150; // 2.5 seconds
     
     // Central explosion
     if (this.particles) {
@@ -1111,10 +1112,10 @@ export class PongGame extends BaseGame {
     const ballDistance = Math.sqrt(ballDx * ballDx + ballDy * ballDy);
 
     if (ballDistance > 0) {
-      const pullForce = 12; // Very strong pull toward center
+      const pullForce = 7.2; // Very strong pull toward center
       this.ball.dx += (ballDx / ballDistance) * pullForce;
       this.ball.dy += (ballDy / ballDistance) * pullForce;
-      this.ball.speed = Math.min(25, this.ball.speed + 3);
+      this.ball.speed = Math.min(15, this.ball.speed + 1.8);
     }
 
     // Visual gravity well effect
@@ -1144,9 +1145,9 @@ export class PongGame extends BaseGame {
   }
 
   private activateLaserPowerup() {
-    // Activate laser powerup for 10 seconds
+    // Activate laser powerup for ~17 seconds
     this.laserPowerupActive = true;
-    this.laserPowerupDuration = 600; // 10 seconds at 60fps
+    this.laserPowerupDuration = 1000; // ~17 seconds at 60fps
     this.laserCooldown = 0; // Reset cooldown
     
     // Visual feedback
@@ -1176,16 +1177,16 @@ export class PongGame extends BaseGame {
         y: laserY,
         dx: dx / distance,
         dy: dy / distance,
-        speed: 15,
+        speed: 9,
         width: 4,
         height: 2,
         active: true,
         timer: 0,
-        maxTimer: 120 // 2 seconds max lifetime
+        maxTimer: 200 // ~3 seconds max lifetime
       };
       
       this.lasers.push(laser);
-      this.laserCooldown = 30; // 0.5 second cooldown
+      this.laserCooldown = 50; // ~0.8 second cooldown
       
       // Visual and audio feedback
       this.particles?.addExplosion(laserX, laserY, 15, '#FF00FF', 'subtle');
@@ -1248,7 +1249,7 @@ export class PongGame extends BaseGame {
 
   private destroyPaddle(paddle: Paddle) {
     paddle.destroyed = true;
-    paddle.regenerationTimer = 300; // 5 seconds to regenerate
+    paddle.regenerationTimer = 500; // ~8 seconds to regenerate
     
     // Massive explosion effect
     this.particles?.addExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, 50, '#FF0000', 'epic');
@@ -1333,7 +1334,7 @@ export class PongGame extends BaseGame {
   private drawPowerups() {
     // Draw explosion powerups
     this.explosionPowerups.forEach(powerup => {
-      const alpha = powerup.timer / 300; // Fade out over time
+      const alpha = powerup.timer / 500; // Fade out over time
       const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
       
       this.ctx.save();
@@ -1393,7 +1394,7 @@ export class PongGame extends BaseGame {
     // Draw active powerup effects
     if (this.chainReactionTimer > 0) {
       this.ctx.save();
-      this.ctx.globalAlpha = this.chainReactionTimer / 120;
+      this.ctx.globalAlpha = this.chainReactionTimer / 200;
       this.ctx.fillStyle = '#FF0000';
       this.ctx.font = '16px monospace';
       this.ctx.textAlign = 'center';
@@ -1404,7 +1405,7 @@ export class PongGame extends BaseGame {
     
     if (this.shockwaveTimer > 0) {
       this.ctx.save();
-      this.ctx.globalAlpha = this.shockwaveTimer / 90;
+      this.ctx.globalAlpha = this.shockwaveTimer / 150;
       this.ctx.fillStyle = '#00FFFF';
       this.ctx.font = '16px monospace';
       this.ctx.textAlign = 'center';
@@ -1461,7 +1462,7 @@ export class PongGame extends BaseGame {
       width: 30,
       height: 30,
       type: 'shield',
-      timer: 600,
+      timer: 1000,
       collected: false,
       intensity: 1,
       effect: 'glow'

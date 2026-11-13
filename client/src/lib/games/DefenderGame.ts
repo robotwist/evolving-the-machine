@@ -76,8 +76,8 @@ export class DefenderGame extends BaseGame {
     narcissusStage: 0 // 0-5, how much AI mirrors the user
   };
   private playerShootCooldown = 0;
-  private kamikazeTimer = 0; // Timer for kamikaze bombers (10 seconds = 600 frames)
-  private kamikazeInterval = 600; // 10 seconds in frames
+  private kamikazeTimer = 0; // Timer for kamikaze bombers (~16.7 seconds = 1000 frames)
+  private kamikazeInterval = 1000; // ~16.7 seconds in frames
   // Particle system for effects
   private particles: ParticleSystem | null = null;
   // Ambient whispers (WebAudio)
@@ -144,13 +144,13 @@ export class DefenderGame extends BaseGame {
           y: y
         },
         velocity: {
-          x: (Math.random() - 0.5) * 2 * speedMultiplier, // Faster movement
+          x: (Math.random() - 0.5) * 1.2 * speedMultiplier, // Faster movement
           y: 0
         },
         size: { x: 25, y: 15 },
         alive: true,
         type: isBomber ? 'bomber' : 'invader',
-        shootTimer: Math.random() * (60 - this.wave * 5), // Faster shooting each wave
+        shootTimer: Math.random() * (100 - this.wave * 8), // Faster shooting each wave
         health: isBomber ? 150 + (this.wave * 20) : 75 + (this.wave * 10), // More health each wave
         maxHealth: isBomber ? 150 + (this.wave * 20) : 75 + (this.wave * 10),
         kamikazeMode: false,
@@ -238,7 +238,7 @@ export class DefenderGame extends BaseGame {
   private handleMovement() {
     if (!this.player) return; // Safety check for tests
 
-    const speed = 5;
+    const speed = 3;
 
     if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
       this.player.velocity.x = -speed;
@@ -247,11 +247,11 @@ export class DefenderGame extends BaseGame {
       this.player.velocity.x = speed;
       this.player.direction = 1;
     } else {
-      this.player.velocity.x *= 0.8; // Friction
+      this.player.velocity.x *= 0.875; // Friction
     }
 
     if ((this.keys.has('KeyW') || this.keys.has('ArrowUp')) && this.player.onGround) {
-      this.player.velocity.y = -12; // Increased jump height
+      this.player.velocity.y = -7.2; // Increased jump height
       this.player.onGround = false;
     }
 
@@ -271,7 +271,7 @@ export class DefenderGame extends BaseGame {
       // Check if we should shoot (limit fire rate)
       if (!this.playerShootCooldown || this.playerShootCooldown <= 0) {
         this.shootPlayerBullet();
-        this.playerShootCooldown = 10; // 10 frame cooldown
+        this.playerShootCooldown = 17; // 17 frame cooldown
       }
     }
   }
@@ -281,7 +281,7 @@ export class DefenderGame extends BaseGame {
 
     // Apply gravity
     if (!this.player.onGround) {
-      this.player.velocity.y += 0.3;
+      this.player.velocity.y += 0.108;
     }
 
     // Update position
@@ -316,7 +316,7 @@ export class DefenderGame extends BaseGame {
     enemy.shootTimer--;
     if (enemy.shootTimer <= 0) {
       this.shootEnemyBullet(enemy);
-      enemy.shootTimer = 60 + Math.random() * 60;
+      enemy.shootTimer = 100 + Math.random() * 100;
     }
 
     // Bombers try to pick up civilians
@@ -336,9 +336,9 @@ export class DefenderGame extends BaseGame {
     if (nearestEnemy && this.getDistance(civilian.position, nearestEnemy.position) < 100) {
       // Run away from enemy
       const direction = civilian.position.x < nearestEnemy.position.x ? -1 : 1;
-      civilian.velocity.x = direction * 2;
+      civilian.velocity.x = direction * 1.2;
     } else {
-      civilian.velocity.x *= 0.9; // Slow down
+      civilian.velocity.x *= 0.939; // Slow down
     }
 
     civilian.position.x += civilian.velocity.x;
@@ -352,15 +352,15 @@ export class DefenderGame extends BaseGame {
     }
     
     // Calculate bullet direction based on player state
-    let bulletDx = this.player.direction * 8;
+    let bulletDx = this.player.direction * 4.8;
     let bulletDy = 0;
 
     // If player is jumping, give bullets upward trajectory
     if (!this.player.onGround && this.player.velocity.y < 0) {
-      bulletDy = -4; // Slight upward angle when jumping
+      bulletDy = -2.4; // Slight upward angle when jumping
     } else if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
       // If W/Up is pressed, shoot upward
-      bulletDy = -6;
+      bulletDy = -3.6;
       bulletDx *= 0.7; // Reduce horizontal speed for upward shots
     }
 
@@ -373,17 +373,17 @@ export class DefenderGame extends BaseGame {
       size: { x: 4, y: 2 },
       alive: true,
       owner: 'player',
-      lifetime: 120,
+      lifetime: 200,
       damage: 25
     };
     
     this.playerBullets.push(bullet);
-    this.playerShootCooldown = 5; // Set cooldown after shooting
+    this.playerShootCooldown = 8; // Set cooldown after shooting
   }
 
   private shootEnemyBullet(enemy: Enemy) {
     // Progressive difficulty: faster projectiles each wave
-    const bulletSpeed = 3 + (this.wave * 0.5); // Faster bullets each wave
+    const bulletSpeed = 1.8 + (this.wave * 0.3); // Faster bullets each wave
     const bulletDamage = 15 + (this.wave * 2); // More damage each wave
     
     const bullet: Projectile = {
@@ -392,7 +392,7 @@ export class DefenderGame extends BaseGame {
       size: { x: 3, y: 6 },
       alive: true,
       owner: 'enemy',
-      lifetime: 200,
+      lifetime: 333,
       damage: bulletDamage
     };
     
@@ -411,16 +411,16 @@ export class DefenderGame extends BaseGame {
         x: this.player.position.x,
         y: this.player.position.y - 10 // Start slightly above player
       },
-      velocity: { x: 0, y: -8 }, // Straight up
+      velocity: { x: 0, y: -4.8 }, // Straight up
       size: { x: 3, y: 8 }, // Taller bullet for vertical shots
       alive: true,
       owner: 'player',
-      lifetime: 150, // Longer lifetime for vertical shots
+      lifetime: 250, // Longer lifetime for vertical shots
       damage: 30 // More damage for vertical shots
     };
     
     this.playerBullets.push(bullet);
-    this.playerShootCooldown = 8; // Slightly longer cooldown for vertical shots
+    this.playerShootCooldown = 13; // Slightly longer cooldown for vertical shots
   }
 
   private updateProjectiles() {
@@ -450,14 +450,14 @@ export class DefenderGame extends BaseGame {
 
   private updatePowerups() {
     // Spawn shield powerup occasionally
-    if (Math.random() < 0.002 && this.powerups.length === 0) {
+    if (Math.random() < 0.0012 && this.powerups.length === 0) {
         this.powerups.push({
             position: { x: Math.random() * this.worldWidth, y: this.height / 2 },
             velocity: { x: 0, y: 0 },
             size: { x: 20, y: 20 },
             alive: true,
             type: 'shield',
-            lifetime: 600, // 10 seconds
+            lifetime: 1000, // ~16.7 seconds
         });
     }
 
@@ -482,7 +482,7 @@ export class DefenderGame extends BaseGame {
     // Update kamikaze timer
     this.kamikazeTimer++;
     
-    // Every 10 seconds, convert an existing enemy to kamikaze
+    // Every ~16.7 seconds, convert an existing enemy to kamikaze
     if (this.kamikazeTimer >= this.kamikazeInterval) {
       this.kamikazeTimer = 0;
       this.createKamikazeBomber();
@@ -505,7 +505,7 @@ export class DefenderGame extends BaseGame {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance > 0) {
-      const speed = 4 + (this.wave * 0.5); // Faster dive each wave
+      const speed = 2.4 + (this.wave * 0.3); // Faster dive each wave
       enemy.velocity.x = (dx / distance) * speed;
       enemy.velocity.y = (dy / distance) * speed;
     }

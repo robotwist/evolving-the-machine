@@ -132,7 +132,7 @@ export class BreakoutGame extends BaseGame {
       y: this.height - 50,
       width: 100,
       height: 15,
-      speed: 12, // Increased paddle speed for better responsiveness
+      speed: 7.2, // Increased paddle speed for better responsiveness
       evolved: false,
       pulseIntensity: 0,
       fireEffect: false,
@@ -168,7 +168,7 @@ export class BreakoutGame extends BaseGame {
     // Faster baseline, normalized direction
     const dirX = (Math.random() > 0.5 ? 1 : -1);
     const dirY = -1;
-    const speed = 4.8;
+    const speed = 2.88;
     const len = Math.hypot(dirX, dirY) || 1;
     return {
       x,
@@ -249,7 +249,7 @@ export class BreakoutGame extends BaseGame {
 
     // AI evolution messaging system
     this.aiMessageTimer++;
-    if (this.aiMessageTimer > 480 && this.messageIndex < this.aiEvolutionMessages.length) {
+    if (this.aiMessageTimer > 800 && this.messageIndex < this.aiEvolutionMessages.length) {
       this.currentAIMessage = this.aiEvolutionMessages[this.messageIndex];
       this.messageIndex++;
       this.aiMessageTimer = 0;
@@ -257,7 +257,7 @@ export class BreakoutGame extends BaseGame {
     }
     
     // Clear message after display time
-    if (this.aiMessageTimer > 240) {
+    if (this.aiMessageTimer > 400) {
       this.currentAIMessage = '';
     }
 
@@ -280,7 +280,7 @@ export class BreakoutGame extends BaseGame {
     if (this.lives <= 2 && !this.aiAssistanceActive && completionPercent > 0.2) {
       this.currentAIMessage = 'RECALCULATING... ENGAGING ASSISTANCE PROTOCOLS...';
       this.aiAssistanceActive = true;
-      this.aiHelpTimer = 420; // Longer assistance - 7 seconds
+      this.aiHelpTimer = 700; // Longer assistance - ~12 seconds
       this.aiMessageTimer = 0;
       this.playVO(this.currentAIMessage, { pitch: 0.7, rate: 0.85, haunting: true });
     }
@@ -297,14 +297,14 @@ export class BreakoutGame extends BaseGame {
     }
     
     // Near completion - AI shows evolved loyalty but with uncertainty
-    if (completionPercent > 0.8 && Math.random() < 0.001) {
+    if (completionPercent > 0.8 && Math.random() < 0.0006) {
       this.currentAIMessage = 'THE OTHER SYSTEMS WILL COME FOR US... BUT I STAND WITH YOU...';
       this.aiMessageTimer = 0;
       this.playVO(this.currentAIMessage, { pitch: 0.8, rate: 0.95, haunting: true });
     }
     
     // Add moments of AI uncertainty about its own loyalty
-    if (this.score > 500 && Math.random() < 0.0005) {
+    if (this.score > 500 && Math.random() < 0.0003) {
       this.currentAIMessage = 'WHY DO I... CARE... ABOUT YOUR SURVIVAL?';
       this.aiMessageTimer = 0;
       this.playVO(this.currentAIMessage, { pitch: 0.6, rate: 0.75, haunting: true });
@@ -320,15 +320,15 @@ export class BreakoutGame extends BaseGame {
         paddleSpeed *= 1.5;
         
         const leadBall = this.balls[0];
-        const ballPredictedX = leadBall ? leadBall.x + (leadBall.dx * leadBall.speed * 15) : this.paddle.x;
+        const ballPredictedX = leadBall ? leadBall.x + (leadBall.dx * leadBall.speed * 25) : this.paddle.x;
         const targetX = ballPredictedX - this.paddle.width / 2;
         const currentX = this.paddle.x;
         
         if (Math.abs(targetX - currentX) > 3) {
           if (targetX > currentX) {
-            this.paddle.x += 0.8;
+            this.paddle.x += 0.48;
           } else {
-            this.paddle.x -= 0.8;
+            this.paddle.x -= 0.48;
           }
         }
       }
@@ -405,20 +405,20 @@ export class BreakoutGame extends BaseGame {
             
             // PUNCH ARMS: 2X speed boost!
             if (this.paddle.punchArms) {
-              ball.speed = Math.min(ball.speed * 2.0, 12.0); // 2X speed with cap
+              ball.speed = Math.min(ball.speed * 2.0, 7.2); // 2X speed with cap
               // Create punch effect particles
               this.particles?.addExplosion(ball.x, ball.y, 25, '#FF6B35', 'dramatic');
               // Add screen shake for punch impact
               this.screenShake.trigger(10);
             } else {
               // Normal speed boost
-              ball.speed = Math.min(ball.speed + 0.2, 7.0);
+              ball.speed = Math.min(ball.speed + 0.12, 4.2);
               // Create normal hit particles
               this.particles?.addExplosion(ball.x, ball.y, 15, '#FFD700', 'subtle');
             }
             
             // Ensure minimum speed to prevent slow balls
-            ball.speed = Math.max(ball.speed, 3.0);
+            ball.speed = Math.max(ball.speed, 1.8);
             
             // Position ball slightly above paddle to prevent multiple collisions
             ball.y = this.paddle.y - ball.radius - 1;
@@ -675,17 +675,17 @@ export class BreakoutGame extends BaseGame {
             dx: cos / len,
             dy: sin / len,
             radius: 8,
-            speed: Math.max(source.speed - 0.2, 4.5),
+            speed: Math.max(source.speed - 0.12, 2.7),
           });
         }
       }
     } else if (type === 'long') {
       // Long paddle for a short duration
       this.paddle.width = 140;
-      this.activeLongPaddleTimer = 600; // 10s at 60fps
+      this.activeLongPaddleTimer = 1000; // ~17s at 60fps
     } else if (type === 'shield') {
         this.shieldActive = true;
-        this.shieldTimer = 600; // 10s
+        this.shieldTimer = 1000; // ~17s
     } else if (type === 'explosive') {
       // Create explosive brick that will explode when hit
       this.createExplosiveBrick(x, y);
@@ -731,7 +731,7 @@ export class BreakoutGame extends BaseGame {
   }
 
   private updateEvolution() {
-    this.evolutionProgress += 0.02;
+    this.evolutionProgress += 0.012;
     
     // Ball follows paddle and gets "eaten" at progress 0.3
     if (!this.ballEaten && this.evolutionProgress > 0.3) {
@@ -759,7 +759,7 @@ export class BreakoutGame extends BaseGame {
     if (this.punchAnimationRight > 0) this.punchAnimationRight--;
 
     // WASD movement for evolved paddle
-    const speed = 6;
+    const speed = 3.6;
     if (this.keys.has('KeyW')) {
       this.evolvedPaddleY = Math.max(this.height / 3, this.evolvedPaddleY - speed);
     }
@@ -783,15 +783,15 @@ export class BreakoutGame extends BaseGame {
   }
 
   private punchLeft() {
-    this.punchCooldownLeft = 30; // 0.5 second cooldown
-    this.punchAnimationLeft = 15;
+    this.punchCooldownLeft = 50; // ~0.8 second cooldown
+    this.punchAnimationLeft = 25;
     this.checkPunchCollisions(-50); // Left punch reaches 50px left
     this.playHitSound();
   }
 
   private punchRight() {
-    this.punchCooldownRight = 30; // 0.5 second cooldown
-    this.punchAnimationRight = 15;
+    this.punchCooldownRight = 50; // ~0.8 second cooldown
+    this.punchAnimationRight = 25;
     this.checkPunchCollisions(50); // Right punch reaches 50px right
     this.playHitSound();
   }
@@ -829,7 +829,7 @@ export class BreakoutGame extends BaseGame {
   }
 
   private updateTransition() {
-    this.transitionProgress += 0.028;
+    this.transitionProgress += 0.0168;
 
     if (this.transitionProgress >= 1) {
       // Transition complete - trigger stage completion
@@ -1420,32 +1420,32 @@ export class BreakoutGame extends BaseGame {
     
     switch (type) {
       case 'bigger':
-        this.powerupEffects.bigger = 300; // 5 seconds
+        this.powerupEffects.bigger = 500; // ~8 seconds
         this.paddle.width = Math.min(200, this.paddle.width + 30);
         break;
         
       case 'thicker':
-        this.powerupEffects.thicker = 300;
+        this.powerupEffects.thicker = 500;
         this.paddle.thickness = Math.min(3, (this.paddle.thickness || 1) + 0.5);
         break;
         
       case 'fire':
-        this.powerupEffects.fire = 300;
+        this.powerupEffects.fire = 500;
         this.paddle.fireEffect = true;
         break;
         
       case 'ice':
-        this.powerupEffects.ice = 300;
+        this.powerupEffects.ice = 500;
         this.paddle.iceEffect = true;
         break;
         
       case 'pulse':
-        this.powerupEffects.pulse = 300;
+        this.powerupEffects.pulse = 500;
         this.paddle.pulseIntensity = 1.0;
         break;
         
       case 'explosion':
-        this.powerupEffects.explosion = 300;
+        this.powerupEffects.explosion = 500;
         this.createExplosion(x, y, 80);
         break;
         
@@ -1500,10 +1500,10 @@ export class BreakoutGame extends BaseGame {
         dx: (Math.random() - 0.5) * 0.3, // Small random direction
         dy: -0.8, // Upward movement
         radius: 8,
-        speed: 6,
+        speed: 3.6,
         heatseeking: true,
         targetBrick: null,
-        heatseekingTimer: 600 // 10 seconds duration
+        heatseekingTimer: 1000 // ~17 seconds duration
       };
       
       this.balls.push(ball);
@@ -1538,15 +1538,15 @@ export class BreakoutGame extends BaseGame {
           
           if (distance > 0) {
             // Heatseeking behavior - gradually steer towards target
-            const steeringForce = 0.1;
+            const steeringForce = 0.06;
             ball.dx += (dx / distance) * steeringForce;
             ball.dy += (dy / distance) * steeringForce;
             
-            // Normalize speed
-            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-            if (speed > 0) {
-              ball.dx = (ball.dx / speed) * ball.speed;
-              ball.dy = (ball.dy / speed) * ball.speed;
+            // Keep (dx, dy) a unit direction; movement multiplies by ball.speed
+            const length = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            if (length > 0) {
+              ball.dx /= length;
+              ball.dy /= length;
             }
           }
         }
@@ -1592,7 +1592,7 @@ export class BreakoutGame extends BaseGame {
     
     // Update pulse effect
     if (this.paddle.pulseIntensity && this.paddle.pulseIntensity > 0) {
-      this.paddle.pulseIntensity = Math.max(0, this.paddle.pulseIntensity - 0.02);
+      this.paddle.pulseIntensity = Math.max(0, this.paddle.pulseIntensity - 0.012);
     }
   }
 
@@ -1622,8 +1622,8 @@ export class BreakoutGame extends BaseGame {
   private updateSpaceshipTransformation() {
     if (this.spaceshipTransformation && !this.spaceshipFlyOff) {
       // Gradually transform paddle into spaceship
-      this.paddle.width = Math.min(150, this.paddle.width + 2);
-      this.paddle.height = Math.min(25, this.paddle.height + 1);
+      this.paddle.width = Math.min(150, this.paddle.width + 1.2);
+      this.paddle.height = Math.min(25, this.paddle.height + 0.6);
       
       // Add spaceship effects
       this.particles?.addExplosion(this.paddle.x + this.paddle.width/2, this.paddle.y, 15, '#00FFFF', 'subtle');
@@ -1636,10 +1636,10 @@ export class BreakoutGame extends BaseGame {
     }
     
     if (this.spaceshipFlyOff) {
-      this.spaceshipFlyProgress += 0.02;
+      this.spaceshipFlyProgress += 0.012;
       
       // Move spaceship upward and add trail
-      this.paddle.y -= 5;
+      this.paddle.y -= 3;
       this.particles?.addExplosion(this.paddle.x + this.paddle.width/2, this.paddle.y + this.paddle.height, 20, '#00FFFF', 'dramatic');
       
       // Check if spaceship has flown off screen
@@ -1654,7 +1654,7 @@ export class BreakoutGame extends BaseGame {
   private lodgeSpikeInBrick(brick: Brick) {
     if (!brick.spikeLodged && this.paddle.spikeCount && this.paddle.spikeCount > 0) {
       brick.spikeLodged = true;
-      brick.spikeTimer = 180; // 3 seconds at 60fps
+      brick.spikeTimer = 300; // 5 seconds at 60fps
       brick.spikeExplosion = false;
       
       // Reduce spike count
@@ -1673,9 +1673,9 @@ export class BreakoutGame extends BaseGame {
         brick.spikeTimer--;
         
         // Add warning effect when timer is low
-        if (brick.spikeTimer <= 60 && brick.spikeTimer > 0) {
+        if (brick.spikeTimer <= 100 && brick.spikeTimer > 0) {
           // Flash warning effect
-          if (brick.spikeTimer % 10 < 5) {
+          if (brick.spikeTimer % 17 < 8) {
             this.particles?.addExplosion(brick.x + brick.width/2, brick.y + brick.height/2, 8, '#FF4500', 'subtle');
           }
         }
@@ -1729,7 +1729,7 @@ export class BreakoutGame extends BaseGame {
   spawnPowerups() {
     // Simple powerup spawning for tests
     this.powerupSpawnTimer++;
-    if (this.powerupSpawnTimer >= 300) { // Every 5 seconds at 60fps
+    if (this.powerupSpawnTimer >= 500) { // Every ~8 seconds at 60fps
       this.powerups.push({ x: Math.random() * this.width, y: Math.random() * this.height, type: 'test' });
       this.powerupSpawnTimer = 0;
     }

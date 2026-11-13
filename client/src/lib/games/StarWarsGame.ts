@@ -128,8 +128,8 @@ export class StarWarsGame extends BaseGame {
       shield: 100,
       weaponCooldown: 0,
       alive: true,
-      thrust: 0.3,
-      maxSpeed: 8
+      thrust: 0.18,
+      maxSpeed: 4.8
     };
 
     // Create starfield
@@ -161,7 +161,7 @@ export class StarWarsGame extends BaseGame {
       this.stars.push({
         x: Math.random() * this.width,
         y: Math.random() * this.height,
-        speed: 1 + Math.random() * 3
+        speed: 0.6 + Math.random() * 1.8
       });
     }
   }
@@ -198,7 +198,7 @@ export class StarWarsGame extends BaseGame {
         health: formation.type === 'bomber' ? 30 : formation.type === 'interceptor' ? 15 : 20,
         maxHealth: formation.type === 'bomber' ? 30 : formation.type === 'interceptor' ? 15 : 20,
         type: formation.type as 'fighter' | 'interceptor' | 'bomber',
-        shootCooldown: Math.random() * 60,
+        shootCooldown: Math.random() * 100,
         movePattern: index % 3,
         patternTimer: 0,
         alive: true
@@ -258,15 +258,15 @@ export class StarWarsGame extends BaseGame {
     this.player.position.y += this.player.velocity.y;
     
     // Apply friction to velocity for smooth movement
-    this.player.velocity.x *= 0.92;
-    this.player.velocity.y *= 0.92;
+    this.player.velocity.x *= 0.951;
+    this.player.velocity.y *= 0.951;
     
     // Smooth rotation towards target
     const rotationDiff = this.player.targetRotation - this.player.rotation;
     const normalizedDiff = ((rotationDiff % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const shortestRotation = normalizedDiff > Math.PI ? normalizedDiff - Math.PI * 2 : normalizedDiff;
     
-    this.player.rotation += shortestRotation * 0.15;
+    this.player.rotation += shortestRotation * 0.093;
     
     // Normalize rotation to 0-2π range
     this.player.rotation = ((this.player.rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
@@ -278,7 +278,7 @@ export class StarWarsGame extends BaseGame {
     
     // Shield regeneration
     if (this.player.shield < 100) {
-      this.player.shield += 0.2;
+      this.player.shield += 0.12;
     }
     
     // Keep player on screen
@@ -295,13 +295,13 @@ export class StarWarsGame extends BaseGame {
       // Different movement patterns
       switch (enemy.movePattern) {
         case 0: // Weaving pattern
-          enemy.velocity.x = Math.sin(enemy.patternTimer * 0.02) * 2;
-          enemy.velocity.y = 1;
+          enemy.velocity.x = Math.sin(enemy.patternTimer * 0.012) * 1.2;
+          enemy.velocity.y = 0.6;
           break;
         case 1: { // Circular pattern
           const _radius = 60;
-          enemy.velocity.x = Math.cos(enemy.patternTimer * 0.03) * 1.5;
-          enemy.velocity.y = Math.sin(enemy.patternTimer * 0.03) * 1.5 + 0.5;
+          enemy.velocity.x = Math.cos(enemy.patternTimer * 0.018) * 0.9;
+          enemy.velocity.y = Math.sin(enemy.patternTimer * 0.018) * 0.9 + 0.3;
           break;
         }
         case 2: { // Aggressive dive
@@ -309,8 +309,8 @@ export class StarWarsGame extends BaseGame {
           const dy = this.player.position.y - enemy.position.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           if (distance > 0) {
-            enemy.velocity.x = (dx / distance) * 1.5;
-            enemy.velocity.y = (dy / distance) * 1.5;
+            enemy.velocity.x = (dx / distance) * 0.9;
+            enemy.velocity.y = (dy / distance) * 0.9;
           }
           break;
         }
@@ -323,7 +323,7 @@ export class StarWarsGame extends BaseGame {
       enemy.shootCooldown--;
       if (enemy.shootCooldown <= 0) {
         this.enemyShoot(enemy);
-        enemy.shootCooldown = 60 + Math.random() * 120;
+        enemy.shootCooldown = 100 + Math.random() * 200;
       }
       
       // Remove ships that go off screen
@@ -337,7 +337,7 @@ export class StarWarsGame extends BaseGame {
   private startStarDestroyerPhase() {
     this.phase = 'star-destroyer';
     this.transitioning = true;
-    this.transitionTimer = 120; // 2 seconds
+    this.transitionTimer = 200; // ~3.3 seconds
   }
 
   private updateStarDestroyer() {
@@ -345,19 +345,19 @@ export class StarWarsGame extends BaseGame {
     
     // Move command vessel into position
     if (this.starDestroyer.position.y < 100) {
-      this.starDestroyer.position.y += 1;
+      this.starDestroyer.position.y += 0.6;
     }
     
     // Shooting pattern
     this.starDestroyer.shootCooldown--;
     if (this.starDestroyer.shootCooldown <= 0) {
       this.starDestroyerShoot();
-      this.starDestroyer.shootCooldown = 40;
+      this.starDestroyer.shootCooldown = 67;
     }
     
     // Special attacks
     this.starDestroyer.specialAttackTimer++;
-    if (this.starDestroyer.specialAttackTimer >= 300) { // Every 5 seconds
+    if (this.starDestroyer.specialAttackTimer >= 500) { // Every ~8.3 seconds
       this.starDestroyerSpecialAttack();
       this.starDestroyer.specialAttackTimer = 0;
     }
@@ -374,7 +374,7 @@ export class StarWarsGame extends BaseGame {
 
   private updateVictory() {
     this.victoryTimer++;
-    if (this.victoryTimer >= 300) { // 5 seconds
+    if (this.victoryTimer >= 500) { // ~8.3 seconds
       this.onStageComplete?.();
     }
   }
@@ -395,8 +395,8 @@ export class StarWarsGame extends BaseGame {
       const bullet: Bullet = {
         position: { x: enemy.position.x, y: enemy.position.y + enemy.size },
         velocity: { 
-          x: (dx / distance) * 4, 
-          y: (dy / distance) * 4 
+          x: (dx / distance) * 2.4, 
+          y: (dy / distance) * 2.4 
         },
         owner: 'enemy',
         size: 3,
@@ -429,8 +429,8 @@ export class StarWarsGame extends BaseGame {
             y: this.starDestroyer.position.y + pos.y 
           },
           velocity: { 
-            x: (dx / distance) * 5, 
-            y: (dy / distance) * 5 
+            x: (dx / distance) * 3, 
+            y: (dy / distance) * 3 
           },
           owner: 'boss',
           size: 5,
@@ -450,8 +450,8 @@ export class StarWarsGame extends BaseGame {
       const bullet: Bullet = {
         position: { x: this.starDestroyer.position.x, y: this.starDestroyer.position.y + 40 },
         velocity: { 
-          x: Math.cos(angle) * 3, 
-          y: Math.sin(angle) * 3 + 2 
+          x: Math.cos(angle) * 1.8, 
+          y: Math.sin(angle) * 1.8 + 1.2 
         },
         owner: 'boss',
         size: 4,
@@ -473,7 +473,7 @@ export class StarWarsGame extends BaseGame {
 
         if (distance > 0) {
           // Homing acceleration (gradually steer toward target)
-          const homingForce = 0.3;
+          const homingForce = 0.18;
           const targetAngle = Math.atan2(dy, dx);
           const currentAngle = Math.atan2(bullet.velocity.y, bullet.velocity.x);
 
@@ -596,9 +596,9 @@ export class StarWarsGame extends BaseGame {
   }
 
   private spawnPowerups() {
-    // Spawn a powerup every ~6-10 seconds during combat
+    // Spawn a powerup every ~10-17 seconds during combat
     this.powerupSpawnTimer++;
-    const interval = 360 + Math.floor(Math.random() * 240); // More frequent spawning
+    const interval = 600 + Math.floor(Math.random() * 400); // More frequent spawning
     if (this.powerupSpawnTimer >= interval) {
       this.powerupSpawnTimer = 0;
 
@@ -617,7 +617,7 @@ export class StarWarsGame extends BaseGame {
         position: { x: Math.random() * (this.width - 80) + 40, y: Math.random() * (this.height - 160) + 80 },
         type,
         radius: 10,
-        ttl: 600
+        ttl: 1000
       });
     }
   }
@@ -633,8 +633,8 @@ export class StarWarsGame extends BaseGame {
     if (this.gravitronTimer > 0) this.gravitronTimer--;
 
     // Apply speed boost effect
-    const baseMax = 8;
-    this.player.maxSpeed = this.speedBoostTimer > 0 ? 12 : baseMax;
+    const baseMax = 4.8;
+    this.player.maxSpeed = this.speedBoostTimer > 0 ? 7.2 : baseMax;
 
     // Powerup TTL and collection
     for (let i = this.powerups.length - 1; i >= 0; i--) {
@@ -658,22 +658,22 @@ export class StarWarsGame extends BaseGame {
         this.player.shield = Math.min(100, this.player.shield + 40);
         break;
       case 'rapid':
-        this.rapidFireTimer = 600; // 10s
+        this.rapidFireTimer = 1000; // ~16.7s
         break;
       case 'spread':
-        this.spreadTimer = 600;
+        this.spreadTimer = 1000;
         break;
       case 'speed':
-        this.speedBoostTimer = 600;
+        this.speedBoostTimer = 1000;
         break;
       case 'invincible':
-        this.invincibleTimer = 240; // 4s
+        this.invincibleTimer = 400; // ~6.7s
         break;
       case 'guided':
-        this.guidedMissileTimer = 480; // 8s
+        this.guidedMissileTimer = 800; // ~13.3s
         break;
       case 'triple':
-        this.tripleShotTimer = 600; // 10s
+        this.tripleShotTimer = 1000; // ~16.7s
         break;
       case 'gravitron':
         this.gravitronTimer = 1; // Instant effect
@@ -807,7 +807,7 @@ export class StarWarsGame extends BaseGame {
     this.powerups.forEach(p => {
       this.ctx.save();
       this.ctx.translate(p.position.x, p.position.y);
-      const pulse = (Math.sin(this.gameTimer * 0.1) + 1) * 0.5;
+      const pulse = (Math.sin(this.gameTimer * 0.06) + 1) * 0.5;
       switch (p.type) {
         case 'shield': this.ctx.fillStyle = `rgba(0,200,255,${0.6 + 0.4 * pulse})`; break;
         case 'rapid': this.ctx.fillStyle = `rgba(0,255,0,${0.6 + 0.4 * pulse})`; break;
@@ -1161,7 +1161,7 @@ export class StarWarsGame extends BaseGame {
   }
 
   private drawTransition() {
-    const alpha = 1 - (this.transitionTimer / 120);
+    const alpha = 1 - (this.transitionTimer / 200);
     this.ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.7})`;
     this.ctx.fillRect(0, 0, this.width, this.height);
     
@@ -1204,7 +1204,7 @@ export class StarWarsGame extends BaseGame {
         if (this.player.weaponCooldown <= 0) {
           this.shootPlayerBullet();
           // Rapid fire reduces cooldown
-          this.player.weaponCooldown = this.rapidFireTimer > 0 ? 5 : 10;
+          this.player.weaponCooldown = this.rapidFireTimer > 0 ? 8 : 17;
         }
         break;
     }
@@ -1222,7 +1222,7 @@ export class StarWarsGame extends BaseGame {
     const fireAtAngle = (angle: number, guided = false, target?: { x: number; y: number }) => {
       const noseX = this.player.position.x + Math.cos(angle) * this.player.size;
       const noseY = this.player.position.y + Math.sin(angle) * this.player.size;
-      const bulletSpeed = 24; // 2x faster than before (was 12)
+      const bulletSpeed = 14.4;
       const bullet: Bullet = {
         position: { x: noseX, y: noseY },
         velocity: { x: Math.cos(angle) * bulletSpeed, y: Math.sin(angle) * bulletSpeed },
@@ -1233,7 +1233,7 @@ export class StarWarsGame extends BaseGame {
         trail: [],
         guided,
         target,
-        lifetime: guided ? 300 : undefined // Guided missiles live longer
+        lifetime: guided ? 500 : undefined // Guided missiles live longer
       };
       this.bullets.push(bullet);
     };
@@ -1324,7 +1324,7 @@ export class StarWarsGame extends BaseGame {
       if (this.player.weaponCooldown <= 0) {
         this.shootPlayerBullet();
         // Reduced cooldown for better responsiveness on mobile
-        this.player.weaponCooldown = this.rapidFireTimer > 0 ? 3 : 6;
+        this.player.weaponCooldown = this.rapidFireTimer > 0 ? 5 : 10;
 
         this.vibrate('hit');
       }
@@ -1416,7 +1416,7 @@ export class StarWarsGame extends BaseGame {
     
     if (this.player.weaponCooldown <= 0) {
       this.shootPlayerBullet();
-      this.player.weaponCooldown = 10;
+      this.player.weaponCooldown = 17;
     }
   }
 

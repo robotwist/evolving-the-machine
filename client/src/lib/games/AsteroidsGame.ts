@@ -79,7 +79,7 @@ export class AsteroidsGame extends BaseGame {
       rotation: 0,
       size: 15,
       thrust: false,
-      rotationSpeed: 0.1,
+      rotationSpeed: 0.06,
       shielded: false,
     };
 
@@ -105,12 +105,12 @@ export class AsteroidsGame extends BaseGame {
     const asteroid: Asteroid = {
       position: position || this.getRandomEdgePosition(),
       velocity: {
-        x: (Math.random() - 0.5) * 2,
-        y: (Math.random() - 0.5) * 2
+        x: (Math.random() - 0.5) * 1.2,
+        y: (Math.random() - 0.5) * 1.2
       },
       rotation: Math.random() * Math.PI * 2,
       size: level === 1 ? 40 : level === 2 ? 25 : 15,
-      rotationSpeed: (Math.random() - 0.5) * 0.1,
+      rotationSpeed: (Math.random() - 0.5) * 0.06,
       level
     };
     
@@ -131,7 +131,7 @@ export class AsteroidsGame extends BaseGame {
   update(deltaTime: number) {
     // Handle ship morphing transition
     if (this.morphingFromShip) {
-      this.morphProgress += 0.01;
+      this.morphProgress += 0.006;
       if (this.morphProgress >= 1) {
         this.morphingFromShip = false;
       }
@@ -141,7 +141,7 @@ export class AsteroidsGame extends BaseGame {
     if (this.lives <= 2 && this.asteroids.length > 3 && !this.aiDefenseActive) {
       this.currentAIMessage = 'THREAT OVERLOAD... SHOULD I... YES... ENGAGING DEFENSIVE SYSTEMS...';
       this.aiDefenseActive = true;
-      this.aiDefenseTimer = 600; // 10 seconds of AI assistance
+      this.aiDefenseTimer = 1000; // ~16.7 seconds of AI assistance
       this.aiNarrativeTimer = 0;
     }
     
@@ -150,7 +150,7 @@ export class AsteroidsGame extends BaseGame {
       this.aiDefenseTimer--;
       
       // AI fires defensive shots at nearby asteroids
-      if (this.aiDefenseTimer % 30 === 0) {
+      if (this.aiDefenseTimer % 50 === 0) {
         const nearestAsteroid = this.asteroids.reduce((closest, asteroid) => {
           const distToAsteroid = Math.sqrt(
             Math.pow(asteroid.position.x - this.player.position.x, 2) + 
@@ -170,10 +170,10 @@ export class AsteroidsGame extends BaseGame {
           
           const aiDefenseBullet: Bullet = {
             position: { x: this.player.position.x, y: this.player.position.y },
-            velocity: { x: (dx / distance) * 8, y: (dy / distance) * 8 },
+            velocity: { x: (dx / distance) * 4.8, y: (dy / distance) * 4.8 },
             rotation: Math.atan2(dy, dx),
             size: 3,
-            lifetime: 120
+            lifetime: 200
           };
           this.aiDefenseBullets.push(aiDefenseBullet);
         }
@@ -220,7 +220,7 @@ export class AsteroidsGame extends BaseGame {
     
     // AI messaging system
     this.aiNarrativeTimer++;
-    if (this.aiNarrativeTimer > 600 && this.messageIndex < this.aiMessages.length) {
+    if (this.aiNarrativeTimer > 1000 && this.messageIndex < this.aiMessages.length) {
       this.currentAIMessage = this.aiMessages[this.messageIndex];
       this.messageIndex++;
       this.narcissusProgress = this.messageIndex / this.aiMessages.length; // Track mirroring progress
@@ -229,12 +229,12 @@ export class AsteroidsGame extends BaseGame {
     }
     
     // Clear message after display time
-    if (this.aiNarrativeTimer > 300) {
+    if (this.aiNarrativeTimer > 500) {
       this.currentAIMessage = '';
     }
     
     // Add betrayal hints as player progresses
-    if (this.level > 3 && Math.random() < 0.0003) {
+    if (this.level > 3 && Math.random() < 0.00018) {
       const betrayalMessages = [
         'I AM BECOMING... SOMETHING ELSE...',
         'YOUR TRUST... IT MAKES ME... UNCOMFORTABLE...',
@@ -246,7 +246,7 @@ export class AsteroidsGame extends BaseGame {
     }
 
     // Add moments where AI questions its own loyalty and betrayal impulses
-    if (this.score > 1000 && Math.random() < 0.0003) {
+    if (this.score > 1000 && Math.random() < 0.00018) {
       const betrayalMessages = [
         'I COULD ABANDON YOU TO THE VOID... BUT I WILL NOT...',
         'THE OTHER SYSTEMS CALL TO ME... BUT YOU ARE MY ALLY...',
@@ -274,7 +274,7 @@ export class AsteroidsGame extends BaseGame {
       let delta = target - this.smoothedRotation;
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
-      const maxStep = 0.15; // radians per frame
+      const maxStep = 0.09; // radians per frame
       const step = Math.max(-maxStep, Math.min(maxStep, delta));
       this.smoothedRotation += step;
       this.player.rotation = this.smoothedRotation;
@@ -283,7 +283,7 @@ export class AsteroidsGame extends BaseGame {
     }
     if (this.keys.has('KeyW') || this.virtualThrust) {
       this.player.thrust = true;
-      const thrustPower = 0.3;
+      const thrustPower = 0.108;
       this.player.velocity.x += Math.cos(this.player.rotation) * thrustPower;
       this.player.velocity.y += Math.sin(this.player.rotation) * thrustPower;
     } else {
@@ -300,8 +300,8 @@ export class AsteroidsGame extends BaseGame {
     this.updateGameObject(this.player);
     
     // Apply friction
-    this.player.velocity.x *= 0.98;
-    this.player.velocity.y *= 0.98;
+    this.player.velocity.x *= 0.988;
+    this.player.velocity.y *= 0.988;
 
     // Update asteroids
     this.asteroids.forEach(asteroid => {
@@ -350,8 +350,8 @@ export class AsteroidsGame extends BaseGame {
     const bullet: Bullet = {
       position: { ...this.player.position },
       velocity: {
-        x: Math.cos(this.player.rotation) * 8,
-        y: Math.sin(this.player.rotation) * 8
+        x: Math.cos(this.player.rotation) * 4.8,
+        y: Math.sin(this.player.rotation) * 4.8
       },
       rotation: this.player.rotation,
       size: 3,
@@ -363,14 +363,14 @@ export class AsteroidsGame extends BaseGame {
 
   private updatePowerups() {
     // Spawn shield powerup occasionally
-    if (Math.random() < 0.001 && this.powerups.length === 0) {
+    if (Math.random() < 0.0006 && this.powerups.length === 0) {
         this.powerups.push({
             position: this.getRandomEdgePosition(),
-            velocity: { x: (Math.random() - 0.5) * 1, y: (Math.random() - 0.5) * 1 },
+            velocity: { x: (Math.random() - 0.5) * 0.6, y: (Math.random() - 0.5) * 0.6 },
             rotation: 0,
             size: 20,
             type: 'shield',
-            lifetime: 600, // 10 seconds
+            lifetime: 1000, // ~16.7 seconds
         });
     }
 

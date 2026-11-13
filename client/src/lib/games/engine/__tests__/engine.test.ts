@@ -8,6 +8,7 @@ import { createMockCanvasContext } from '../../../utils/__tests__/testUtils';
 type SettingsGlobals = Record<string, unknown>;
 
 const SETTING_KEYS = [
+  '__CULTURAL_ARCADE_FPS_CAP__',
   '__CULTURAL_ARCADE_SCREEN_SHAKE__',
   '__CULTURAL_ARCADE_REDUCE_MOTION__',
   '__CULTURAL_ARCADE_QUALITY__',
@@ -21,9 +22,23 @@ function setGlobals(values: SettingsGlobals) {
 
 class TestGame extends BaseGame {
   inputs: string[] = [];
+  updates = 0;
+  renders = 0;
   init() {}
-  update() {}
-  render() {}
+  update() {
+    this.updates++;
+  }
+  render() {
+    this.renders++;
+  }
+  /** Feeds a sequence of frame gaps through the loop's timing logic. */
+  runFrames(gapsMs: number[]) {
+    let now = 0;
+    for (const gap of gapsMs) {
+      now += gap;
+      this.advance(gap, now);
+    }
+  }
   handleInput(event: KeyboardEvent) {
     this.inputs.push(event.code);
   }
@@ -98,6 +113,46 @@ describe('BaseGame keyboard input', () => {
     game.teardown();
     press('KeyA');
     expect(game.inputs).toEqual([]);
+  });
+});
+
+describe('BaseGame fixed-timestep loop', () => {
+  let game: TestGame;
+
+  beforeEach(() => {
+    game = new TestGame(createMockCanvasContext() as CanvasRenderingContext2D, 800, 600);
+  });
+
+  afterEach(() => game.teardown());
+
+  test('runs exactly one update per frame on a jittery 60 Hz display', () => {
+    const gaps = Array.from({ length: 120 }, (_, i) => (i % 2 ? 16.5 : 16.8));
+    game.runFrames(gaps);
+    expect(game.updates).toBe(120);
+    expect(game.renders).toBe(120);
+  });
+
+  test('keeps 60 updates per second on a 120 Hz display', () => {
+    game.runFrames(Array(240).fill(1000 / 120));
+    expect(game.updates).toBe(120);
+  });
+
+  test('catches up after a dropped frame', () => {
+    game.runFrames([1000 / 60, (1000 / 60) * 2, 1000 / 60]);
+    expect(game.updates).toBe(4);
+    expect(game.renders).toBe(3);
+  });
+
+  test('drops the backlog after a long stall instead of fast-forwarding', () => {
+    game.runFrames([2000, 1000 / 60]);
+    expect(game.updates).toBe(6);
+  });
+
+  test('the FPS cap limits rendering but not simulation speed', () => {
+    setGlobals({ __CULTURAL_ARCADE_FPS_CAP__: 30 });
+    game.runFrames(Array(60).fill(1000 / 60));
+    expect(game.updates).toBe(60);
+    expect(game.renders).toBe(30);
   });
 });
 

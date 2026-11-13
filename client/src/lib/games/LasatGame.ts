@@ -101,7 +101,7 @@ export class LasatGame extends BaseGame {
   private trenchElements: TrenchElement[] = [];
   private starWarsTrenchMode = false;
   private exhaustPortTargeted = false;
-  private gracePeriod = 180; // 3 seconds of invulnerability
+  private gracePeriod = 300; // 5 seconds of invulnerability
   private waveCompleteTimer = 0; // Timer for wave completion delay
   private bossActive = false; // Whether Sinistar boss is active
   private bossPhase = 1; // Current boss phase (1-3)
@@ -226,7 +226,7 @@ export class LasatGame extends BaseGame {
         height: 50,
         type: 'tower',
         targetable: true,
-        shootCooldown: 60 + Math.random() * 60
+        shootCooldown: 100 + Math.random() * 100
       });
     }
     
@@ -287,7 +287,7 @@ export class LasatGame extends BaseGame {
     this.aiNarrative.timer++;
     
     // Progress through betrayal messages
-    if (this.aiNarrative.timer % 480 === 0 && this.aiNarrative.phase < this.aiNarrative.messages.length) {
+    if (this.aiNarrative.timer % 800 === 0 && this.aiNarrative.phase < this.aiNarrative.messages.length) {
       this.aiNarrative.currentMessage = this.aiNarrative.messages[this.aiNarrative.phase];
       this.aiNarrative.phase++;
       
@@ -300,7 +300,7 @@ export class LasatGame extends BaseGame {
     }
     
     // Clear message after display time
-    if (this.aiNarrative.timer % 480 > 240) {
+    if (this.aiNarrative.timer % 800 > 400) {
       this.aiNarrative.currentMessage = '';
     }
   }
@@ -327,8 +327,8 @@ export class LasatGame extends BaseGame {
       maxHealth: type === 'mothership' ? 500 : type === 'destroyer' ? 300 : 100,
       alive: true,
       type,
-      shootTimer: Math.random() * 40,
-      specialAttackTimer: 80 + Math.random() * 120,
+      shootTimer: Math.random() * 67,
+      specialAttackTimer: 133 + Math.random() * 200,
       behavior: ['aggressive', 'berserker', 'aggressive'][Math.floor(Math.random() * 3)] as 'aggressive' | 'defensive' | 'berserker',
       rage: 0,
       enraged: false,
@@ -439,7 +439,7 @@ export class LasatGame extends BaseGame {
     this.checkCollisions();
 
     // Spawn power-ups occasionally
-    if (Math.random() < 0.005) {
+    if (Math.random() < 0.003) {
       this.spawnPowerUp();
     }
 
@@ -448,7 +448,7 @@ export class LasatGame extends BaseGame {
     if (aliveEnemies.length === 0) {
       if (this.waveCompleteTimer === 0) {
         // Start wave completion sequence
-        this.waveCompleteTimer = 180; // 3 seconds delay
+        this.waveCompleteTimer = 300; // 5 seconds delay
       } else {
         this.waveCompleteTimer--;
         if (this.waveCompleteTimer <= 0) {
@@ -472,7 +472,7 @@ export class LasatGame extends BaseGame {
     }
 
     // Regenerate energy
-    this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 0.5);
+    this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 0.3);
 
     // Update shield
     if (this.player.shieldActive) {
@@ -524,7 +524,7 @@ export class LasatGame extends BaseGame {
       // Show random enemy command
       const command = this.enemyCommands[Math.floor(Math.random() * this.enemyCommands.length)];
       this.showEnemyCommand(command);
-      this.enemyCommandTimer = 300 + Math.random() * 300; // 5-10 seconds between commands
+      this.enemyCommandTimer = 500 + Math.random() * 500; // ~8-17 seconds between commands
     }
   }
 
@@ -562,8 +562,8 @@ export class LasatGame extends BaseGame {
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance > 200) {
-      boss.velocity.x = (dx / distance) * 1; // Slow approach
-      boss.velocity.y = (dy / distance) * 1;
+      boss.velocity.x = (dx / distance) * 0.6; // Slow approach
+      boss.velocity.y = (dy / distance) * 0.6;
     } else {
       boss.velocity.x = 0;
       boss.velocity.y = 0;
@@ -573,14 +573,14 @@ export class LasatGame extends BaseGame {
     boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
     if (boss.spawnTimer <= 0) {
       this.spawnEnemy('fighter', 0);
-      boss.spawnTimer = 180; // Every 3 seconds
+      boss.spawnTimer = 300; // Every 5 seconds
     }
     
     // Slow shooting
     boss.shootTimer--;
     if (boss.shootTimer <= 0) {
       this.enemyShoot(boss);
-      boss.shootTimer = 120; // Every 2 seconds
+      boss.shootTimer = 200; // Every ~3.3 seconds
     }
   }
 
@@ -590,21 +590,21 @@ export class LasatGame extends BaseGame {
     const dy = this.player.position.y - boss.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    boss.velocity.x = (dx / distance) * 2; // Faster approach
-    boss.velocity.y = (dy / distance) * 2;
+    boss.velocity.x = (dx / distance) * 1.2; // Faster approach
+    boss.velocity.y = (dy / distance) * 1.2;
     
     // Spawn destroyers
     boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
     if (boss.spawnTimer <= 0) {
       this.spawnEnemy('destroyer', 0);
-      boss.spawnTimer = 300; // Every 5 seconds
+      boss.spawnTimer = 500; // Every ~8.3 seconds
     }
     
     // Faster shooting
     boss.shootTimer--;
     if (boss.shootTimer <= 0) {
       this.enemyShoot(boss);
-      boss.shootTimer = 60; // Every 1 second
+      boss.shootTimer = 100; // Every ~1.7 seconds
     }
   }
 
@@ -614,28 +614,28 @@ export class LasatGame extends BaseGame {
     const dy = this.player.position.y - boss.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    boss.velocity.x = (dx / distance) * 3 + (Math.random() - 0.5) * 2; // Erratic movement
-    boss.velocity.y = (dy / distance) * 3 + (Math.random() - 0.5) * 2;
+    boss.velocity.x = (dx / distance) * 1.8 + (Math.random() - 0.5) * 1.2; // Erratic movement
+    boss.velocity.y = (dy / distance) * 1.8 + (Math.random() - 0.5) * 1.2;
     
     // Spawn motherships
     boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
     if (boss.spawnTimer <= 0) {
       this.spawnEnemy('mothership', 0);
-      boss.spawnTimer = 600; // Every 10 seconds
+      boss.spawnTimer = 1000; // Every ~16.7 seconds
     }
     
     // Rapid shooting
     boss.shootTimer--;
     if (boss.shootTimer <= 0) {
       this.enemyShoot(boss);
-      boss.shootTimer = 30; // Every 0.5 seconds
+      boss.shootTimer = 50; // Every ~0.83 seconds
     }
     
     // Death Blossom attacks
     boss.deathBlossomCooldown = (boss.deathBlossomCooldown ?? 0) - 1;
     if (boss.deathBlossomCooldown <= 0) {
       this.bossDeathBlossom(boss);
-      boss.deathBlossomCooldown = 600; // Every 10 seconds
+      boss.deathBlossomCooldown = 1000; // Every ~16.7 seconds
     }
   }
 
@@ -646,8 +646,8 @@ export class LasatGame extends BaseGame {
       const projectile: Projectile = {
         position: { x: boss.position.x, y: boss.position.y },
         velocity: { 
-          x: Math.cos(radians) * 4, 
-          y: Math.sin(radians) * 4 
+          x: Math.cos(radians) * 2.4, 
+          y: Math.sin(radians) * 2.4 
         },
         size: 8,
         health: 1,
@@ -656,7 +656,7 @@ export class LasatGame extends BaseGame {
         owner: 'enemy',
         type: 'boss_death_blossom',
         damage: 30,
-        lifetime: 300
+        lifetime: 500
       };
       this.enemyProjectiles.push(projectile);
     }
@@ -665,7 +665,7 @@ export class LasatGame extends BaseGame {
   }
 
   private handleMovement() {
-    const speed = 6;
+    const speed = 3.6;
     
     // Gunstar Fighter controls (WASD + targeting)
     if (this.keys.has('KeyA')) {
@@ -673,7 +673,7 @@ export class LasatGame extends BaseGame {
     } else if (this.keys.has('KeyD')) {
       this.player.velocity.x = speed;
     } else {
-      this.player.velocity.x *= 0.85;
+      this.player.velocity.x *= 0.907;
     }
 
     if (this.keys.has('KeyW')) {
@@ -681,7 +681,7 @@ export class LasatGame extends BaseGame {
     } else if (this.keys.has('KeyS')) {
       this.player.velocity.y = speed;
     } else {
-      this.player.velocity.y *= 0.85;
+      this.player.velocity.y *= 0.907;
     }
 
     // Weapon systems
@@ -726,8 +726,8 @@ export class LasatGame extends BaseGame {
     }
     
     // Regenerate weapon energy
-    this.player.weaponEnergy.laser = Math.min(100, this.player.weaponEnergy.laser + 0.5);
-    this.player.weaponEnergy.ion = Math.min(100, this.player.weaponEnergy.ion + 0.2);
+    this.player.weaponEnergy.laser = Math.min(100, this.player.weaponEnergy.laser + 0.3);
+    this.player.weaponEnergy.ion = Math.min(100, this.player.weaponEnergy.ion + 0.12);
   }
 
   private updateTargeting() {
@@ -766,7 +766,7 @@ export class LasatGame extends BaseGame {
     
     const projectile: Projectile = {
       position: { ...this.player.position },
-      velocity: { x: 0, y: -15 },
+      velocity: { x: 0, y: -9 },
       size: 8,
       health: 1,
       maxHealth: 1,
@@ -774,7 +774,7 @@ export class LasatGame extends BaseGame {
       owner: 'player',
       type: 'ion_cannon',
       damage: 50,
-      lifetime: 120
+      lifetime: 200
     };
 
     this.playerProjectiles.push(projectile);
@@ -784,7 +784,7 @@ export class LasatGame extends BaseGame {
     if (!this.player.deathBlossomReady || this.player.deathBlossomCooldown > 0) return;
     
     this.player.deathBlossomReady = false;
-    this.player.deathBlossomCooldown = 1800; // 30 second cooldown
+    this.player.deathBlossomCooldown = 3000; // 50 second cooldown
     
     // Create energy burst that destroys all nearby enemies
     const burstRadius = 150;
@@ -821,7 +821,7 @@ export class LasatGame extends BaseGame {
                   if (distance > 0 && distance < 400) { // Only shoot if player is in range
                       const bullet: Projectile = {
                           position: { x: element.x + element.width / 2, y: element.y },
-                          velocity: { x: (dx / distance) * 5, y: (dy / distance) * 5 },
+                          velocity: { x: (dx / distance) * 3, y: (dy / distance) * 3 },
                           size: 4,
                           health: 1,
                           maxHealth: 1,
@@ -829,10 +829,10 @@ export class LasatGame extends BaseGame {
                           owner: 'enemy',
                           type: 'turret_shot',
                           damage: 10, // Increased damage for difficulty
-                          lifetime: 120
+                          lifetime: 200
                       };
                       this.enemyProjectiles.push(bullet);
-                      element.shootCooldown = 90 + Math.random() * 60; // Faster shooting
+                      element.shootCooldown = 150 + Math.random() * 100; // Faster shooting
                   }
               }
           }
@@ -877,14 +877,14 @@ export class LasatGame extends BaseGame {
     enemy.shootTimer--;
     if (enemy.shootTimer <= 0) {
       this.enemyShoot(enemy);
-      enemy.shootTimer = 45 + Math.random() * (enemy.enraged ? 15 : 45); // 0.75-1.5 seconds
+      enemy.shootTimer = 75 + Math.random() * (enemy.enraged ? 25 : 75); // 1.25-2.5 seconds
     }
 
     // Special attacks
     enemy.specialAttackTimer--;
     if (enemy.specialAttackTimer <= 0) {
       this.enemySpecialAttack(enemy);
-      enemy.specialAttackTimer = 180 + Math.random() * (enemy.enraged ? 100 : 300);
+      enemy.specialAttackTimer = 300 + Math.random() * (enemy.enraged ? 167 : 500);
     }
   }
 
@@ -899,8 +899,8 @@ export class LasatGame extends BaseGame {
       const formationAngle = enemy.formationPosition * Math.PI / 180;
       const swarmOffset = Math.sin(Date.now() * 0.003 + enemy.squadron) * 30;
       
-      enemy.velocity.x = Math.cos(formationAngle) * 2 + (dx / distance) * 1.5;
-      enemy.velocity.y = Math.sin(formationAngle) * 2 + (dy / distance) * 1.5 + swarmOffset * 0.1;
+      enemy.velocity.x = Math.cos(formationAngle) * 1.2 + (dx / distance) * 0.9;
+      enemy.velocity.y = Math.sin(formationAngle) * 1.2 + (dy / distance) * 0.9 + swarmOffset * 0.06;
     }
   }
 
@@ -912,8 +912,8 @@ export class LasatGame extends BaseGame {
     
     if (distance > 0) {
       // Heavy pursuit - slower but relentless
-      enemy.velocity.x = (dx / distance) * 1.2;
-      enemy.velocity.y = (dy / distance) * 1.2;
+      enemy.velocity.x = (dx / distance) * 0.72;
+      enemy.velocity.y = (dy / distance) * 0.72;
     }
   }
 
@@ -925,12 +925,12 @@ export class LasatGame extends BaseGame {
     
     if (distance > 0) {
       // Slow but steady approach
-      enemy.velocity.x = (dx / distance) * 0.8;
-      enemy.velocity.y = (dy / distance) * 0.8;
+      enemy.velocity.x = (dx / distance) * 0.48;
+      enemy.velocity.y = (dy / distance) * 0.48;
     }
     
     // Spawn fighters occasionally
-    if (Math.random() < 0.01) {
+    if (Math.random() < 0.006) {
       this.spawnEnemy('fighter', enemy.squadron);
     }
   }
@@ -941,7 +941,7 @@ export class LasatGame extends BaseGame {
     this.player.weaponEnergy.laser -= 5;
     
     // Enhanced bullets: 2x speed and quantity
-    const baseSpeed = 24; // 2x original speed (was 12)
+    const baseSpeed = 14.4; // 2x original speed
     const bulletCount = 2; // 2x quantity
     
     for (let i = 0; i < bulletCount; i++) {
@@ -949,7 +949,7 @@ export class LasatGame extends BaseGame {
       
       const projectile: Projectile = {
         position: { x: this.player.position.x + spread, y: this.player.position.y },
-        velocity: { x: spread * 0.3, y: -baseSpeed },
+        velocity: { x: spread * 0.18, y: -baseSpeed },
         size: 5,
         health: 1,
         maxHealth: 1,
@@ -957,7 +957,7 @@ export class LasatGame extends BaseGame {
         owner: 'player',
         type: 'laser',
         damage: 20,
-        lifetime: 100
+        lifetime: 167
       };
       
       this.playerProjectiles.push(projectile);
@@ -989,7 +989,7 @@ export class LasatGame extends BaseGame {
     // Create heat-seeking missile
     const missile: Projectile = {
       position: { x: this.player.position.x, y: this.player.position.y },
-      velocity: { x: 0, y: -8 },
+      velocity: { x: 0, y: -4.8 },
       size: 8,
       health: 1,
       maxHealth: 1,
@@ -997,7 +997,7 @@ export class LasatGame extends BaseGame {
       owner: 'player',
       type: 'laser',
       damage: 50,
-      lifetime: 200,
+      lifetime: 333,
       target: nearestEnemy // Add target for heat-seeking behavior
     };
     
@@ -1014,8 +1014,8 @@ export class LasatGame extends BaseGame {
       const projectile: Projectile = {
         position: { ...enemy.position },
         velocity: {
-          x: (dx / distance) * 4,
-          y: (dy / distance) * 4
+          x: (dx / distance) * 2.4,
+          y: (dy / distance) * 2.4
         },
         size: 6,
         health: 1,
@@ -1024,7 +1024,7 @@ export class LasatGame extends BaseGame {
         owner: 'enemy',
         type: enemy.type + '_shot',
         damage: enemy.type === 'sinistar_boss' ? 50 : enemy.type === 'mothership' ? 24 : enemy.type === 'destroyer' ? 16 : 10,
-        lifetime: 150
+        lifetime: 250
       };
       
       this.enemyProjectiles.push(projectile);
@@ -1040,8 +1040,8 @@ export class LasatGame extends BaseGame {
           const projectile: Projectile = {
             position: { ...enemy.position },
             velocity: {
-              x: Math.cos(angle) * 6,
-              y: Math.sin(angle) * 6
+              x: Math.cos(angle) * 3.6,
+              y: Math.sin(angle) * 3.6
             },
             size: 8,
             health: 1,
@@ -1050,7 +1050,7 @@ export class LasatGame extends BaseGame {
             owner: 'enemy',
             type: 'destroyer_blast',
             damage: 30,
-            lifetime: 80
+            lifetime: 133
           };
           
           this.enemyProjectiles.push(projectile);
@@ -1080,12 +1080,12 @@ export class LasatGame extends BaseGame {
         
         if (distance > 0) {
           // Gradually steer towards target
-          const steerStrength = 0.1;
+          const steerStrength = 0.036;
           proj.velocity.x += (dx / distance) * steerStrength;
           proj.velocity.y += (dy / distance) * steerStrength;
           
           // Limit max speed
-          const maxSpeed = 12;
+          const maxSpeed = 7.2;
           const speed = Math.sqrt(proj.velocity.x * proj.velocity.x + proj.velocity.y * proj.velocity.y);
           if (speed > maxSpeed) {
             proj.velocity.x = (proj.velocity.x / speed) * maxSpeed;
@@ -1126,7 +1126,7 @@ export class LasatGame extends BaseGame {
         y: Math.random() * (this.height - 40) + 20
       },
       type: types[Math.floor(Math.random() * types.length)],
-      lifetime: 600 // 10 seconds
+      lifetime: 1000 // ~16.7 seconds
     };
     
     this.powerUps.push(powerUp);
@@ -1160,7 +1160,7 @@ export class LasatGame extends BaseGame {
           
           if (enemy.rage >= 100 && !enemy.enraged) {
               enemy.enraged = true;
-              enemy.enrageTimer = 300; // 5 seconds
+              enemy.enrageTimer = 500; // ~8.3 seconds
               enemy.rage = 0;
               this.playStinger('boss_enrage');
           }
@@ -1195,7 +1195,7 @@ export class LasatGame extends BaseGame {
               this.player.health = this.player.maxHealth;
               this.player.position = { x: this.width / 2, y: this.height - 100 };
               this.player.velocity = { x: 0, y: 0 };
-              this.gracePeriod = 180; // 3 seconds invulnerability
+              this.gracePeriod = 300; // 5 seconds invulnerability
             }
           }
         }
@@ -1234,7 +1234,7 @@ export class LasatGame extends BaseGame {
       this.finaleSequence.starField.push({
         x: Math.random() * this.width,
         y: Math.random() * this.height,
-        speed: Math.random() * 3 + 1
+        speed: Math.random() * 1.8 + 0.6
       });
     }
     
@@ -1252,7 +1252,7 @@ export class LasatGame extends BaseGame {
       x: x + (Math.random() - 0.5) * 40, // Add some randomness
       y: y + (Math.random() - 0.5) * 40,
       intensity: intensity,
-      timer: 60 // 1 second effect
+      timer: 100 // ~1.7 second effect
     });
   }
 
@@ -1264,7 +1264,7 @@ export class LasatGame extends BaseGame {
     switch (this.finaleSequence.phase) {
       case 0: // Boss damage effects phase
         this.updateBossDamageEffects();
-        if (this.finaleSequence.timer > 120) { // 2 seconds of damage effects
+        if (this.finaleSequence.timer > 200) { // ~3.3 seconds of damage effects
           this.finaleSequence.phase = 1;
           this.finaleSequence.timer = 0;
           this.startFinalExplosion();
@@ -1273,7 +1273,7 @@ export class LasatGame extends BaseGame {
         
       case 1: // Final explosion phase
         this.updateFinalExplosion();
-        if (this.finaleSequence.timer > 180) { // 3 seconds of explosion
+        if (this.finaleSequence.timer > 300) { // 5 seconds of explosion
           this.finaleSequence.phase = 2;
           this.finaleSequence.timer = 0;
           this.startShipTailspin();
@@ -1282,7 +1282,7 @@ export class LasatGame extends BaseGame {
         
       case 2: // Ship tailspin phase
         this.updateShipTailspin();
-        if (this.finaleSequence.timer > 300) { // 5 seconds of tailspin
+        if (this.finaleSequence.timer > 500) { // ~8.3 seconds of tailspin
           this.finaleSequence.phase = 3;
           this.finaleSequence.timer = 0;
           this.startVictorySequence();
@@ -1291,7 +1291,7 @@ export class LasatGame extends BaseGame {
         
       case 3: // Victory scroll phase
         this.updateVictorySequence();
-        if (this.finaleSequence.timer > 600) { // 10 seconds of scroll
+        if (this.finaleSequence.timer > 1000) { // ~16.7 seconds of scroll
           this.finaleSequence.phase = 4;
           this.finaleSequence.timer = 0;
           this.startAILaughSequence();
@@ -1300,7 +1300,7 @@ export class LasatGame extends BaseGame {
         
       case 4: // AI laugh ending
         this.updateAILaughSequence();
-        if (this.finaleSequence.timer > 300) { // 5 seconds of laugh
+        if (this.finaleSequence.timer > 500) { // ~8.3 seconds of laugh
           this.completeEpicFinale();
         }
         break;
@@ -1319,7 +1319,7 @@ export class LasatGame extends BaseGame {
     }
     
     // Add more damage effects during this phase
-    if (this.finaleSequence.timer % 10 === 0) {
+    if (this.finaleSequence.timer % 17 === 0) {
       const boss = this.enemies.find(e => e.type === 'sinistar_boss');
       if (boss) {
         this.addBossDamageEffect(boss.position.x, boss.position.y, 20);
@@ -1337,13 +1337,13 @@ export class LasatGame extends BaseGame {
 
   private updateFinalExplosion() {
     // Expand explosion radius
-    this.finaleSequence.finalExplosionRadius += 8;
+    this.finaleSequence.finalExplosionRadius += 4.8;
     
     // Continue screen shake
     this.screenShake.trigger(10);
     
     // Add explosion particles
-    if (this.finaleSequence.timer % 5 === 0) {
+    if (this.finaleSequence.timer % 8 === 0) {
       const centerX = this.width / 2;
       const centerY = this.height / 2;
       const angle = Math.random() * Math.PI * 2;
@@ -1369,18 +1369,18 @@ export class LasatGame extends BaseGame {
 
   private startShipTailspin() {
     this.finaleSequence.shipTailspinAngle = 0;
-    this.finaleSequence.shipTailspinSpeed = 0.3;
+    this.finaleSequence.shipTailspinSpeed = 0.18;
     this.playStinger('ship_tailspin');
   }
 
   private updateShipTailspin() {
     // Update tailspin
     this.finaleSequence.shipTailspinAngle += this.finaleSequence.shipTailspinSpeed;
-    this.finaleSequence.shipTailspinSpeed += 0.01; // Accelerate
+    this.finaleSequence.shipTailspinSpeed += 0.0036; // Accelerate
     
     // Move ship outward
-    this.player.position.x += Math.cos(this.finaleSequence.shipTailspinAngle) * 2;
-    this.player.position.y += Math.sin(this.finaleSequence.shipTailspinAngle) * 2;
+    this.player.position.x += Math.cos(this.finaleSequence.shipTailspinAngle) * 1.2;
+    this.player.position.y += Math.sin(this.finaleSequence.shipTailspinAngle) * 1.2;
     
     // Update star field for space effect
     this.finaleSequence.starField.forEach(star => {
@@ -1399,7 +1399,7 @@ export class LasatGame extends BaseGame {
 
   private updateVictorySequence() {
     // Scroll the victory text upward
-    this.finaleSequence.victoryScrollY -= 2;
+    this.finaleSequence.victoryScrollY -= 1.2;
     
     // Update star field
     this.finaleSequence.starField.forEach(star => {
@@ -1452,7 +1452,7 @@ export class LasatGame extends BaseGame {
       }
       case 'shield':
         this.player.shieldActive = true;
-        this.player.shieldTimer = 300;
+        this.player.shieldTimer = 500;
         break;
       case 'heatseeking':
         this.player.heatseekingMissiles += 3; // Give 3 heat-seeking missiles
@@ -1783,7 +1783,7 @@ export class LasatGame extends BaseGame {
     }
     
     // Enemy command display
-    if (this.enemyCommandTimer > 0 && this.enemyCommandTimer < 60) {
+    if (this.enemyCommandTimer > 0 && this.enemyCommandTimer < 100) {
       const command = this.enemyCommands[Math.floor(Math.random() * this.enemyCommands.length)];
       this.ctx.fillStyle = '#FF0000';
       this.ctx.font = '18px monospace';
@@ -1843,7 +1843,7 @@ export class LasatGame extends BaseGame {
     
     // Draw damage effects
     this.finaleSequence.bossDamageEffects.forEach(effect => {
-      const alpha = effect.timer / 60;
+      const alpha = effect.timer / 100;
       this.ctx.save();
       this.ctx.globalAlpha = alpha;
       this.ctx.fillStyle = '#FF4500';
@@ -2487,7 +2487,7 @@ export class LasatGame extends BaseGame {
   // Mobile-specific controls
   handleMobileMove(x: number, y: number) {
     // Convert virtual stick input to ship movement
-    const speed = 6;
+    const speed = 3.6;
     
     // Apply movement based on stick input
     if (Math.abs(x) > 0.1) {
