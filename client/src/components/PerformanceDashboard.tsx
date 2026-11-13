@@ -31,7 +31,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
         className="fixed bottom-4 right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-mono"
         title="Toggle Performance Dashboard"
       >
-        📊
+        PERF
       </button>
     );
   }

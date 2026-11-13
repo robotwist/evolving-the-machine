@@ -606,7 +606,7 @@ export class DanceInterlude extends BaseGame {
     
     // Performance protocol
     this.drawText(
-      '🎭 Performance Protocol Active 🎭',
+      'Performance Protocol Active',
       this.width / 2,
       this.height - 30,
       14,
@@ -617,7 +617,7 @@ export class DanceInterlude extends BaseGame {
     // Applause effect
     if (this.applauseTimer > 0) {
       this.drawText(
-        '👏 BRAVO! ENCORE! 👏',
+        'BRAVO! ENCORE!',
         this.width / 2,
         this.height / 2,
         20,

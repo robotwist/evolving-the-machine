@@ -1385,9 +1385,9 @@ export class BreakoutGame extends BaseGame {
                           this.keys.has('ArrowUp') || this.keys.has('ArrowDown');
     
     if (keyboardActive) {
-      this.drawText('🎮 Keyboard Active', this.width - 150, 30, 14, '#00FF00');
+      this.drawText('Keyboard Active', this.width - 150, 30, 14, '#00FF00');
     } else if (this.targetPaddleX !== null) {
-      this.drawText('👆 Touch Active', this.width - 150, 30, 14, '#00BFFF');
+      this.drawText('Touch Active', this.width - 150, 30, 14, '#00BFFF');
     }
     
     // Show paddle speed and position
@@ -1396,7 +1396,7 @@ export class BreakoutGame extends BaseGame {
     
     // Show punch arms status
     if (this.paddle.punchArms) {
-      this.drawText('👊 Punch Arms Active', this.width - 150, 90, 12, '#FF6B35');
+      this.drawText('Punch Arms Active', this.width - 150, 90, 12, '#FF6B35');
     }
     
     if (!this.transitioning) {

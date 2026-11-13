@@ -71,12 +71,12 @@ export function PerformanceMonitor() {
       {/* Performance warnings */}
       {metrics.fps < 30 && (
         <div className="mt-2 text-red-400 text-xs animate-pulse">
-          ⚠️ Low FPS detected!
+          Low FPS detected!
         </div>
       )}
       {metrics.frameTime > 33 && (
         <div className="mt-1 text-red-400 text-xs animate-pulse">
-          ⚠️ High frame time!
+          High frame time!
         </div>
       )}
     </div>

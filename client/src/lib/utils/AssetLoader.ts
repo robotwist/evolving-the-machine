@@ -53,7 +53,7 @@ export class AssetLoader {
 
     // Don't throw error if some assets fail - let the app continue
     if (failed > 0) {
-      console.warn(`⚠️ ${failed} critical assets failed to load`);
+      console.warn(`${failed} critical assets failed to load`);
     }
   }
 

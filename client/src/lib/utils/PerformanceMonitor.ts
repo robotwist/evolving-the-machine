@@ -250,22 +250,22 @@ export class PerformanceMonitor {
   private logPerformanceWarnings(metrics: PerformanceMetrics) {
     // Warn about low FPS
     if (metrics.fps < this.performanceThresholds.fps.warning) {
-      console.warn(`🚨 Low FPS detected: ${metrics.fps}fps (target: 60fps)`);
+      console.warn(`Low FPS detected: ${metrics.fps}fps (target: 60fps)`);
     }
 
     // Warn about high frame times
     if (metrics.frameTime > this.performanceThresholds.frameTime.warning) {
-      console.warn(`🚨 High frame time: ${metrics.frameTime}ms (should be < 22ms)`);
+      console.warn(`High frame time: ${metrics.frameTime}ms (should be < 22ms)`);
     }
 
     // Warn about memory usage
     if (metrics.memoryUsage && metrics.memoryUsage > this.performanceThresholds.memory.warning) {
-      console.warn(`🚨 High memory usage: ${metrics.memoryUsage}MB`);
+      console.warn(`High memory usage: ${metrics.memoryUsage}MB`);
     }
 
     // Warn about performance score
     if (metrics.performanceScore < 50) {
-      console.warn(`🚨 Poor performance score: ${metrics.performanceScore}/100`);
+      console.warn(`Poor performance score: ${metrics.performanceScore}/100`);
     }
   }
 

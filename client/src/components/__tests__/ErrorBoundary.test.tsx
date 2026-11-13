@@ -159,7 +159,7 @@ describe('ErrorBoundary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Trigger Error' }));
 
     expect(consoleSpy).toHaveBeenCalledWith('Error caught by useErrorHandler:', expect.any(Error), undefined);
-    expect(consoleGroupSpy).toHaveBeenCalledWith('🚨 Game Error');
+    expect(consoleGroupSpy).toHaveBeenCalledWith('Game Error');
 
     consoleSpy.mockRestore();
     consoleGroupSpy.mockRestore();

@@ -83,7 +83,7 @@ function useGameInstance(
 
     // Preload assets for this stage
     assetLoader.preloadStageAssets(currentStage)
-      .catch(error => console.warn(`⚠️ Failed to preload stage ${currentStage} assets:`, error));
+      .catch(error => console.warn(`Failed to preload stage ${currentStage} assets:`, error));
 
     // Load and create game instance dynamically
     loadGame(currentStage)
@@ -114,20 +114,20 @@ function useGameInstance(
               isInitializing.current = false;
             })
             .catch((error: Error) => {
-              console.error(`❌ Failed to initialize game for stage ${currentStage}:`, error);
+              console.error(`Failed to initialize game for stage ${currentStage}:`, error);
               isInitializing.current = false;
               handleError(error, { componentStack: 'GameCanvas.useGameInstance' });
               throw error;
             });
         } catch (error) {
-          console.error(`❌ Failed to create game instance for stage ${currentStage}:`, error);
+          console.error(`Failed to create game instance for stage ${currentStage}:`, error);
           isInitializing.current = false;
           handleError(error as Error, { componentStack: 'GameCanvas.useGameInstance' });
           throw error;
         }
       })
       .catch((error: Error) => {
-        console.error(`❌ Failed to load game class for stage ${currentStage}:`, error);
+        console.error(`Failed to load game class for stage ${currentStage}:`, error);
         isInitializing.current = false;
         handleError(error, { componentStack: 'GameCanvas.loadGame' });
       });

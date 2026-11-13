@@ -106,7 +106,6 @@ export class GameErrorBoundary extends Component<GameErrorBoundaryProps, GameErr
         className: 'flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-red-900 via-black to-red-900 text-red-400 font-mono p-8'
       },
         React.createElement('div', { className: 'text-center max-w-2xl' },
-          React.createElement('div', { className: 'text-8xl mb-6 animate-pulse' }, '🎮'),
           React.createElement('h1', { className: 'text-3xl mb-4 font-bold' }, 'Game System Error'),
           React.createElement('p', { className: 'mb-6 text-gray-300 text-lg' }, 
             'The game encountered an unexpected error. Don\'t worry, your progress is safe!'
@@ -152,7 +151,7 @@ export class GameErrorBoundary extends Component<GameErrorBoundaryProps, GameErr
           },
             React.createElement('summary', { 
               className: 'cursor-pointer text-red-400 hover:text-red-300' 
-            }, '🔍 Error Details (Development Mode)'),
+            }, 'Error Details (Development Mode)'),
             React.createElement('div', {
               className: 'mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700'
             },
@@ -192,7 +191,7 @@ export function useGameErrorHandler(gameId?: string) {
 
     // In development, show detailed error info
     if (process.env.NODE_ENV === 'development') {
-      console.group(`🚨 Game Error${gameId ? ` (${gameId})` : ''}`);
+      console.group(`Game Error${gameId ? ` (${gameId})` : ''}`);
       console.error('Error:', error);
       console.error('Message:', error.message);
       console.error('Stack:', error.stack);

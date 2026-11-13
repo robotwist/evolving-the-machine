@@ -42,7 +42,6 @@ export function PWAInstallPrompt() {
     <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-2">
       <div className="bg-black/90 backdrop-blur-sm border border-green-400/50 rounded-lg p-4 max-w-sm mx-auto">
         <div className="flex items-start gap-3">
-          <div className="text-2xl">📱</div>
           <div className="flex-1">
             <h3 className="text-green-400 font-bold text-sm mb-1">
               Install Cultural Arcade

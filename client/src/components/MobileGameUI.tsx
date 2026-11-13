@@ -113,7 +113,7 @@ export function MobileGameUI({
           }}
         >
           <div className="absolute inset-2 border border-green-400/20 rounded-full flex items-center justify-center">
-            <span className="text-green-400 text-xs font-bold">⚡</span>
+            <span className="text-green-400 text-xs font-bold">ACT</span>
           </div>
         </div>
 
@@ -146,7 +146,7 @@ export function MobileGameUI({
       {gameState === 'playing' && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none animate-pulse">
           <div className="text-white text-center p-4">
-            <div className="text-lg mb-2">👆 Touch Controls Active</div>
+            <div className="text-lg mb-2">Touch Controls Active</div>
             <div className="text-sm opacity-75">
               Left: Move • Right: Aim • Top Right: Shoot • Top Left: Pause
             </div>

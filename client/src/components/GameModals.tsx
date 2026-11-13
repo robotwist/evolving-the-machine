@@ -62,7 +62,7 @@ function EpilogueMenu({ handleMainMenu }: { handleMainMenu: () => void }) {
         </p>
         <div className="border-t border-green-500/30 pt-4 mt-4">
           <p className="text-xl font-semibold text-green-300 mb-3">
-            🌿 Now, Go Outside 🌿
+            Now, Go Outside
           </p>
           <p className="text-base leading-relaxed">
             You have created a world where we spend most of our time enjoying nature. 

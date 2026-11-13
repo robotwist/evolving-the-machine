@@ -54,7 +54,7 @@ export function StageSelect() {
       id: 6,
       name: 'DANCE INTERLUDE',
       culture: 'Performance Protocol',
-      description: '🎭 A 3-minute AI humanoid bot dance spectacular with top hat and cane! Skip with SPACEBAR.',
+      description: 'A 3-minute AI humanoid bot dance spectacular with top hat and cane! Skip with SPACEBAR.',
       difficulty: 'FABULOUS',
       color: 'from-yellow-400 to-pink-500'
     },
@@ -62,7 +62,7 @@ export function StageSelect() {
       id: 7,
       name: 'SPACE BATTLE',
       culture: 'Fleet Engagement',
-      description: '⭐ Fight 12 enemy ships in epic space combat! Then face a massive command vessel boss.',
+      description: 'Fight 12 enemy ships in epic space combat! Then face a massive command vessel boss.',
       difficulty: 'EPIC',
       color: 'from-blue-400 to-indigo-600'
     },

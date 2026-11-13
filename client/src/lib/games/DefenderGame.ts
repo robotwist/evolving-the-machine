@@ -1143,7 +1143,7 @@ export class DefenderGame extends BaseGame {
     // Kamikaze warning
     const kamikazeCount = this.enemies.filter(e => e.kamikazeMode).length;
     if (kamikazeCount > 0) {
-      this.drawText(`🚀 KAMIKAZE: ${kamikazeCount}`, 20, 120, 18, '#FF0000');
+      this.drawText(`KAMIKAZE: ${kamikazeCount}`, 20, 120, 18, '#FF0000');
     }
     
     // Player health bar

@@ -93,7 +93,7 @@ export function MainMenu() {
               onClick={() => unlockAllLevels()}
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 text-lg"
             >
-              🔓 Unlock All Levels
+              Unlock All Levels
             </Button>
           </div>
 
@@ -102,19 +102,19 @@ export function MainMenu() {
             <h3 className="text-white font-semibold mb-2">Evolve Through Play</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
               <div>
-                <div className="text-purple-300">🏛️ Classic Arena</div>
+                <div className="text-purple-300">Classic Arena</div>
                 <div>Master competitive mechanics</div>
               </div>
               <div>
-                <div className="text-blue-300">🌟 Stellar Navigation</div>
+                <div className="text-blue-300">Stellar Navigation</div>
                 <div>Navigate by celestial knowledge</div>
               </div>
               <div>
-                <div className="text-red-300">⚔️ Guardian Protocol</div>
+                <div className="text-red-300">Guardian Protocol</div>
                 <div>Protect with honor and skill</div>
               </div>
               <div>
-                <div className="text-yellow-300">🔥 Final Evolution</div>
+                <div className="text-yellow-300">Final Evolution</div>
                 <div>Epic battles in the void</div>
               </div>
             </div>
