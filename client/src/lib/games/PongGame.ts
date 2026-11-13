@@ -16,7 +16,7 @@ const PONG_CONSTANTS = {
   MAX_BOUNCE_ANGLE: Math.PI * 0.3, // Return angle for an edge hit (~54°)
   AI_REACTION_LINE: 0.3, // AI starts chasing once the ball crosses this fraction of the width
   AI_AIM_SPREAD: 35, // Max px the AI offsets its contact point to angle returns (paddle half-height is 50)
-  AI_PREDICTION_ERROR: 25, // Max px the AI misjudges a base-speed ball, per rally; scales with ball speed
+  AI_PREDICTION_ERROR: 22, // Max px the AI misjudges a base-speed ball, per rally; scales with ball speed
   BALL_POWERUP_INTERVAL: 360, // ~6 seconds between ball powerup spawns
   MAX_BALL_POWERUPS: 2,
   AI_BASE_AGGRESSION: 1.0, // AI paddle speed as a fraction of the player's
