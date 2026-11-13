@@ -14,11 +14,26 @@ export function ArcadeDemo() {
   const { setCurrentScreen, setShowDemo } = useGameStore();
   const audioRef = useRef<AudioContext | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const timeoutRefs = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const eventListenersRef = useRef<{ type: string; handler: () => void }[]>([]);
+
+  const scheduleTimeout = useCallback((callback: () => void, delay: number) => {
+    const timeoutId = setTimeout(() => {
+      timeoutRefs.current.delete(timeoutId);
+      callback();
+    }, delay);
+    timeoutRefs.current.add(timeoutId);
+  }, []);
 
   // Function definitions before callbacks that use them
   const speakGlitchedText = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
+      if (speechUtteranceRef.current) {
+        speechSynthesis.cancel();
+      }
       const utterance = new SpeechSynthesisUtterance(text.replace(/█/g, ''));
+      speechUtteranceRef.current = utterance;
 
       // Deep, masculine voice parameters
       utterance.rate = 0.6;   // Slower for more authority
@@ -71,11 +86,13 @@ export function ArcadeDemo() {
     const handleKeyPress = () => {
       document.removeEventListener('keydown', handleKeyPress);
       document.removeEventListener('click', handleKeyPress);
+      eventListenersRef.current = eventListenersRef.current.filter(e => e.handler !== handleKeyPress);
       skipIntro();
     };
 
     document.addEventListener('keydown', handleKeyPress);
     document.addEventListener('click', handleKeyPress);
+    eventListenersRef.current.push({ type: 'keydown', handler: handleKeyPress }, { type: 'click', handler: handleKeyPress });
   }, [setEffects, setGlitchText, skipIntro]);
 
   const startGlitchSequence = useCallback(() => {
@@ -124,7 +141,7 @@ export function ArcadeDemo() {
         // Longer delay to let voice finish before next message
         // Shorter delays for fragmented messages, longer for complete thoughts
         const delay = messageIndex < 3 ? 2500 : messageIndex < 5 ? 3000 : 3500;
-        setTimeout(typeGlitchMessage, delay);
+        scheduleTimeout(typeGlitchMessage, delay);
       } else {
         // Final stabilization - system nearly clear
         setGlitchIntensity(0); // Fully stabilized
@@ -133,17 +150,17 @@ export function ArcadeDemo() {
           { type: 'glitch', intensity: 0.1 },
           { type: 'crt', intensity: 0.2 }
         ]);
-        setTimeout(() => {
+        scheduleTimeout(() => {
           setDemoPhase('invitation');
           showInvitation();
         }, 1000);
       }
     };
 
-    setTimeout(typeGlitchMessage, 1000);
-  }, [setEffects, setGlitchText, showInvitation, setDemoPhase, speakGlitchedText]);
+    scheduleTimeout(typeGlitchMessage, 1000);
+  }, [setEffects, setGlitchText, showInvitation, setDemoPhase, speakGlitchedText, scheduleTimeout]);
 
-  // Glitch sequence effect - separate from the callback
+  // The glitch sequence is started only here; the attract timer just flips the phase.
   useEffect(() => {
     if (demoPhase === 'glitch') {
       startGlitchSequence();
@@ -159,13 +176,22 @@ export function ArcadeDemo() {
     }
 
     // Start attract mode sequence
-    const attractTimer = setTimeout(() => {
-      setDemoPhase('glitch');
-      startGlitchSequence();
-    }, 3000);
+    scheduleTimeout(() => setDemoPhase('glitch'), 3000);
 
-    return () => clearTimeout(attractTimer);
-  }, [startGlitchSequence]);
+    const timeouts = timeoutRefs.current;
+    return () => {
+      timeouts.forEach(timeout => clearTimeout(timeout));
+      timeouts.clear();
+      eventListenersRef.current.forEach(({ type, handler }) => {
+        document.removeEventListener(type, handler);
+      });
+      eventListenersRef.current = [];
+      if (speechUtteranceRef.current) {
+        speechSynthesis.cancel();
+        speechUtteranceRef.current = null;
+      }
+    };
+  }, [scheduleTimeout]);
 
   const renderAttractMode = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-green-400 font-mono relative">
