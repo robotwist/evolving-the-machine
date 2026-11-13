@@ -19,7 +19,7 @@ Progress unlocks the next stage. On `localhost`, stages unlock as you play; depl
 
 ## Quick Start
 
-Requires Node.js 20 (see `.nvmrc`).
+Requires Node.js 22 (see `.nvmrc`).
 
 ```bash
 npm install
