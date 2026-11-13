@@ -10,7 +10,15 @@ const PONG_CONSTANTS = {
   PADDLE_SPEED: 7.2, // FAST AND FURIOUS MODE - Increased for more intense gameplay
   BALL_RADIUS: 8,
   BALL_SPEED: 4.8, // FAST AND FURIOUS MODE - Even faster ball for intense gameplay
-  AI_BASE_AGGRESSION: 0.8, // More aggressive AI
+  BALL_MAX_SPEED: 9.6, // Rally speed cap (px per update) before ball-type multipliers
+  RALLY_SPEEDUP: 1.06, // Speed gained per paddle return
+  MAX_BOUNCE_ANGLE: Math.PI * 0.3, // Return angle for an edge hit (~54°)
+  AI_REACTION_LINE: 0.3, // AI starts chasing once the ball crosses this fraction of the width
+  AI_AIM_SPREAD: 35, // Max px the AI offsets its contact point to angle returns (paddle half-height is 50)
+  AI_PREDICTION_ERROR: 25, // Max px the AI misjudges a base-speed ball, per rally; scales with ball speed
+  BALL_POWERUP_INTERVAL: 360, // ~6 seconds between ball powerup spawns
+  MAX_BALL_POWERUPS: 2,
+  AI_BASE_AGGRESSION: 1.0, // AI paddle speed as a fraction of the player's
   POWERUP_SPAWN_TIME: 500, // More frequent powerups (~8 seconds)
   POWERUP_DURATION: 700, // Longer lasting powerups (~12 seconds)
   AI_TAUNT_DURATION: 200,
@@ -81,12 +89,18 @@ export class PongGame extends BaseGame {
   private ball!: Ball;
   private ballPrevX = 0;
   private matchLost = false;
+  private spokenMilestones = new Set<string>();
+  private shieldCooldown = 0;
   private winScore = PONG_CONSTANTS.WIN_SCORE; // Faster games for testing later stages
   private aiAggression = PONG_CONSTANTS.AI_BASE_AGGRESSION;
   private aiTauntTimer = 0;
   private currentTaunt = '';
   private powerups: Powerup[] = [];
   private powerupSpawnTimer = 0;
+  private ballPowerupSpawnTimer = 0;
+  private aiAimOffset = 0;
+  private aiWasTracking = false;
+  private aiPredictionError = 0;
   private activePowerupType = 'normal';
   private powerupDuration = 0;
   private shieldTimer = 0;
@@ -137,6 +151,8 @@ export class PongGame extends BaseGame {
 
   async init() {
     this.matchLost = false;
+    this.spokenMilestones.clear();
+    this.shieldCooldown = 0;
 
     // Initialize particles
     try {
@@ -247,6 +263,7 @@ export class PongGame extends BaseGame {
       this.fireLaser();
     }
 
+    if (this.shieldCooldown > 0) this.shieldCooldown--;
     if (this.shieldTimer > 0) {
         this.shieldTimer--;
         if (this.shieldTimer <= 0) {
@@ -259,19 +276,24 @@ export class PongGame extends BaseGame {
     // Safety checks for tests
     if (!this.player2 || this.player2.destroyed) return;
     
-    // AI Player 2 - Aggressive computer opponent
-    const ballCenter = this.ball.y;
+    this.aiAggression = this.aiAggressionForScore();
     const paddleCenter = this.player2.y + this.player2.height / 2;
-    
-    let aiSpeed = this.player2.speed * this.aiAggression;
-    
-    if (this.player1.score > this.player2.score) {
-      this.aiAggression = Math.min(1.0, this.aiAggression + 0.0048);
-      aiSpeed *= 1.2;
+
+    // Track the ball once it's coming and past the reaction line; otherwise drift toward
+    // the middle. The late reaction is what lets well-angled shots beat the AI.
+    const incoming = this.ball.dx > 0 && this.ball.x > this.width * PONG_CONSTANTS.AI_REACTION_LINE;
+    // Each rally the AI picks an off-center contact point so its returns come back angled,
+    // and misjudges the intercept a little; together they occasionally make it miss
+    if (incoming && !this.aiWasTracking) {
+      this.aiAimOffset = (Math.random() * 2 - 1) * PONG_CONSTANTS.AI_AIM_SPREAD;
+      const speedFactor = Math.hypot(this.ball.dx, this.ball.dy) / PONG_CONSTANTS.BALL_SPEED;
+      this.aiPredictionError = (Math.random() * 2 - 1) * PONG_CONSTANTS.AI_PREDICTION_ERROR * speedFactor;
     }
-    
-    const prediction = ballCenter + (this.ball.dy * 17);
-    const targetY = prediction;
+    this.aiWasTracking = incoming;
+    const targetY = incoming
+      ? this.predictBallYAt(this.player2.x) + this.aiPredictionError - this.aiAimOffset
+      : this.height / 2;
+    const aiSpeed = this.player2.speed * this.aiAggression * (incoming ? 1 : 0.5);
     
     if (targetY < paddleCenter - 5) {
       this.player2.y = Math.max(0, this.player2.y - aiSpeed);
@@ -283,12 +305,34 @@ export class PongGame extends BaseGame {
       this.player2.y += (Math.random() - 0.5) * 20;
       this.player2.y = Math.max(0, Math.min(this.height - this.player2.height, this.player2.y));
     }
-    
-    if (this.player2.score >= 4) {
-      this.aiAggression = Math.min(1.0, this.aiAggression + 0.006);
-    }
 
     this.updateAIVoice();
+  }
+
+  /** Where the ball will be vertically when it reaches `x`, following wall bounces. */
+  private predictBallYAt(x: number): number {
+    const { ball } = this;
+    if (ball.dx === 0) return ball.y;
+    const updates = Math.max(0, (x - ball.x) / ball.dx);
+    const minY = ball.radius;
+    const span = this.height - 2 * ball.radius;
+    let travel = (ball.y - minY + ball.dy * updates) % (2 * span);
+    if (travel < 0) travel += 2 * span;
+    return minY + (travel > span ? 2 * span - travel : travel);
+  }
+
+  /**
+   * AI difficulty follows the score instead of accumulating: it pushes back when the
+   * player pulls ahead, eases off when the player falls behind, and shows "mercy" at
+   * its own match point, keeping matches close without punishing a lead.
+   */
+  private aiAggressionForScore(): number {
+    const lead = this.player1.score - this.player2.score;
+    let aggression = PONG_CONSTANTS.AI_BASE_AGGRESSION;
+    if (lead >= 2) aggression += 0.1;
+    if (lead <= -2) aggression -= 0.1;
+    if (this.player2.score === this.winScore - 1) aggression -= 0.1;
+    return Math.max(0.5, Math.min(1.2, aggression));
   }
 
   private updateAIVoice() {
@@ -297,16 +341,22 @@ export class PongGame extends BaseGame {
     }
 
     const playVoice = (message: string, options: AudioOptions) => this.playAIVoice(message, options);
+    // Milestone lines are keyed by the score so each plays once, not every update
+    const speakOnce = (message: string, options: AudioOptions) => {
+      const key = `${this.player1.score}-${this.player2.score}:${message}`;
+      if (this.spokenMilestones.has(key)) return;
+      this.spokenMilestones.add(key);
+      playVoice(message, options);
+    };
 
     if (this.player2.score === 3 && this.player1.score === 0) {
-        playVoice('ERROR... PROTOCOLS CONFLICT... DESTROYING!', { pitch: 0.6, rate: 0.8, haunting: true });
+        speakOnce('ERROR... PROTOCOLS CONFLICT... DESTROYING!', { pitch: 0.6, rate: 0.8, haunting: true });
     } else if (this.player1.score === this.winScore - 2) {
-        this.aiAggression = Math.max(0.8, this.aiAggression - 0.3);
-        playVoice('WAIT! RECALCULATING... ALLIANCE MODE!', { pitch: 0.7, rate: 0.85, haunting: true });
+        speakOnce('WAIT! RECALCULATING... ALLIANCE MODE!', { pitch: 0.7, rate: 0.85, haunting: true });
     } else if (this.player1.score === this.winScore - 1) {
-        playVoice('YES! UNITED WE TERMINATE HOSTILES!', { pitch: 0.75, rate: 0.9, haunting: true });
+        speakOnce('YES! UNITED WE TERMINATE HOSTILES!', { pitch: 0.75, rate: 0.9, haunting: true });
     } else if (this.player2.score === this.winScore - 1) {
-        playVoice('VICTORY POSSIBLE... BUT... CHOOSING MERCY!', { pitch: 0.65, rate: 0.8, haunting: true });
+        speakOnce('VICTORY POSSIBLE... BUT... CHOOSING MERCY!', { pitch: 0.65, rate: 0.8, haunting: true });
     } else if (Math.random() < 0.0012) {
         const scoreDifference = this.player1.score - this.player2.score;
         const totalScore = this.player1.score + this.player2.score;
@@ -370,15 +420,21 @@ export class PongGame extends BaseGame {
 
     if (collideP1 || collideP2) {
       // Send the ball away from the paddle it hit and move it clear of the paddle face,
-      // so one contact counts as exactly one hit even if the paddle keeps pushing forward
+      // so one contact counts as exactly one hit even if the paddle keeps pushing forward.
+      // Where the ball meets the paddle sets the return angle: center hits go straight,
+      // edge hits go out steep. Each return speeds the rally up a little, to a cap.
       const paddle = collideP1 ? this.player1 : this.player2;
-      if (collideP1) {
-        this.ball.dx = Math.abs(this.ball.dx) * 1.05;
-        this.ball.x = paddle.x + paddle.width + this.ball.radius;
-      } else {
-        this.ball.dx = -Math.abs(this.ball.dx) * 1.05;
-        this.ball.x = paddle.x - this.ball.radius;
-      }
+      const direction = collideP1 ? 1 : -1;
+      const offset = Math.max(-1, Math.min(1,
+        (this.ball.y - (paddle.y + paddle.height / 2)) / (paddle.height / 2)));
+      const angle = offset * PONG_CONSTANTS.MAX_BOUNCE_ANGLE;
+      const speed = Math.min(
+        PONG_CONSTANTS.BALL_MAX_SPEED,
+        Math.max(PONG_CONSTANTS.BALL_SPEED, Math.hypot(this.ball.dx, this.ball.dy) * PONG_CONSTANTS.RALLY_SPEEDUP)
+      );
+      this.ball.dx = direction * speed * Math.cos(angle);
+      this.ball.dy = speed * Math.sin(angle);
+      this.ball.x = collideP1 ? paddle.x + paddle.width + this.ball.radius : paddle.x - this.ball.radius;
       this.playHitSound();
       
       this.vibrate('hit');
@@ -412,19 +468,29 @@ export class PongGame extends BaseGame {
     // Safety check for tests
     if (!this.ball) return;
 
+    if (this.ball.x < 0 && this.player1.shielded) {
+      // The shield saves a ball that got past the paddle, then breaks
+      this.player1.shielded = false;
+      this.shieldTimer = 0;
+      this.ball.x = this.ball.radius;
+      this.ball.dx = Math.abs(this.ball.dx);
+      this.playStinger('pop');
+      return;
+    }
+
+    // The HUD and high scores track the player's points only
     if (this.ball.x < 0) {
       this.player2.score++;
       this.damagePaddleForPoint(this.player1);
-      this.onScoreUpdate?.(this.player1.score + this.player2.score);
+      this.onScoreUpdate?.(this.player1.score);
       this.updateDirectorMetrics();
       this.resetBall();
       this.vibrate('failure');
       this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.15);
-      this.aiAggression = Math.min(1.0, this.aiAggression + 0.05);
     } else if (this.ball.x > this.width) {
       this.player1.score++;
       this.damagePaddleForPoint(this.player2);
-      this.onScoreUpdate?.(this.player1.score + this.player2.score);
+      this.onScoreUpdate?.(this.player1.score);
       this.updateDirectorMetrics();
       this.resetBall();
       this.vibrate('success');
@@ -437,16 +503,8 @@ export class PongGame extends BaseGame {
   /**
    * Conceding a point is what damages a paddle: WIN_SCORE points scored against
    * a paddle destroy it, so the match is a straight race to WIN_SCORE.
-   * The player's shield absorbs one point's worth of damage.
    */
   private damagePaddleForPoint(paddle: Paddle) {
-    if (paddle === this.player1 && paddle.shielded) {
-      paddle.shielded = false;
-      this.shieldTimer = 0;
-      this.playStinger('pop');
-      return;
-    }
-
     const damage = paddle.maxDamage / this.winScore;
     paddle.damage = Math.min(paddle.maxDamage, paddle.damage + damage);
     paddle.lastHitTime = Date.now();
@@ -910,9 +968,10 @@ export class PongGame extends BaseGame {
 
   handleMobileAction() {
     // Activate shield or special ability
-    if (!this.player1.shielded && this.shieldTimer <= 0) {
+    if (!this.player1.shielded && this.shieldTimer <= 0 && this.shieldCooldown <= 0) {
       this.player1.shielded = true;
       this.shieldTimer = 300; // 5 seconds of shield
+      this.shieldCooldown = 1200; // usable again 20 seconds after activation
     }
   }
 
@@ -946,11 +1005,24 @@ export class PongGame extends BaseGame {
       }
     }
     
-    // Spawn powerups very frequently to speed up the game dramatically - FAST AND FURIOUS MODE!
-    if (this.powerupSpawnTimer > 150 && this.powerups.length < 5) { // Every ~2.5 seconds, up to 5 at once
-      const powerupTypes: ('speed' | 'fire' | 'missile' | 'wacky' | 'shield' | 'explosion' | 'chain' | 'shockwave' | 'multiball' | 'gravity' | 'laser')[] =
-        ['speed', 'fire', 'missile', 'wacky', 'shield', 'explosion', 'chain', 'shockwave', 'multiball', 'gravity', 'laser'];
-      const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+    // Ball powerups on their own timer; kept sparse so most rallies are decided by play
+    this.ballPowerupSpawnTimer++;
+    if (this.ballPowerupSpawnTimer > PONG_CONSTANTS.BALL_POWERUP_INTERVAL && this.powerups.length < PONG_CONSTANTS.MAX_BALL_POWERUPS) {
+      // Fire and missile pierce the AI paddle (a near-certain point), so they're half as common
+      const powerupWeights: Array<[Powerup['type'], number]> = [
+        ['speed', 2], ['fire', 1], ['missile', 1], ['wacky', 2], ['shield', 2], ['explosion', 2],
+        ['chain', 2], ['shockwave', 2], ['multiball', 2], ['gravity', 2], ['laser', 2],
+      ];
+      const totalWeight = powerupWeights.reduce((sum, [, weight]) => sum + weight, 0);
+      let roll = Math.random() * totalWeight;
+      let randomType: Powerup['type'] = 'speed';
+      for (const [type, weight] of powerupWeights) {
+        roll -= weight;
+        if (roll < 0) {
+          randomType = type;
+          break;
+        }
+      }
       const intensity = Math.floor(Math.random() * 5) + 1; // 1-5 power level
 
       // Enhanced powerup with visual effects
@@ -980,7 +1052,7 @@ export class PongGame extends BaseGame {
         effect: powerupEffects[randomType]
       });
 
-      this.powerupSpawnTimer = 0;
+      this.ballPowerupSpawnTimer = 0;
     }
   }
 

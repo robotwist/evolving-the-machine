@@ -80,12 +80,14 @@ describe('PongGame', () => {
       expect(internals.player1.damage).toBe(20);
     });
 
-    test('a shield absorbs the damage from one AI point', () => {
+    test('a shield saves a ball that gets past you, so the AI does not score', () => {
       internals.player1.shielded = true;
       aiScoresPoint();
 
+      expect(internals.player2.score).toBe(0);
       expect(internals.player1.damage).toBe(0);
       expect(internals.player1.shielded).toBe(false);
+      expect(internals.ball.dx).toBeGreaterThan(0);
     });
 
     test('conceding five points ends the match exactly once', () => {
@@ -93,6 +95,61 @@ describe('PongGame', () => {
       for (let i = 0; i < 5; i++) game.update(1000 / 60);
 
       expect(onGameOver).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('scoring and difficulty', () => {
+    test('the reported score counts only the player’s points', () => {
+      const reported: number[] = [];
+      game.onScoreUpdate = (score) => reported.push(score);
+
+      aiScoresPoint();
+      aiScoresPoint();
+
+      expect(reported).toEqual([0, 0]);
+    });
+
+    test('AI difficulty depends on the score, not on how long the player has led', () => {
+      const ai = game as unknown as { aiAggression: number; updateAI: (dt: number) => void };
+      internals.player1.score = 2;
+      ai.updateAI(1000 / 60);
+      const afterOneUpdate = ai.aiAggression;
+      for (let i = 0; i < 300; i++) ai.updateAI(1000 / 60);
+
+      expect(ai.aiAggression).toBe(afterOneUpdate);
+    });
+
+    test('the mobile shield button has a cooldown', () => {
+      game.handleMobileAction();
+      expect(internals.player1.shielded).toBe(true);
+
+      internals.player1.shielded = false;
+      (game as unknown as { shieldTimer: number }).shieldTimer = 0;
+      game.handleMobileAction();
+
+      expect(internals.player1.shielded).toBe(false);
+    });
+  });
+
+  describe('aiming', () => {
+    function returnBallAtOffset(offsetFromCenter: number) {
+      const { player1, ball } = internals;
+      ball.type = 'normal';
+      ball.x = player1.x + player1.width + ball.radius + 1;
+      ball.y = player1.y + player1.height / 2 + offsetFromCenter;
+      ball.dx = -4.8;
+      ball.dy = 0;
+      game.update(1000 / 60);
+      return Math.atan2(internals.ball.dy, internals.ball.dx);
+    }
+
+    test('a center hit returns the ball nearly straight', () => {
+      expect(Math.abs(returnBallAtOffset(0))).toBeLessThan(0.1);
+    });
+
+    test('an edge hit returns the ball at a steep angle', () => {
+      expect(returnBallAtOffset(45)).toBeGreaterThan(0.6);
+      expect(returnBallAtOffset(-45)).toBeLessThan(-0.6);
     });
   });
 });

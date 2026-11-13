@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 const tutorials = {
   1: {
     title: 'Pong — Quick Tutorial',
-    text: 'Drag on the left to move. Collect powerups. Missile/Fire shots pierce the AI paddle.',
+    text: 'Drag on the left to move. Hit the ball with your paddle’s edge to angle it past the AI. First to 5 wins; fire and missile balls pierce the AI paddle.',
   },
   2: {
     title: 'Breakout — Quick Tutorial',

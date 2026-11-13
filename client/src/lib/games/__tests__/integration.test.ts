@@ -220,7 +220,9 @@ describe('Game System Integration Tests', () => {
     test('should handle AI system integration', async () => {
       const initialAIY = game['player2'].y;
       
-      // Move ball toward AI
+      // Move ball toward AI, past the point where it starts reacting
+      game['ball'].x = 800 * 0.6;
+      game['ball'].dx = 4.8;
       game['ball'].y = game['player2'].y;
       game['ball'].dy = 2;
 
