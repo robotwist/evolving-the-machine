@@ -80,6 +80,7 @@ export class PongGame extends BaseGame {
   private player2!: Paddle;
   private ball!: Ball;
   private ballPrevX = 0;
+  private matchLost = false;
   private winScore = PONG_CONSTANTS.WIN_SCORE; // Faster games for testing later stages
   private aiAggression = PONG_CONSTANTS.AI_BASE_AGGRESSION;
   private aiTauntTimer = 0;
@@ -135,6 +136,8 @@ export class PongGame extends BaseGame {
   };
 
   async init() {
+    this.matchLost = false;
+
     // Initialize particles
     try {
       const { ParticleSystem } = await import('../utils/ParticleSystem');
@@ -383,18 +386,6 @@ export class PongGame extends BaseGame {
       this.screenShake.trigger(8);
       
       if (collideP1) {
-        if (this.player1.shielded) {
-            this.player1.shielded = false;
-            this.shieldTimer = 0;
-            this.playStinger('pop');
-        } else {
-            const damage = 15;
-            this.player1.damage += damage;
-            if (this.getSettings().damageNumbers && this.visualFeedback) {
-                this.visualFeedback.addDamageNumber(this.player1.x + 20, this.player1.y, damage);
-            }
-        }
-        this.player1.lastHitTime = Date.now();
         this.player2.pulsateIntensity = Math.min(1.0, this.player2.pulsateIntensity + 0.1);
         this.player1Combo++;
         if (this.visualFeedback) {
@@ -402,14 +393,6 @@ export class PongGame extends BaseGame {
         }
       } else {
           this.player1Combo = 0;
-      }
-      if (collideP2) {
-        const damage = 10;
-        this.player2.damage += damage;
-        this.player2.lastHitTime = Date.now();
-        if (this.getSettings().damageNumbers && this.visualFeedback) {
-            this.visualFeedback.addDamageNumber(this.player2.x, this.player2.y, damage);
-        }
       }
     }
 
@@ -431,6 +414,7 @@ export class PongGame extends BaseGame {
 
     if (this.ball.x < 0) {
       this.player2.score++;
+      this.damagePaddleForPoint(this.player1);
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.updateDirectorMetrics();
       this.resetBall();
@@ -439,6 +423,7 @@ export class PongGame extends BaseGame {
       this.aiAggression = Math.min(1.0, this.aiAggression + 0.05);
     } else if (this.ball.x > this.width) {
       this.player1.score++;
+      this.damagePaddleForPoint(this.player2);
       this.onScoreUpdate?.(this.player1.score + this.player2.score);
       this.updateDirectorMetrics();
       this.resetBall();
@@ -446,6 +431,28 @@ export class PongGame extends BaseGame {
       if (this.player1.score >= this.winScore) {
         this.onStageComplete?.();
       }
+    }
+  }
+
+  /**
+   * Conceding a point is what damages a paddle: WIN_SCORE points scored against
+   * a paddle destroy it, so the match is a straight race to WIN_SCORE.
+   * The player's shield absorbs one point's worth of damage.
+   */
+  private damagePaddleForPoint(paddle: Paddle) {
+    if (paddle === this.player1 && paddle.shielded) {
+      paddle.shielded = false;
+      this.shieldTimer = 0;
+      this.playStinger('pop');
+      return;
+    }
+
+    const damage = paddle.maxDamage / this.winScore;
+    paddle.damage = Math.min(paddle.maxDamage, paddle.damage + damage);
+    paddle.lastHitTime = Date.now();
+    if (paddle === this.player1) this.totalDamageTaken += damage;
+    if (this.getSettings().damageNumbers && this.visualFeedback) {
+      this.visualFeedback.addDamageNumber(paddle.x + paddle.width / 2, paddle.y, damage);
     }
   }
 
@@ -592,7 +599,8 @@ export class PongGame extends BaseGame {
     if (!this.player1) return;
 
     this.visualFeedback?.update(_deltaTime);
-    if (this.player1.damage >= this.player1.maxDamage) {
+    if (this.player1.damage >= this.player1.maxDamage && !this.matchLost) {
+      this.matchLost = true;
       this.explodePaddle(this.player1);
       this.onGameOver?.();
     }
