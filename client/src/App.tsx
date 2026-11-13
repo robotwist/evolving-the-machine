@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArcadeDemo } from './components/ArcadeDemo';
 import { MainMenu } from './components/MainMenu';
 import { StageSelect } from './components/StageSelect';
@@ -17,8 +16,6 @@ import { useSettingsStore } from './lib/stores/useSettingsStore';
 import { useIsMobile } from './hooks/use-is-mobile';
 import { assetLoader } from './lib/utils/AssetLoader';
 import './index.css';
-
-const queryClient = new QueryClient();
 
 // Helper function to get game name from stage
 function getGameName(stage: number): string {
@@ -299,73 +296,67 @@ export default function App() {
   }
 
   if (showDemo && currentScreen === 'menu') {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <ArcadeDemo />
-      </QueryClientProvider>
-    );
+    return <ArcadeDemo />;
   }
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <div className={`game-container ${isMobile ? 'mobile-game' : 'desktop-game'}`}>
+      <div className={`game-container ${isMobile ? 'mobile-game' : 'desktop-game'}`}>
+        <ErrorBoundary>
+          <UpdatePrompt />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <PWAInstallPrompt />
+        </ErrorBoundary>
+        {currentScreen === 'menu' && (
           <ErrorBoundary>
-            <UpdatePrompt />
+            <MainMenu />
           </ErrorBoundary>
+        )}
+        {currentScreen === 'stage-select' && (
           <ErrorBoundary>
-            <PWAInstallPrompt />
+            <StageSelect />
           </ErrorBoundary>
-          {currentScreen === 'menu' && (
-            <ErrorBoundary>
-              <MainMenu />
-            </ErrorBoundary>
-          )}
-          {currentScreen === 'stage-select' && (
-            <ErrorBoundary>
-              <StageSelect />
-            </ErrorBoundary>
-          )}
-          {currentScreen === 'game' && (
-            <GameErrorBoundary gameId={`Stage-${currentStage}`}>
-              <>
-                {/* Always run the actual game canvas */}
-                <GameCanvas />
-                {/* Desktop UI overlay */}
-                {!isMobile && (
-                  <div className="ui-overlay">
-                    <ErrorBoundary>
-                      <GameUI />
-                    </ErrorBoundary>
-                  </div>
-                )}
-                {/* Mobile controls overlay (visuals + touch mapping) */}
-                {isMobile && (
+        )}
+        {currentScreen === 'game' && (
+          <GameErrorBoundary gameId={`Stage-${currentStage}`}>
+            <>
+              {/* Always run the actual game canvas */}
+              <GameCanvas />
+              {/* Desktop UI overlay */}
+              {!isMobile && (
+                <div className="ui-overlay">
                   <ErrorBoundary>
-                    <div className="ui-overlay pointer-events-none">
-                      <MobileGameUI
-                        currentGame={getGameName(currentStage)}
-                        stage={currentStage}
-                        gameState="playing"
-                        onGameComplete={() => {}}
-                        onScoreUpdate={(_score) => {}}
-                      />
-                    </div>
+                    <GameUI />
                   </ErrorBoundary>
-                )}
-              </>
-            </GameErrorBoundary>
-          )}
-          {showTransition && (
-            <ErrorBoundary>
-              <ScreenTransition
-                message={transitionMessage}
-                onComplete={handleTransitionComplete}
-              />
-            </ErrorBoundary>
-          )}
-        </div>
-      </QueryClientProvider>
+                </div>
+              )}
+              {/* Mobile controls overlay (visuals + touch mapping) */}
+              {isMobile && (
+                <ErrorBoundary>
+                  <div className="ui-overlay pointer-events-none">
+                    <MobileGameUI
+                      currentGame={getGameName(currentStage)}
+                      stage={currentStage}
+                      gameState="playing"
+                      onGameComplete={() => {}}
+                      onScoreUpdate={(_score) => {}}
+                    />
+                  </div>
+                </ErrorBoundary>
+              )}
+            </>
+          </GameErrorBoundary>
+        )}
+        {showTransition && (
+          <ErrorBoundary>
+            <ScreenTransition
+              message={transitionMessage}
+              onComplete={handleTransitionComplete}
+            />
+          </ErrorBoundary>
+        )}
+      </div>
     </ErrorBoundary>
   );
 }
