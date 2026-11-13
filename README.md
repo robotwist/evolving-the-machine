@@ -1,215 +1,76 @@
-# 🎮 Cultural Arcade Evolution
+# Evolving The Machine
 
-An immersive retro-futuristic game experience that evolves through cultural themes and progressively challenging gameplay. Journey through 8 stages of human cultural evolution, from ancient Greece to digital transcendence.
+A retro arcade journey through eight stages in which an AI companion learns from you, befriends you, and finally turns on you. Each stage reimagines a classic arcade genre, rendered on an HTML5 canvas inside a React app.
 
-## ✨ Features
+## Stages
 
-### 🎯 8 Progressive Stages
-- **Stage 1:** Pong Master (Ancient Greece)
-- **Stage 2:** Temple Breaker (Greek Evolution)
-- **Stage 3:** Asteroid Hunter (Mayan Astronomy)
-- **Stage 4:** Defender (Feudal Japan)
-- **Stage 5:** Lasat Starfighter (Norse Mythology)
-- **Stage 6:** Dance Interlude (Young Frankenstein Tribute)
-- **Stage 7:** Star Wars Battle (Last Starfighter Homage)
-- **Stage 8:** The Betrayal (Digital Hell - Final Boss)
+| # | Stage | Genre |
+|---|-------|-------|
+| 1 | Pong Master | Paddle duel against an adaptive AI |
+| 2 | Temple Breaker | Brick breaker whose paddle evolves mid-level |
+| 3 | Asteroid Hunter | Asteroids-style space shooter |
+| 4 | Defender | Side-scrolling shooter: protect civilians |
+| 5 | Lasat Starfighter | Wave shooter with a boss and finale |
+| 6 | Dance Interlude | Rhythm interlude (Space skips) |
+| 7 | Space Battle | Fleet combat and a capital-ship boss |
+| 8 | The Betrayal | Final boss fight against the AI |
 
-### 🎮 Advanced Gameplay Systems
-- **Adaptive AI:** Enemies learn and evolve with player tactics
-- **Multi-Phase Boss Battles:** Complex encounters with escalating difficulty
-- **Particle Effects:** Stunning visual feedback systems
-- **Audio Synthesis:** Dynamic voice generation and music
-- **Performance Monitoring:** Real-time FPS and memory tracking
+Progress unlocks the next stage. On `localhost`, stages unlock as you play; deployed builds unlock all stages.
 
-### 🛠️ Technical Excellence
-- **TypeScript:** Full type safety across client and server
-- **React 18:** Modern component architecture with hooks
-- **Canvas Rendering:** High-performance 2D graphics
-- **Express API:** RESTful backend with error handling
-- **Vite:** Fast development and optimized builds
+## Quick Start
 
-## 🚀 Quick Start
+Requires Node.js 20 (see `.nvmrc`).
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
-
-### Installation
 ```bash
 npm install
+npm run dev        # http://localhost:5000
 ```
 
-### Development
-```bash
-# Start development server (includes hot reload)
-npm run dev
+Dev shortcuts:
 
-# Server runs on http://localhost:5000
-```
+- `?unlock=all` unlocks every stage
+- `?stage=N` jumps straight to stage N (1–8)
+- `unlockAllLevels()` in the browser console does the same as `?unlock=all`
 
-### Building
-```bash
-# Production build
-npm run build
+To test on a phone on the same network, run `npm run dev -- --host`.
 
-# Start production server
-npm start
-```
+## Scripts
 
-### Testing
-```bash
-# Run tests
-npm test
+| Command | What it does |
+|---------|--------------|
+| `npm run dev` | Vite dev server with hot reload |
+| `npm run build` | Production build into `dist/public` |
+| `npm start` | Preview the production build |
+| `npm test` | Jest test suite |
+| `npm run lint` | ESLint |
+| `npm run check` | TypeScript type check |
 
-# Run tests with coverage
-npm run test:coverage
+## Controls
 
-# Run tests in watch mode
-npm run test:watch
-```
+- **Keyboard:** WASD / arrow keys to move, Space to fire; stage-specific abilities on Z, X and C
+- **Touch:** each stage maps taps and drags to movement and firing (see the in-game tutorial)
 
-### Code Quality
-```bash
-# Lint entire codebase
-npm run lint
+## Architecture
 
-# Auto-fix linting issues
-npm run lint:fix
-
-# Format code with Prettier
-npm run format
-
-# TypeScript type checking
-npm run check
-```
-
-## 🎮 Gameplay
-
-### Controls
-- **Arrow Keys/WASD:** Movement
-- **Space/Mouse Click:** Primary action
-- **ESC:** Pause/Menu
-- **Mobile:** Touch controls with virtual joystick
-
-### Progression
-1. **Complete each stage** to unlock the next
-2. **Master different mechanics** as the AI evolves
-3. **Face increasingly complex** boss battles
-4. **Experience narrative evolution** through cultural themes
-
-### Difficulty Levels
-- **Beginner:** Stages 1-2 (Pong, Breakout)
-- **Intermediate:** Stages 3-4 (Asteroids, Defender)
-- **Advanced:** Stages 5-6 (Lasat, Dance)
-- **Master:** Stages 7-8 (Star Wars, Betrayal)
-
-## 🏗️ Architecture
-
-### Frontend (React + TypeScript)
 ```
 client/src/
-├── components/     # React components
-├── lib/
-│   ├── games/     # Individual game implementations
-│   ├── stores/    # Zustand state management
-│   └── utils/     # Game utilities and systems
-└── hooks/         # Custom React hooks
+├── components/        React UI: menus, HUD, GameCanvas, error boundaries
+├── hooks/             React hooks
+└── lib/
+    ├── games/         One class per stage, all extending BaseGame
+    │   ├── BaseGame.ts    Game loop, keyboard input, shared services
+    │   └── engine/        Settings, audio, haptics, ScreenShake,
+    │                      FlashExplosions, collision helpers
+    ├── stores/        Zustand stores (game progress, settings, audio, haptics)
+    ├── controls/      Touch controls (virtual stick)
+    └── utils/         ParticleSystem, AssetLoader, PerformanceMonitor, ...
+shared/types.ts        Types shared across the client
 ```
 
-### Backend (Express + TypeScript)
-```
-server/
-├── index.ts       # Main server entry point
-├── routes.ts      # API routes
-├── storage.ts     # Data persistence layer
-└── vite.ts        # Development server configuration
-```
+`GameCanvas` lazy-loads the class for the current stage, sizes the canvas, and forwards pointer events. Each game implements `init`, `update` and `render`, reads held keys from `this.keys`, and uses `BaseGame` helpers for sound, haptics, settings and screen shake. Player settings such as reduce motion, screen shake and haptics are applied by these helpers, so individual games don't need to check them.
 
-### Key Systems
-- **Game Engine:** Modular architecture with BaseGame abstraction
-- **State Management:** Zustand for client state, Express for server
-- **Asset Management:** Dynamic loading and caching
-- **Performance Monitoring:** Real-time metrics and optimization
-- **Adaptive Narrative:** Dynamic story progression based on player performance
+More detail lives in [`docs/`](docs/), including the [architecture overview](docs/ARCHITECTURE.md), [development guide](docs/DEVELOPMENT_GUIDE.md) and the narrative design notes.
 
-## 📚 Documentation
+## Deployment
 
-Comprehensive documentation is available in the [`docs/`](docs/) directory:
-
-- **[Architecture](docs/ARCHITECTURE.md)** - Complete system architecture overview
-- **[API Reference](docs/API_REFERENCE.md)** - Complete API documentation
-- **[Development Guide](docs/DEVELOPMENT_GUIDE.md)** - Developer onboarding and best practices
-
-### Quick Links
-- [Getting Started](docs/DEVELOPMENT_GUIDE.md#getting-started)
-- [Game Development](docs/DEVELOPMENT_GUIDE.md#game-development)
-- [API Reference](docs/API_REFERENCE.md#game-classes)
-- [Testing Guide](docs/DEVELOPMENT_GUIDE.md#testing)
-
-## 🎨 Game Design Philosophy
-
-### Cultural Evolution
-Each stage represents a different cultural epoch, with gameplay mechanics that reflect historical themes and technological progression.
-
-### Adaptive Difficulty
-The AI learns from player behavior, creating personalized challenge curves that adapt to individual skill levels.
-
-### Visual Excellence
-Particle systems, screen effects, and dynamic lighting create an immersive retro-futuristic aesthetic.
-
-## 🤝 Contributing
-
-1. **Fork the repository**
-2. **Create a feature branch:** `git checkout -b feature/amazing-feature`
-3. **Follow coding standards:** Run `npm run lint` and `npm run format`
-4. **Add tests:** Ensure new features are covered
-5. **Submit a pull request**
-
-### Code Standards
-- **TypeScript:** Strict type checking enabled
-- **ESLint:** Consistent code style enforcement
-- **Prettier:** Automated code formatting
-- **Testing:** Comprehensive test coverage required
-
-## 📊 Performance
-
-### Bundle Analysis
-- **Main Bundle:** ~107KB (32.7KB gzipped)
-- **React Vendor:** ~141KB (45.3KB gzipped)
-- **Game Chunks:** 15-21KB each (excellent code splitting)
-- **Total Assets:** Optimized for fast loading
-
-### Performance Features
-- **Code Splitting:** Games load on-demand
-- **Asset Preloading:** Stage-specific asset management
-- **Memory Management:** Particle system pooling
-- **Frame Rate:** Adaptive FPS capping with performance monitoring
-
-## 🔒 Security
-
-- Input validation on all user inputs
-- XSS protection for dynamic content
-- Secure API endpoints with proper error handling
-- No sensitive data exposure
-
-## ♿ Accessibility
-
-- Keyboard navigation support
-- Screen reader compatibility
-- High contrast visual modes
-- Adjustable difficulty settings
-- Mobile touch controls
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by classic arcade games and cultural evolution
-- Built with modern web technologies for optimal performance
-- Dedicated to the art of interactive storytelling through gameplay
-
----
-
-**Ready to evolve through the ages? Start your journey at the Cultural Arcade!** 🎮✨
+Netlify builds with `npm run build` and serves `dist/public` as a static site (see `netlify.toml`). CI (`.github/workflows/ci.yml`) type-checks, lints, tests and builds every push to `main`.

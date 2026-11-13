@@ -8,13 +8,12 @@ Evolving The Machine is a retro arcade game collection built with modern web tec
 
 ### Technology Stack
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Backend**: Express.js + TypeScript
+- **Frontend**: React 18 + TypeScript + Vite (static site, no backend)
 - **State Management**: Zustand with persistence
 - **Canvas Rendering**: HTML5 Canvas 2D API
 - **Testing**: Jest + React Testing Library
-- **Build Tools**: Vite, ESBuild
-- **Deployment**: Netlify
+- **Build Tools**: Vite
+- **Deployment**: Netlify (serves `dist/public`)
 
 ### Project Structure
 
@@ -27,9 +26,11 @@ client/src/
 │   └── ...
 ├── lib/
 │   ├── games/          # Game implementations
-│   │   ├── BaseGame.ts # Abstract base class
+│   │   ├── BaseGame.ts # Abstract base class (loop, input, services)
+│   │   ├── engine/     # Shared services: settings, audio, haptics,
+│   │   │               # ScreenShake, FlashExplosions, collision
 │   │   ├── PongGame.ts # Pong implementation
-│   │   ├── LasatGame.ts # Last Starfighter game
+│   │   ├── LasatGame.ts
 │   │   └── ...
 │   ├── stores/         # Zustand state stores
 │   │   ├── useGameStore.tsx
@@ -52,24 +53,35 @@ client/src/
 
 All games inherit from `BaseGame`, which provides:
 
-- **Game Loop Management**: Start, stop, pause, resume
-- **Event Handling**: Keyboard input, pointer events
-- **Canvas Operations**: Drawing utilities, text rendering
-- **Performance Monitoring**: FPS tracking, frame timing
-- **Mobile Support**: Touch/gesture handling
+- **Game Loop Management**: Start, stop, pause, resume, FPS cap
+- **Keyboard Input**: `this.keys` holds the codes of keys currently down. Keys are
+  cleared on pause and window blur; arrow keys and Space don't scroll the page.
+  Override `handleInput(event)` to react to individual key presses.
+- **Pointer Input**: optional `handlePointerDown/Move/Up(x, y)` in canvas pixels,
+  wired up by `GameCanvas`
+- **Services**: `playStinger`, `playVO`, `playHitSound`, `playSuccessSound`,
+  `vibrate('hit' | 'explosion' | ...)`, `getSettings()`
+- **Screen Shake**: `this.screenShake.trigger(frames)`, then wrap rendering in
+  `this.screenShake.begin()` / `end()`. Respects the screen-shake and
+  reduce-motion settings automatically.
 
 ```typescript
 abstract class BaseGame {
   protected ctx: CanvasRenderingContext2D;
   protected width: number;
   protected height: number;
-  
+  protected keys: Set<string>;
+  protected screenShake: ScreenShake;
+
   abstract init(): Promise<void> | void;
   abstract update(deltaTime: number): void;
   abstract render(): void;
-  abstract handleInput(event: KeyboardEvent): void;
+  handleInput(event: KeyboardEvent): void; // optional
 }
 ```
+
+Games must not add their own `document`/`window` listeners. If a game needs extra
+teardown, override `cleanup()` and call `super.cleanup()`.
 
 ### Game State Management
 

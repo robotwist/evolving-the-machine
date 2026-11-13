@@ -42,7 +42,7 @@ npm run test:coverage
 npm run lint
 
 # Type check
-npm run type-check
+npm run check
 ```
 
 ## Project Structure
@@ -52,14 +52,11 @@ evolving-the-machine/
 ├── client/                 # Frontend React application
 │   ├── src/
 │   │   ├── components/    # React components
-│   │   ├── lib/          # Game logic and utilities
-│   │   ├── hooks/        # Custom React hooks
-│   │   └── stores/       # Zustand state stores
+│   │   ├── lib/          # Game logic, engine, stores and utilities
+│   │   └── hooks/        # Custom React hooks
 │   └── public/           # Static assets
-├── server/               # Backend Express server
 ├── docs/                 # Documentation
-├── tests/                # Test files
-└── shared/               # Shared utilities
+└── shared/               # Shared types
 ```
 
 ## Game Development
@@ -67,7 +64,7 @@ evolving-the-machine/
 ### Creating a New Game
 
 1. **Extend BaseGame**: Create a new class that extends `BaseGame`
-2. **Implement Required Methods**: `init()`, `update()`, `render()`, `handleInput()`
+2. **Implement Required Methods**: `init()`, `update()`, `render()`. Read held keys from `this.keys`; use the `BaseGame` helpers (`playStinger`, `vibrate`, `screenShake`, `getSettings`) instead of touching `window` globals
 3. **Add Game Logic**: Implement game-specific mechanics
 4. **Register Game**: Add to the game registry in `GameCanvas.tsx`
 
