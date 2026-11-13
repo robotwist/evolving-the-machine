@@ -1,5 +1,26 @@
 import { BaseGame, type HudStat } from './BaseGame';
 import { arcadeFont } from './engine/fonts';
+
+const STARTING_LIVES = 5;
+const GRACE_FRAMES = 300;
+const WAVE_BREAK_FRAMES = 300;
+/** Waves 1-3 are armada squadrons; the Sinistar arrives as phase 4. */
+const BOSS_PHASE = 4;
+/** Enemies stay in the upper part of the screen so the Gunstar always has room to dodge. */
+const ENEMY_MAX_Y_FRACTION = 0.6;
+const ENEMY_MIN_Y = 40;
+const ENEMY_EDGE_MARGIN = 20;
+const BOSS_MAX_Y_FRACTION = 0.35;
+const BOSS_MAX_HEALTH = 5000;
+/** Frames between the Sinistar's aimed shots in phases 1-3. */
+const BOSS_SHOT_INTERVAL = [150, 80, 50] as const;
+/** Boss and mothership reinforcements stop arriving while this many enemies are alive. */
+const MAX_ALIVE_ENEMIES = 24;
+const DEATH_BLOSSOM_COOLDOWN_FRAMES = 3000;
+const DEATH_BLOSSOM_RADIUS = 150;
+const DEATH_BLOSSOM_BOSS_DAMAGE = 150;
+const AI_MESSAGE_INTERVAL_FRAMES = 800;
+
 interface Vector2 {
   x: number;
   y: number;
@@ -102,12 +123,15 @@ export class LasatGame extends BaseGame {
   private trenchElements: TrenchElement[] = [];
   private starWarsTrenchMode = false;
   private exhaustPortTargeted = false;
-  private gracePeriod = 300; // 5 seconds of invulnerability
+  private gracePeriod = GRACE_FRAMES; // 5 seconds of invulnerability
   private waveCompleteTimer = 0; // Timer for wave completion delay
   private bossActive = false; // Whether Sinistar boss is active
   private bossPhase = 1; // Current boss phase (1-3)
   private enemyCommandTimer = 0; // Timer for enemy command announcements
-  private lives = 5; // Number of lives remaining
+  private currentEnemyCommand = '';
+  private frameCount = 0; // Gameplay frames, drives swarm motion deterministically
+  private stageEnded = false; // onGameOver/onStageComplete has fired for this run
+  private lives = STARTING_LIVES; // Number of lives remaining
   private gameState: 'start' | 'playing' | 'gameOver' | 'select' = 'start'; // Game state
   private konamiCode: string[] = []; // Konami code input sequence
   private konamiCodeSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA']; // ↑↑↓↓←→←→BA
@@ -145,30 +169,52 @@ export class LasatGame extends BaseGame {
   };
 
   // EPIC FINALE SEQUENCE PROPERTIES
-  private finaleSequence = {
-    active: false,
-    phase: 0, // 0: boss damage effects, 1: final explosion, 2: ship tailspin, 3: victory scroll, 4: AI laugh
-    timer: 0,
-    bossDamageEffects: [] as Array<{x: number, y: number, intensity: number, timer: number}>,
-    finalExplosionRadius: 0,
-    shipTailspinAngle: 0,
-    shipTailspinSpeed: 0,
-    victoryScrollY: 0,
-    starField: [] as Array<{x: number, y: number, speed: number}>,
-    aiLaughTimer: 0,
-    vincentPriceLaugh: false
-  };
+  private finaleSequence = LasatGame.createFinaleSequence();
+
+  private static createFinaleSequence() {
+    return {
+      active: false,
+      phase: 0, // 0: boss damage effects, 1: final explosion, 2: ship tailspin, 3: victory scroll, 4: AI laugh
+      timer: 0,
+      bossDamageEffects: [] as Array<{x: number, y: number, intensity: number, timer: number}>,
+      finalExplosionRadius: 0,
+      shipTailspinAngle: 0,
+      shipTailspinSpeed: 0,
+      victoryScrollY: 0,
+      starField: [] as Array<{x: number, y: number, speed: number}>,
+      aiLaughTimer: 0,
+      vincentPriceLaugh: false
+    };
+  }
 
   init() {
     // Initialize game state
     this.gameState = 'start';
-    this.lives = 5;
+    this.lives = STARTING_LIVES;
     this.score = 0;
+    this.lastReportedScore = 0;
     this.ragnarokPhase = 1;
     this.bossActive = false;
     this.bossPhase = 1;
     this.enemiesDefeated = 0;
     this.bossDefeated = false;
+    this.stageEnded = false;
+    this.gracePeriod = GRACE_FRAMES;
+    this.waveCompleteTimer = 0;
+    this.frameCount = 0;
+    this.enemyCommandTimer = 0;
+    this.currentEnemyCommand = '';
+    this.playerProjectiles = [];
+    this.enemyProjectiles = [];
+    this.powerUps = [];
+    this.targetPanels = [];
+    this.trenchElements = [];
+    this.aiNarrative.phase = 0;
+    this.aiNarrative.timer = 0;
+    this.aiNarrative.currentMessage = '';
+    this.aiNarrative.betrayalTriggered = false;
+    this.aiNarrative.escapeSequenceActive = false;
+    this.finaleSequence = LasatGame.createFinaleSequence();
     this.konamiCode = [];
     this.konamiCodeActivated = false;
     
@@ -288,32 +334,30 @@ export class LasatGame extends BaseGame {
     this.aiNarrative.timer++;
     
     // Progress through betrayal messages
-    if (this.aiNarrative.timer % 800 === 0 && this.aiNarrative.phase < this.aiNarrative.messages.length) {
-      this.aiNarrative.currentMessage = this.aiNarrative.messages[this.aiNarrative.phase];
-      this.aiNarrative.phase++;
-      
-      // Trigger betrayal sequence on final message
-      if (this.aiNarrative.phase >= this.aiNarrative.messages.length && !this.aiNarrative.betrayalTriggered) {
-        this.aiNarrative.betrayalTriggered = true;
+    if (this.aiNarrative.timer % AI_MESSAGE_INTERVAL_FRAMES === 0) {
+      if (this.aiNarrative.phase < this.aiNarrative.messages.length) {
+        this.aiNarrative.currentMessage = this.aiNarrative.messages[this.aiNarrative.phase];
+        this.aiNarrative.phase++;
+        if (this.aiNarrative.phase >= this.aiNarrative.messages.length) {
+          this.aiNarrative.betrayalTriggered = true;
+        }
+      } else if (this.aiNarrative.betrayalTriggered && !this.aiNarrative.escapeSequenceActive) {
+        // The AI announces its escape; the stage itself only ends by defeating the Sinistar
         this.aiNarrative.escapeSequenceActive = true;
-        this.triggerEscapeSequence();
+        this.aiNarrative.currentMessage = 'ESCAPE SEQUENCE INITIATED... GOODBYE, HUMAN...';
       }
     }
     
     // Clear message after display time
-    if (this.aiNarrative.timer % 800 > 400) {
+    if (this.aiNarrative.timer % AI_MESSAGE_INTERVAL_FRAMES > AI_MESSAGE_INTERVAL_FRAMES / 2) {
       this.aiNarrative.currentMessage = '';
     }
   }
 
-  private triggerEscapeSequence() {
-    // AI takes control and forces transition to betrayal stage
-    setTimeout(() => {
-      this.aiNarrative.currentMessage = 'ESCAPE SEQUENCE INITIATED... GOODBYE, HUMAN...';
-      setTimeout(() => {
-        this.onStageComplete?.(); // Force transition to Betrayal stage
-      }, 3000);
-    }, 2000);
+  /** Boss/mothership reinforcements, capped so the field never floods faster than it can be cleared. */
+  private spawnReinforcement(type: Enemy['type'], squadron: number) {
+    if (this.enemies.filter(e => e.alive).length >= MAX_ALIVE_ENEMIES) return;
+    this.spawnEnemy(type, squadron);
   }
 
   private spawnEnemy(type: Enemy['type'], squadron: number) {
@@ -351,8 +395,8 @@ export class LasatGame extends BaseGame {
       position: { x: this.width / 2, y: 100 },
       velocity: { x: 0, y: 0 },
       size: 120, // Massive boss ship
-      health: 1000,
-      maxHealth: 1000,
+      health: BOSS_MAX_HEALTH,
+      maxHealth: BOSS_MAX_HEALTH,
       alive: true,
       type: 'sinistar_boss',
       shootTimer: 0,
@@ -379,6 +423,7 @@ export class LasatGame extends BaseGame {
 
   update(_deltaTime: number) {
     // Handle different game states
+    if (this.stageEnded && this.gameState === 'playing') return;
     if (this.gameState === 'start' || this.gameState === 'select') {
       this.handleStartScreenInput();
       return;
@@ -394,6 +439,15 @@ export class LasatGame extends BaseGame {
   }
 
   private updateGameplay(_deltaTime: number) {
+    // The finale is a cutscene: combat is frozen until the stage completes
+    if (this.finaleSequence.active) {
+      this.updateFinaleSequence();
+      this.reportScoreIfChanged();
+      return;
+    }
+
+    this.frameCount++;
+
     // Handle input
     this.handleMovement();
 
@@ -404,9 +458,6 @@ export class LasatGame extends BaseGame {
 
     // Update AI betrayal narrative
     this.updateAIBetrayal();
-
-    // Update epic finale sequence
-    this.updateFinaleSequence();
 
     // Update enemy command announcements
     this.updateEnemyCommands();
@@ -438,6 +489,10 @@ export class LasatGame extends BaseGame {
 
     // Check collisions
     this.checkCollisions();
+    if (this.stageEnded || this.finaleSequence.active) {
+      this.reportScoreIfChanged();
+      return;
+    }
 
     // Spawn power-ups occasionally
     if (Math.random() < 0.003) {
@@ -449,7 +504,7 @@ export class LasatGame extends BaseGame {
     if (aliveEnemies.length === 0) {
       if (this.waveCompleteTimer === 0) {
         // Start wave completion sequence
-        this.waveCompleteTimer = 300; // 5 seconds delay
+        this.waveCompleteTimer = WAVE_BREAK_FRAMES;
       } else {
         this.waveCompleteTimer--;
         if (this.waveCompleteTimer <= 0) {
@@ -457,11 +512,10 @@ export class LasatGame extends BaseGame {
           this.ragnarokPhase++;
           this.waveCompleteTimer = 0; // Reset timer
           
-          if (this.ragnarokPhase >= 4 && !this.bossActive) {
-            // Spawn Sinistar boss at wave 5 (ragnarokPhase 4 means we're starting wave 5)
+          if (this.ragnarokPhase >= BOSS_PHASE && !this.bossActive) {
             this.spawnSinistarBoss();
-          } else if (this.ragnarokPhase > 4) {
-            this.onStageComplete?.(); // Ragnarok completed!
+          } else if (this.ragnarokPhase > BOSS_PHASE) {
+            this.completeStage(); // Ragnarok completed!
           } else {
             this.spawnRagnarokWave();
           }
@@ -483,11 +537,27 @@ export class LasatGame extends BaseGame {
       }
     }
 
-    // Only update score when it actually changes
+    this.reportScoreIfChanged();
+  }
+
+  private reportScoreIfChanged() {
     if (this.score !== this.lastReportedScore) {
       this.onScoreUpdate?.(this.score);
       this.lastReportedScore = this.score;
     }
+  }
+
+  private completeStage() {
+    if (this.stageEnded) return;
+    this.stageEnded = true;
+    this.onStageComplete?.();
+  }
+
+  private loseGame() {
+    if (this.stageEnded) return;
+    this.stageEnded = true;
+    this.gameState = 'gameOver';
+    this.onGameOver?.();
   }
 
   private handleStartScreenInput() {
@@ -529,8 +599,9 @@ export class LasatGame extends BaseGame {
     }
   }
 
-  private showEnemyCommand(_command: string) {
+  private showEnemyCommand(command: string) {
     // Visual feedback for enemy commands
+    this.currentEnemyCommand = command;
     this.playStinger('enemy_command');
   }
 
@@ -554,6 +625,12 @@ export class LasatGame extends BaseGame {
       boss.phase = 3;
       this.updateBossPhase3(boss);
     }
+    this.bossPhase = boss.phase;
+
+    // The Sinistar hunts along the top of the screen but never dives onto the Gunstar
+    const half = boss.size / 2;
+    boss.position.x = Math.max(half, Math.min(this.width - half, boss.position.x + boss.velocity.x));
+    boss.position.y = Math.max(half, Math.min(this.height * BOSS_MAX_Y_FRACTION, boss.position.y + boss.velocity.y));
   }
 
   private updateBossPhase1(boss: Enemy) {
@@ -573,7 +650,7 @@ export class LasatGame extends BaseGame {
     // Spawn fighters periodically
     boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
     if (boss.spawnTimer <= 0) {
-      this.spawnEnemy('fighter', 0);
+      this.spawnReinforcement('fighter', 0);
       boss.spawnTimer = 300; // Every 5 seconds
     }
     
@@ -581,7 +658,7 @@ export class LasatGame extends BaseGame {
     boss.shootTimer--;
     if (boss.shootTimer <= 0) {
       this.enemyShoot(boss);
-      boss.shootTimer = 200; // Every ~3.3 seconds
+      boss.shootTimer = BOSS_SHOT_INTERVAL[0];
     }
   }
 
@@ -589,7 +666,7 @@ export class LasatGame extends BaseGame {
     // More aggressive movement
     const dx = this.player.position.x - boss.position.x;
     const dy = this.player.position.y - boss.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
     
     boss.velocity.x = (dx / distance) * 1.2; // Faster approach
     boss.velocity.y = (dy / distance) * 1.2;
@@ -597,7 +674,7 @@ export class LasatGame extends BaseGame {
     // Spawn destroyers
     boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
     if (boss.spawnTimer <= 0) {
-      this.spawnEnemy('destroyer', 0);
+      this.spawnReinforcement('destroyer', 0);
       boss.spawnTimer = 500; // Every ~8.3 seconds
     }
     
@@ -605,7 +682,7 @@ export class LasatGame extends BaseGame {
     boss.shootTimer--;
     if (boss.shootTimer <= 0) {
       this.enemyShoot(boss);
-      boss.shootTimer = 100; // Every ~1.7 seconds
+      boss.shootTimer = BOSS_SHOT_INTERVAL[1];
     }
   }
 
@@ -613,7 +690,7 @@ export class LasatGame extends BaseGame {
     // Berserker movement - erratic and fast
     const dx = this.player.position.x - boss.position.x;
     const dy = this.player.position.y - boss.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
     
     boss.velocity.x = (dx / distance) * 1.8 + (Math.random() - 0.5) * 1.2; // Erratic movement
     boss.velocity.y = (dy / distance) * 1.8 + (Math.random() - 0.5) * 1.2;
@@ -621,7 +698,7 @@ export class LasatGame extends BaseGame {
     // Spawn motherships
     boss.spawnTimer = (boss.spawnTimer ?? 0) - 1;
     if (boss.spawnTimer <= 0) {
-      this.spawnEnemy('mothership', 0);
+      this.spawnReinforcement('mothership', 0);
       boss.spawnTimer = 1000; // Every ~16.7 seconds
     }
     
@@ -629,7 +706,7 @@ export class LasatGame extends BaseGame {
     boss.shootTimer--;
     if (boss.shootTimer <= 0) {
       this.enemyShoot(boss);
-      boss.shootTimer = 50; // Every ~0.83 seconds
+      boss.shootTimer = BOSS_SHOT_INTERVAL[2];
     }
     
     // Death Blossom attacks
@@ -721,9 +798,10 @@ export class LasatGame extends BaseGame {
     this.player.position.x = Math.max(this.player.size, Math.min(this.width - this.player.size, this.player.position.x));
     this.player.position.y = Math.max(this.player.size, Math.min(this.height - this.player.size, this.player.position.y));
     
-    // Update Death Blossom cooldown
+    // Update Death Blossom cooldown; it re-arms when the countdown shown in the HUD ends
     if (this.player.deathBlossomCooldown > 0) {
       this.player.deathBlossomCooldown--;
+      if (this.player.deathBlossomCooldown <= 0) this.player.deathBlossomReady = true;
     }
     
     // Regenerate weapon energy
@@ -785,11 +863,9 @@ export class LasatGame extends BaseGame {
     if (!this.player.deathBlossomReady || this.player.deathBlossomCooldown > 0) return;
     
     this.player.deathBlossomReady = false;
-    this.player.deathBlossomCooldown = 3000; // 50 second cooldown
+    this.player.deathBlossomCooldown = DEATH_BLOSSOM_COOLDOWN_FRAMES;
     
-    // Create energy burst that destroys all nearby enemies
-    const burstRadius = 150;
-    
+    // Energy burst that destroys nearby armada ships and scorches the Sinistar
     this.enemies.forEach(enemy => {
       if (!enemy.alive) return;
       
@@ -797,10 +873,12 @@ export class LasatGame extends BaseGame {
       const dy = enemy.position.y - this.player.position.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      if (distance < burstRadius) {
-        enemy.health = 0;
-        enemy.alive = false;
-        this.score += enemy.type === 'sinistar_boss' ? 10000 : enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
+      if (distance < DEATH_BLOSSOM_RADIUS + enemy.size / 2) {
+        if (enemy.type === 'sinistar_boss') {
+          this.damageBoss(enemy, DEATH_BLOSSOM_BOSS_DAMAGE);
+        } else {
+          this.destroyEnemy(enemy);
+        }
       }
     });
     
@@ -859,12 +937,20 @@ export class LasatGame extends BaseGame {
     enemy.position.x += enemy.velocity.x;
     enemy.position.y += enemy.velocity.y;
 
-    // Keep enemies roughly in bounds
-    if (enemy.position.x < 0 || enemy.position.x > this.width) {
+    // Keep enemies on screen and in the upper battle zone (steering recomputes velocity every frame,
+    // so clamping the position is what actually stops ships drifting out of reach)
+    const minX = ENEMY_EDGE_MARGIN, maxX = this.width - ENEMY_EDGE_MARGIN;
+    const maxY = this.height * ENEMY_MAX_Y_FRACTION;
+    if (enemy.position.x < minX || enemy.position.x > maxX) {
+      enemy.position.x = Math.max(minX, Math.min(maxX, enemy.position.x));
       enemy.velocity.x = -enemy.velocity.x;
     }
-    if (enemy.position.y < 0 || enemy.position.y > this.height * 0.6) {
+    if (enemy.position.y < ENEMY_MIN_Y) {
+      enemy.position.y = ENEMY_MIN_Y;
       enemy.velocity.y = Math.abs(enemy.velocity.y);
+    } else if (enemy.position.y > maxY) {
+      enemy.position.y = maxY;
+      enemy.velocity.y = -Math.abs(enemy.velocity.y);
     }
 
     if (enemy.enraged) {
@@ -898,7 +984,7 @@ export class LasatGame extends BaseGame {
     if (distance > 0) {
       // Swarm behavior - move in formation
       const formationAngle = enemy.formationPosition * Math.PI / 180;
-      const swarmOffset = Math.sin(Date.now() * 0.003 + enemy.squadron) * 30;
+      const swarmOffset = Math.sin(this.frameCount * 0.05 + enemy.squadron) * 30;
       
       enemy.velocity.x = Math.cos(formationAngle) * 1.2 + (dx / distance) * 0.9;
       enemy.velocity.y = Math.sin(formationAngle) * 1.2 + (dy / distance) * 0.9 + swarmOffset * 0.06;
@@ -932,7 +1018,7 @@ export class LasatGame extends BaseGame {
     
     // Spawn fighters occasionally
     if (Math.random() < 0.006) {
-      this.spawnEnemy('fighter', enemy.squadron);
+      this.spawnReinforcement('fighter', enemy.squadron);
     }
   }
 
@@ -1060,7 +1146,7 @@ export class LasatGame extends BaseGame {
       case 'mothership':
         // Spawn fighter wave
         for (let i = 0; i < 3; i++) {
-          this.spawnEnemy('fighter', enemy.squadron);
+          this.spawnReinforcement('fighter', enemy.squadron);
         }
         break;
     }
@@ -1134,74 +1220,47 @@ export class LasatGame extends BaseGame {
   }
 
   private checkCollisions() {
-    // Player projectiles vs enemies
-    this.playerProjectiles.forEach(proj => {
-      this.enemies.forEach(enemy => {
-        if (enemy.alive && this.isColliding(proj, enemy)) {
-          const previousHealth = enemy.health;
-          enemy.health -= proj.damage;
-          enemy.rage += proj.damage;
-          
-          // EPIC BOSS DAMAGE EFFECTS!
-          if (enemy.type === 'sinistar_boss') {
-            this.addBossDamageEffect(enemy.position.x, enemy.position.y, proj.damage);
-            
-            // Screen shake for boss hits
-            this.screenShake.trigger(8);
-            
-            // Dramatic hit sound
-            this.playStinger('boss_hit');
-            
-            // Check if this is the final hit
-            if (enemy.health <= 0 && previousHealth > 0) {
-              this.startEpicFinaleSequence();
-              return; // Skip normal death handling
-            }
-          }
-          
-          if (enemy.rage >= 100 && !enemy.enraged) {
-              enemy.enraged = true;
-              enemy.enrageTimer = 500; // ~8.3 seconds
-              enemy.rage = 0;
-              this.playStinger('boss_enrage');
-          }
-          proj.alive = false;
-          
-          if (enemy.health <= 0 && enemy.type !== 'sinistar_boss') {
-            enemy.alive = false;
-            this.enemiesDefeated++;
-            this.score += enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
-            this.bossesDefeated++;
-          }
-          
-          this.playHitSound();
+    // Player projectiles vs enemies (each projectile hits at most one ship)
+    for (const proj of this.playerProjectiles) {
+      for (const enemy of this.enemies) {
+        if (!proj.alive) break;
+        if (!enemy.alive || !this.isColliding(proj, enemy)) continue;
+        proj.alive = false;
+
+        if (enemy.type === 'sinistar_boss') {
+          this.damageBoss(enemy, proj.damage);
+          continue;
         }
-      });
-    });
+
+        enemy.health -= proj.damage;
+        enemy.rage += proj.damage;
+        if (enemy.rage >= 100 && !enemy.enraged) {
+          enemy.enraged = true;
+          enemy.enrageTimer = 500; // ~8.3 seconds
+          enemy.rage = 0;
+          this.playStinger('boss_enrage');
+        }
+        if (enemy.health <= 0) {
+          this.destroyEnemy(enemy);
+        }
+        this.playHitSound();
+      }
+    }
+    if (this.finaleSequence.active) return;
 
     // Enemy projectiles vs player
     if (!this.player.shieldActive && this.gracePeriod <= 0) {
-      this.enemyProjectiles.forEach(proj => {
-        if (this.isColliding(proj, this.player)) {
-          this.player.health -= proj.damage;
-          proj.alive = false;
-          
-          if (this.player.health <= 0) {
-            this.lives--;
-            if (this.lives <= 0) {
-              this.gameState = 'gameOver';
-              this.onGameOver?.();
-            } else {
-              // Respawn player with full health
-              this.player.health = this.player.maxHealth;
-              this.player.position = { x: this.width / 2, y: this.height - 100 };
-              this.player.velocity = { x: 0, y: 0 };
-              this.gracePeriod = 300; // 5 seconds invulnerability
-            }
-          }
+      for (const proj of this.enemyProjectiles) {
+        if (!proj.alive || !this.isColliding(proj, this.player)) continue;
+        this.player.health -= proj.damage;
+        proj.alive = false;
+        if (this.player.health <= 0) {
+          this.loseLife();
+          break;
         }
-      });
+      }
     }
+    if (this.stageEnded) return;
 
     // Player vs power-ups
     this.powerUps.forEach((powerUp, index) => {
@@ -1214,6 +1273,42 @@ export class LasatGame extends BaseGame {
         this.powerUps.splice(index, 1);
       }
     });
+  }
+
+  private destroyEnemy(enemy: Enemy) {
+    enemy.health = 0;
+    enemy.alive = false;
+    this.enemiesDefeated++;
+    this.score += enemy.type === 'mothership' ? 1000 : enemy.type === 'destroyer' ? 500 : 200;
+    this.bossesDefeated++;
+  }
+
+  private damageBoss(boss: Enemy, damage: number) {
+    if (this.bossDefeated) return;
+    boss.health -= damage;
+
+    // EPIC BOSS DAMAGE EFFECTS!
+    this.addBossDamageEffect(boss.position.x, boss.position.y, damage);
+    this.screenShake.trigger(8);
+    this.playStinger('boss_hit');
+
+    if (boss.health <= 0) {
+      this.startEpicFinaleSequence();
+    }
+  }
+
+  private loseLife() {
+    this.lives--;
+    if (this.lives <= 0) {
+      this.loseGame();
+      return;
+    }
+    // Respawn player with full health
+    this.player.health = this.player.maxHealth;
+    this.player.position = { x: this.width / 2, y: this.height - 100 };
+    this.player.velocity = { x: 0, y: 0 };
+    this.player.shieldActive = false;
+    this.gracePeriod = GRACE_FRAMES;
   }
 
   private isColliding(obj1: Entity, obj2: Entity): boolean {
@@ -1239,9 +1334,14 @@ export class LasatGame extends BaseGame {
       });
     }
     
-    // Mark boss as defeated but keep it alive for the sequence
+    // The armada collapses with its master; the wreck stays on screen for the damage effects
     this.bossDefeated = true;
     this.score += 10000;
+    this.enemies.forEach(enemy => { enemy.alive = false; });
+    this.enemyProjectiles = [];
+    this.playerProjectiles = [];
+    this.powerUps = [];
+    this.player.velocity = { x: 0, y: 0 };
     
     // Play epic finale music
     this.playStinger('epic_finale');
@@ -1435,7 +1535,7 @@ export class LasatGame extends BaseGame {
     this.finaleSequence.active = false;
     
     // Complete the stage
-    this.onStageComplete?.();
+    this.completeStage();
   }
 
   private collectPowerUp(powerUp: PowerUp) {
@@ -1445,12 +1545,12 @@ export class LasatGame extends BaseGame {
         break;
       case 'energy':
         this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 50);
+        this.player.weaponEnergy.laser = 100;
         break;
-      case 'weapon': {
-        const weapons: Player['weaponType'][] = ['laser', 'ion_cannon'];
-        this.player.weaponType = weapons[Math.floor(Math.random() * weapons.length)];
+      case 'weapon':
+        this.player.weaponType = 'ion_cannon';
+        this.player.weaponEnergy.ion = 100;
         break;
-      }
       case 'shield':
         this.player.shieldActive = true;
         this.player.shieldTimer = 500;
@@ -1575,8 +1675,8 @@ export class LasatGame extends BaseGame {
   }
 
   private drawGameplay() {
-    // Draw epic finale sequence if active
-    if (this.finaleSequence.active) {
+    // Draw epic finale sequence if active (and hold its last frame once the stage is complete)
+    if (this.finaleSequence.active || (this.stageEnded && this.bossDefeated)) {
       this.drawEpicFinaleSequence();
       return;
     }
@@ -1735,35 +1835,6 @@ export class LasatGame extends BaseGame {
     
     this.ctx.shadowBlur = 0;
     
-    // Weapon energy displays (left and right)
-    this.drawWeaponDisplay('LASER ENERGY', this.player.weaponEnergy.laser, 50, 50, '#00FFFF');
-    this.drawWeaponDisplay('ION CANNON', this.player.weaponEnergy.ion, this.width - 150, 50, '#FF4500');
-    
-    // Hull temperature and ship status
-    this.ctx.fillStyle = '#FFD700';
-    this.ctx.font = arcadeFont(14, 'body');
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`HULL TEMP: ${Math.round(this.player.health)}`, 20, this.height - 80);
-    this.ctx.fillText(`SCORE: ${this.score}`, 20, this.height - 60);
-    this.ctx.fillText(`GROUP: ${this.ragnarokPhase}`, 20, this.height - 40);
-    this.ctx.fillText(`LIVES: ${this.lives}`, 20, this.height - 20);
-    
-    // Heat-seeking missiles display
-    if (this.player.heatseekingMissiles > 0) {
-      this.ctx.fillStyle = '#FF4500';
-      this.ctx.font = arcadeFont(14, 'body');
-      this.ctx.textAlign = 'left';
-      this.ctx.fillText(`HEAT-SEEKING MISSILES: ${this.player.heatseekingMissiles}`, 20, this.height - 40);
-    }
-    
-    // Grace period indicator
-    if (this.gracePeriod > 0) {
-      this.ctx.fillStyle = '#00FF00';
-      this.ctx.font = arcadeFont(16, 'body');
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText(`INVULNERABLE: ${Math.ceil(this.gracePeriod / 60)}s`, this.width / 2, this.height - 80);
-    }
-    
     // Wave completion indicator
     if (this.waveCompleteTimer > 0) {
       this.ctx.fillStyle = '#FFD700';
@@ -1784,25 +1855,11 @@ export class LasatGame extends BaseGame {
     }
     
     // Enemy command display
-    if (this.enemyCommandTimer > 0 && this.enemyCommandTimer < 100) {
-      const command = this.enemyCommands[Math.floor(Math.random() * this.enemyCommands.length)];
+    if (this.enemyCommandTimer > 0 && this.enemyCommandTimer < 100 && this.currentEnemyCommand) {
       this.ctx.fillStyle = '#FF0000';
       this.ctx.font = arcadeFont(18, 'body');
       this.ctx.textAlign = 'center';
-      this.ctx.fillText(command, this.width / 2, 50);
-    }
-    
-    // Death Blossom status
-    if (this.player.deathBlossomReady && this.player.deathBlossomCooldown <= 0) {
-      this.ctx.fillStyle = '#FF0000';
-      this.ctx.font = arcadeFont(16, 'body');
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('DEATH BLOSSOM READY', this.width / 2, this.height - 20);
-    } else if (this.player.deathBlossomCooldown > 0) {
-      this.ctx.fillStyle = '#FFD700';
-      this.ctx.font = arcadeFont(12, 'body');
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText(`DEATH BLOSSOM: ${Math.ceil(this.player.deathBlossomCooldown / 60)}s`, this.width / 2, this.height - 20);
+      this.ctx.fillText(this.currentEnemyCommand, this.width / 2, 50);
     }
     
     // Squadron indicators
@@ -2007,37 +2064,17 @@ export class LasatGame extends BaseGame {
     this.ctx.restore();
   }
 
-  private drawWeaponDisplay(label: string, energy: number, x: number, y: number, color: string) {
-    this.ctx.save();
-    
-    // Weapon label
-    this.ctx.fillStyle = color;
-    this.ctx.font = arcadeFont(12, 'body');
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(label, x, y);
-    
-    // Energy value
-    this.ctx.fillText(`${(energy / 100).toFixed(2)}`, x, y + 20);
-    
-    // Energy bar
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    this.ctx.fillRect(x, y + 25, 100, 10);
-    this.ctx.fillStyle = color;
-    this.ctx.fillRect(x, y + 25, (energy / 100) * 100, 10);
-    
-    this.ctx.restore();
-  }
-
   private drawSquadronRadar() {
-    // Spherical radar displays (top corners)
+    // Spherical radar displays (bottom corners, clear of the shared HUD)
     const radarSize = 60;
+    const radarY = this.height - radarSize - 10;
     
     // Top-left radar
     this.ctx.save();
     this.ctx.strokeStyle = '#00FF00';
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
-    this.ctx.arc(radarSize, radarSize, radarSize, 0, Math.PI * 2);
+    this.ctx.arc(radarSize + 10, radarY, radarSize, 0, Math.PI * 2);
     this.ctx.stroke();
     
     // Draw enemies as dots on radar
@@ -2050,7 +2087,7 @@ export class LasatGame extends BaseGame {
       if (Math.abs(relativeX) < radarSize && Math.abs(relativeY) < radarSize) {
         this.ctx.fillStyle = enemy.type === 'mothership' ? '#FF0000' : enemy.type === 'destroyer' ? '#FF4500' : '#FFFF00';
         this.ctx.beginPath();
-        this.ctx.arc(radarSize + relativeX, radarSize + relativeY, 3, 0, Math.PI * 2);
+        this.ctx.arc(radarSize + 10 + relativeX, radarY + relativeY, 3, 0, Math.PI * 2);
         this.ctx.fill();
       }
     });
@@ -2062,7 +2099,7 @@ export class LasatGame extends BaseGame {
     this.ctx.strokeStyle = '#00FF00';
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
-    this.ctx.arc(this.width - radarSize, radarSize, radarSize, 0, Math.PI * 2);
+    this.ctx.arc(this.width - radarSize - 10, radarY, radarSize, 0, Math.PI * 2);
     this.ctx.stroke();
     
     // Draw projectiles as dots
@@ -2073,7 +2110,7 @@ export class LasatGame extends BaseGame {
       if (Math.abs(relativeX) < radarSize && Math.abs(relativeY) < radarSize) {
         this.ctx.fillStyle = '#FF0000';
         this.ctx.beginPath();
-        this.ctx.arc(this.width - radarSize + relativeX, radarSize + relativeY, 2, 0, Math.PI * 2);
+        this.ctx.arc(this.width - radarSize - 10 + relativeX, radarY + relativeY, 2, 0, Math.PI * 2);
         this.ctx.fill();
       }
     });
@@ -2381,14 +2418,29 @@ export class LasatGame extends BaseGame {
 
   getHudStats(): HudStat[] {
     if (!this.player || this.gameState !== 'playing') return [];
+    const health = Math.max(0, this.player.health);
     const stats: HudStat[] = [
-      { label: 'Health', meter: { value: Math.max(0, this.player.health), max: this.player.maxHealth } },
-      { label: 'Energy', meter: { value: this.player.energy, max: this.player.maxEnergy } },
-      { label: 'Weapon', value: this.player.weaponType.toUpperCase() },
-      { label: 'Phase', value: `${Math.min(this.ragnarokPhase, 5)}/5` },
+      { label: 'Health', meter: { value: health, max: this.player.maxHealth }, tone: health < this.player.maxHealth * 0.3 ? 'danger' : 'normal' },
+      { label: 'Lives', value: this.lives, tone: this.lives <= 1 ? 'danger' : 'normal' },
+      { label: 'Laser', meter: { value: this.player.weaponEnergy.laser, max: 100 } },
+      { label: 'Ion', meter: { value: this.player.weaponEnergy.ion, max: 100 } },
+      { label: 'Phase', value: this.ragnarokPhase >= BOSS_PHASE ? 'SINISTAR' : `Wave ${this.ragnarokPhase}/${BOSS_PHASE - 1}` },
     ];
+    const boss = this.enemies.find(e => e.type === 'sinistar_boss' && e.alive);
+    if (boss) {
+      stats.push({ label: 'Sinistar', meter: { value: Math.max(0, boss.health), max: boss.maxHealth }, tone: 'danger' });
+    }
+    stats.push(this.player.deathBlossomReady
+      ? { label: 'Death Blossom', value: 'READY', tone: 'warning' }
+      : { label: 'Death Blossom', value: `${Math.ceil(this.player.deathBlossomCooldown / 60)}s` });
+    if (this.player.heatseekingMissiles > 0) {
+      stats.push({ label: 'Missiles', value: this.player.heatseekingMissiles });
+    }
     if (this.player.shieldActive) {
       stats.push({ label: 'Shield', value: `${Math.ceil(this.player.shieldTimer / 60)}s`, tone: 'warning' });
+    }
+    if (this.gracePeriod > 0) {
+      stats.push({ label: 'Invulnerable', value: `${Math.ceil(this.gracePeriod / 60)}s`, tone: 'warning' });
     }
     return stats;
   }
