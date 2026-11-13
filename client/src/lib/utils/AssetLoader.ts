@@ -50,7 +50,6 @@ export class AssetLoader {
     const successful = results.filter(result => result.status === 'fulfilled').length;
     const failed = results.filter(result => result.status === 'rejected').length;
 
-    console.log(`✅ Critical assets preloaded: ${successful} successful, ${failed} failed`);
 
     // Don't throw error if some assets fail - let the app continue
     if (failed > 0) {
@@ -184,7 +183,6 @@ export class AssetLoader {
   async preloadStageAssets(stage: number): Promise<void> {
     const stageAssets = this.getStageAssets(stage);
     await Promise.all(stageAssets.map(asset => this.loadAsset(asset)));
-    console.log(`✅ Stage ${stage} assets preloaded`);
   }
 
   private getStageAssets(stage: number): string[] {

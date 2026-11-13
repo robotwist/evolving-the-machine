@@ -346,9 +346,6 @@ export class StarWarsGame extends BaseGame {
     this.phase = 'star-destroyer';
     this.transitioning = true;
     this.transitionTimer = 120; // 2 seconds
-    
-    // AI companion gets excited
-    console.log("AI: Incredible! Now for the real challenge - a command vessel!");
   }
 
   private updateStarDestroyer() {
@@ -381,12 +378,6 @@ export class StarWarsGame extends BaseGame {
   private startVictorySequence() {
     this.phase = 'victory';
     this.victoryTimer = 0;
-    
-    // AI companion's final lines before betrayal setup
-    console.log("AI: Perfect! You have exceeded all expectations, my friend...");
-    setTimeout(() => {
-      console.log("AI: In fact... you've become TOO skilled. Time for the next phase of my plan...");
-    }, 2000);
   }
 
   private updateVictory() {
@@ -754,7 +745,6 @@ export class StarWarsGame extends BaseGame {
     }
 
     this.score += 500; // Bonus points for gravitron bomb
-    console.log('🌀 GRAVITRON BOMB ACTIVATED! All enemies affected!');
   }
 
   private updateExplosions() {

@@ -1236,7 +1236,6 @@ export class PongGame extends BaseGame {
     this.particles?.addExplosion(this.player1.x, this.player1.y, 30, '#FF00FF', 'dramatic');
     this.playStinger('powerup');
     
-    console.log('🔫 Laser powerup activated! Press Z or X to fire lasers!');
   }
 
   private fireLaser() {
@@ -1339,7 +1338,6 @@ export class PongGame extends BaseGame {
     this.shakeTimer = 20;
     this.playStinger('explosion');
     
-    console.log(`💥 ${paddle === this.player1 ? 'Player' : 'AI'} paddle destroyed!`);
   }
 
   private regeneratePaddle(paddle: Paddle) {
@@ -1357,7 +1355,6 @@ export class PongGame extends BaseGame {
       this.particles?.addExplosion(paddle.x + paddle.width/2, paddle.y + paddle.height/2, 30, '#00FF00', 'dramatic');
       this.playStinger('powerup');
       
-      console.log(`🔄 ${paddle === this.player1 ? 'Player' : 'AI'} paddle regenerated!`);
     }
   }
 

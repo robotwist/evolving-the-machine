@@ -136,6 +136,7 @@ export default [
       'jsx-a11y/anchor-has-content': 'warn',
       'no-case-declarations': 'warn',
       'no-empty': 'warn',
+      'no-console': ['error', { allow: ['warn', 'error', 'info', 'group', 'groupEnd'] }],
     },
     settings: {
       react: {

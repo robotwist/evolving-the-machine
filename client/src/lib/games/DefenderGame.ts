@@ -384,9 +384,6 @@ export class DefenderGame extends BaseGame {
     
     this.playerBullets.push(bullet);
     this.playerShootCooldown = 5; // Set cooldown after shooting
-    
-    // Debug: log bullet creation
-    console.log('Bullet created:', bullet.position, 'Velocity:', bullet.velocity, 'Total bullets:', this.playerBullets.length);
   }
 
   private shootEnemyBullet(enemy: Enemy) {
@@ -429,9 +426,6 @@ export class DefenderGame extends BaseGame {
     
     this.playerBullets.push(bullet);
     this.playerShootCooldown = 8; // Slightly longer cooldown for vertical shots
-    
-    // Debug: log vertical bullet creation
-    console.log('Vertical bullet created:', bullet.position, 'Velocity:', bullet.velocity);
   }
 
   private updateProjectiles() {
@@ -541,9 +535,6 @@ export class DefenderGame extends BaseGame {
       kamikaze.kamikazeMode = true;
       kamikaze.type = 'kamikaze';
       this.aimKamikazeAtPlayer(kamikaze);
-      
-      // Visual effect - make it glow red
-      console.log('🚀 KAMIKAZE BOMBER DEPLOYED!', kamikaze.position);
       
       // Play kamikaze sound
       this.playStinger('kamikaze_warning');

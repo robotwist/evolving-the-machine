@@ -69,7 +69,6 @@ function useGameInstance(
     if (isInitializing.current) return; // Prevent double initialization
 
     isInitializing.current = true;
-    console.log(`🎮 Initializing game for stage ${currentStage}`);
 
     // Clear canvas before creating new game to prevent white screen
     ctx.fillStyle = '#000';
@@ -77,7 +76,6 @@ function useGameInstance(
 
     // Preload assets for this stage
     assetLoader.preloadStageAssets(currentStage)
-      .then(() => console.log(`🎨 Stage ${currentStage} assets ready`))
       .catch(error => console.warn(`⚠️ Failed to preload stage ${currentStage} assets:`, error));
 
     // Load and create game instance dynamically
@@ -104,7 +102,6 @@ function useGameInstance(
           // Initialize game asynchronously
           return Promise.resolve(game.init())
             .then(() => {
-              console.log(`✅ Game initialized for stage ${currentStage}`);
               game.start();
               isInitializing.current = false;
             })
@@ -128,15 +125,12 @@ function useGameInstance(
       });
 
     return () => {
-      console.log(`🧹 Cleaning up game for stage ${currentStage}`);
-              // Clear global reference if pointing to this instance
-              try {
-                const w = (window as unknown as { gameInstance?: BaseGame });
-                if (w.gameInstance === gameRef.current) {
-                  w.gameInstance = undefined;
-                }
-              } catch {}
-              gameRef.current?.destroy();
+      // Clear global reference if pointing to this instance
+      const w = (window as unknown as { gameInstance?: BaseGame });
+      if (w.gameInstance === gameRef.current) {
+        w.gameInstance = undefined;
+      }
+      gameRef.current?.destroy();
       gameRef.current = null;
       isInitializing.current = false;
     };

@@ -58,16 +58,12 @@ export const useGameStore = create<GameStore>()(
           const currentStage = get().currentStage;
           const { unlockedStages } = get();
           
-          // Debug environment and stage info
           const isProduction = process.env.NODE_ENV === 'production' || 
                               process.env.NODE_ENV === undefined || 
                               window.location.hostname !== 'localhost';
-          console.log('Environment:', process.env.NODE_ENV, 'Is Production:', isProduction);
-          console.log('Current stage:', currentStage, 'Requested stage:', validatedStage, 'Unlocked stages:', unlockedStages);
           
           // In production mode or if stage is unlocked, allow any stage
           if (isProduction || validatedStage <= unlockedStages) {
-            console.log('✅ Stage access allowed - production mode or stage unlocked');
             set({
               currentStage: validatedStage,
               gameState: 'playing'

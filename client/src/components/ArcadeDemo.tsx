@@ -64,9 +64,6 @@ export function ArcadeDemo() {
 
       if (selectedVoice) {
         utterance.voice = selectedVoice;
-        console.log('Using American accent voice:', selectedVoice.name);
-      } else {
-        console.log('Using default voice');
       }
 
       // Immediate delivery synchronized with text
@@ -172,7 +169,7 @@ export function ArcadeDemo() {
     try {
       audioRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     } catch {
-      console.log('Audio context not available');
+      console.warn('Audio context not available');
     }
 
     // Start attract mode sequence

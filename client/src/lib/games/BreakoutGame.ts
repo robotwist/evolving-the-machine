@@ -1507,7 +1507,6 @@ export class BreakoutGame extends BaseGame {
   }
 
   private activatePowerup(type: string, x: number, y: number) {
-    console.log(`🎁 Powerup activated: ${type}`);
     
     // Create powerup collection effect
     this.particles?.addExplosion(x, y, 30, '#FFD700', 'dramatic');
@@ -1550,7 +1549,6 @@ export class BreakoutGame extends BaseGame {
         
       case 'spikes':
         this.paddle.spikeCount = (this.paddle.spikeCount || 0) + 3;
-        console.log(`🗡️ Spikes acquired! Total spikes: ${this.paddle.spikeCount}`);
         break;
         
       case 'heatseeking':
@@ -1586,7 +1584,6 @@ export class BreakoutGame extends BaseGame {
   }
 
   private activateHeatseekingTripleBalls() {
-    console.log('🎯 Heatseeking Triple Balls activated!');
     
     // Create 3 heatseeking balls
     for (let i = 0; i < 3; i++) {
@@ -1759,7 +1756,6 @@ export class BreakoutGame extends BaseGame {
       // Add spike visual effect
       this.particles?.addExplosion(brick.x + brick.width/2, brick.y + brick.height/2, 15, '#8B0000', 'subtle');
       
-      console.log(`🗡️ Spike lodged in brick! ${this.paddle.spikeCount} spikes remaining`);
     }
   }
 
@@ -1816,7 +1812,6 @@ export class BreakoutGame extends BaseGame {
     }
     
     this.score += 25; // Bonus points for spike explosion
-    console.log('💥 Spike explosion! Massive damage dealt!');
   }
 
   // Test compatibility getters and methods

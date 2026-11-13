@@ -35,7 +35,6 @@ try {
 
   const root = createRoot(rootElement);
   root.render(<App />);
-  console.log("React app initialized successfully");
 } catch (error) {
   console.error("Failed to initialize React app:", error);
   // Fallback: show error message
@@ -68,9 +67,8 @@ setTimeout(() => {
     
     // Expose unlock function for console access
     window.unlockAllLevels = () => {
-      console.log('🔓 Unlocking all levels via console command...');
       useGameStore.getState().unlockAllLevels();
-      console.log('✅ All levels unlocked! Current unlocked stages:', useGameStore.getState().unlockedStages);
+      console.info('All levels unlocked:', useGameStore.getState().unlockedStages);
     };
   };
 

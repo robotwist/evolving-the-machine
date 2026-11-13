@@ -348,7 +348,6 @@ export class LasatGame extends BaseGame {
   }
 
   private spawnSinistarBoss() {
-    console.log('SpawnSinistarBoss called! Creating boss...');
     this.bossActive = true;
     this.bossPhase = 1;
     
@@ -377,7 +376,6 @@ export class LasatGame extends BaseGame {
     };
     
     this.enemies.push(boss);
-    console.log(`Boss created and added to enemies array. Total enemies: ${this.enemies.length}`);
     
     // Play boss spawn sound
     this.playStinger('boss_spawn');
@@ -453,11 +451,9 @@ export class LasatGame extends BaseGame {
     // Check wave completion with proper delay
     const aliveEnemies = this.enemies.filter(e => e.alive);
     if (aliveEnemies.length === 0) {
-      console.log(`All enemies defeated! Wave ${this.ragnarokPhase} complete. Starting completion timer...`);
       if (this.waveCompleteTimer === 0) {
         // Start wave completion sequence
         this.waveCompleteTimer = 180; // 3 seconds delay
-        console.log(`Wave completion timer started: ${this.waveCompleteTimer} frames`);
       } else {
         this.waveCompleteTimer--;
         if (this.waveCompleteTimer <= 0) {
@@ -467,13 +463,10 @@ export class LasatGame extends BaseGame {
           
           if (this.ragnarokPhase >= 4 && !this.bossActive) {
             // Spawn Sinistar boss at wave 5 (ragnarokPhase 4 means we're starting wave 5)
-            console.log(`Wave ${this.ragnarokPhase} completed! Spawning Sinistar boss...`);
             this.spawnSinistarBoss();
           } else if (this.ragnarokPhase > 4) {
-            console.log(`Wave ${this.ragnarokPhase} completed! Stage complete!`);
             this.onStageComplete?.(); // Ragnarok completed!
           } else {
-            console.log(`Wave ${this.ragnarokPhase} completed! Spawning next wave...`);
             this.spawnRagnarokWave();
           }
         }
@@ -1247,7 +1240,6 @@ export class LasatGame extends BaseGame {
 
   // EPIC FINALE SEQUENCE METHODS
   private startEpicFinaleSequence() {
-    console.log('🎆 STARTING EPIC FINALE SEQUENCE! 🎆');
     this.finaleSequence.active = true;
     this.finaleSequence.phase = 0;
     this.finaleSequence.timer = 0;
@@ -1352,7 +1344,6 @@ export class LasatGame extends BaseGame {
   }
 
   private startFinalExplosion() {
-    console.log('💥 FINAL EXPLOSION SEQUENCE! 💥');
     this.finaleSequence.finalExplosionRadius = 0;
     this.playStinger('final_explosion');
     
@@ -1393,7 +1384,6 @@ export class LasatGame extends BaseGame {
   }
 
   private startShipTailspin() {
-    console.log('🚀 SHIP TAILSPIN SEQUENCE! 🚀');
     this.finaleSequence.shipTailspinAngle = 0;
     this.finaleSequence.shipTailspinSpeed = 0.3;
     this.playStinger('ship_tailspin');
@@ -1419,7 +1409,6 @@ export class LasatGame extends BaseGame {
   }
 
   private startVictorySequence() {
-    console.log('🏆 VICTORY SEQUENCE! 🏆');
     this.finaleSequence.victoryScrollY = this.height;
     this.playStinger('victory_theme');
   }
@@ -1439,7 +1428,6 @@ export class LasatGame extends BaseGame {
   }
 
   private startAILaughSequence() {
-    console.log('😈 AI LAUGH SEQUENCE! 😈');
     this.finaleSequence.aiLaughTimer = 0;
     this.finaleSequence.vincentPriceLaugh = true;
     this.playStinger('ai_laugh');
@@ -1459,7 +1447,6 @@ export class LasatGame extends BaseGame {
   }
 
   private completeEpicFinale() {
-    console.log('🎆 EPIC FINALE COMPLETE! 🎆');
     this.finaleSequence.active = false;
     
     // Complete the stage

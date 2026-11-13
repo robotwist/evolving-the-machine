@@ -28,6 +28,9 @@ interface AudioState {
   playSizzle: () => void;
 }
 
+// Browsers reject play() until the user has interacted with the page.
+const ignoreBlockedPlayback = () => {};
+
 export const useAudio = create<AudioState>((set, get) => ({
   backgroundMusic: null,
   hitSound: null,
@@ -46,9 +49,6 @@ export const useAudio = create<AudioState>((set, get) => ({
     
     // Just update the muted state
     set({ isMuted: newMutedState });
-    
-    // Log the change
-    console.log(`Sound ${newMutedState ? 'muted' : 'unmuted'}`);
   },
   
   playHit: () => {
@@ -56,16 +56,13 @@ export const useAudio = create<AudioState>((set, get) => ({
     if (hitSound) {
       // If sound is muted, don't play anything
       if (isMuted) {
-        console.log("Hit sound skipped (muted)");
         return;
       }
       
       // Clone the sound to allow overlapping playback
       const soundClone = hitSound.cloneNode() as HTMLAudioElement;
       soundClone.volume = 0.3;
-      soundClone.play().catch(error => {
-        console.log("Hit sound play prevented:", error);
-      });
+      soundClone.play().catch(ignoreBlockedPlayback);
     }
   },
   
@@ -74,14 +71,11 @@ export const useAudio = create<AudioState>((set, get) => ({
     if (successSound) {
       // If sound is muted, don't play anything
       if (isMuted) {
-        console.log("Success sound skipped (muted)");
         return;
       }
       
       successSound.currentTime = 0;
-      successSound.play().catch(error => {
-        console.log("Success sound play prevented:", error);
-      });
+      successSound.play().catch(ignoreBlockedPlayback);
     }
   },
 
@@ -90,9 +84,7 @@ export const useAudio = create<AudioState>((set, get) => ({
     if (uiClickSound && !isMuted) {
       const soundClone = uiClickSound.cloneNode() as HTMLAudioElement;
       soundClone.volume = 0.5;
-      soundClone.play().catch(error => {
-        console.log("UI click sound play prevented:", error);
-      });
+      soundClone.play().catch(ignoreBlockedPlayback);
     }
   },
   
@@ -192,7 +184,7 @@ export const useAudio = create<AudioState>((set, get) => ({
         window.speechSynthesis.speak(utt);
       });
     } catch (e) {
-      console.log('VO failed', e);
+      console.warn('VO failed', e);
     }
   }
   ,

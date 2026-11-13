@@ -144,7 +144,6 @@ export class DanceInterlude extends BaseGame {
           console.warn('Could not play dance music:', e);
         });
 
-        console.log("🎵 PLAYING: Performance Protocol");
       }
     } catch (error) {
       console.warn('Dance music system not available:', error);
