@@ -28,7 +28,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
     return (
       <button
         onClick={onToggle}
-        className="fixed top-4 right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-mono"
+        className="fixed bottom-4 right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-mono"
         title="Toggle Performance Dashboard"
       >
         📊
@@ -58,7 +58,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
   const summary = performanceMonitor.getPerformanceSummary();
 
   return (
-    <div className="fixed top-4 right-4 z-50 bg-black/90 text-white p-4 rounded-lg font-mono text-xs max-w-sm">
+    <div className="fixed bottom-4 right-4 z-50 bg-black/90 text-white p-4 rounded-lg font-mono text-xs max-w-sm">
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-bold text-blue-400">Performance Dashboard</h3>

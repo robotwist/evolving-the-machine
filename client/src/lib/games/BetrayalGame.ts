@@ -80,6 +80,7 @@ export class BetrayalGame extends BaseGame {
   private messageTimer = 0;
   private messageIndex = 0;
   private laserFired = false; // Track if laser sound was played
+  private pointerHeld = false;
   private damageFlashTimer = 0;
   private transitionProgress = 0;
   private transitionTarget: 'victory' | 'defeat' | null = null;
@@ -1066,14 +1067,18 @@ export class BetrayalGame extends BaseGame {
 
   // Touch/pointer: tap to shoot toward the touch point, drag to steer
   handlePointerDown(x: number, y: number) {
+    this.pointerHeld = true;
     this.handleMobileShoot((x / this.width - 0.5) * 2, (y / this.height - 0.5) * 2);
   }
 
   handlePointerMove(x: number, y: number) {
+    if (!this.pointerHeld) return;
     this.handleMobileMove((x / this.width - 0.5) * 2, (y / this.height - 0.5) * 2);
   }
 
   handlePointerUp() {
+    if (!this.pointerHeld) return;
+    this.pointerHeld = false;
     this.player.velocity.x = 0;
     this.player.velocity.y = 0;
   }

@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type StageId = 1 | 2 | 3 | 4 | 5;
+export type StageId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+export function toTutorialStage(stage: number): StageId {
+  return Math.min(Math.max(Math.round(stage) || 1, 1), 8) as StageId;
+}
 
 interface TutorialState {
   seen: Partial<Record<StageId, boolean>>;

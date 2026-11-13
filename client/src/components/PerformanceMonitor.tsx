@@ -48,7 +48,7 @@ export function PerformanceMonitor() {
   };
 
   return (
-    <div className="fixed top-4 right-4 bg-black/90 text-white text-xs font-mono p-3 rounded-lg border border-gray-600 z-50 backdrop-blur-sm">
+    <div className="fixed top-16 right-4 bg-black/90 text-white text-xs font-mono p-3 rounded-lg border border-gray-600 z-50 backdrop-blur-sm">
       <div className="mb-2 font-bold text-cyan-400">Performance Monitor</div>
       <div className={`mb-1 ${getFpsColor(metrics.fps)}`}>
         FPS: <span className="font-bold">{metrics.fps}</span>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../lib/stores/useGameStore';
-import { useTutorialStore } from '../lib/stores/useTutorialStore';
+import { toTutorialStage, useTutorialStore } from '../lib/stores/useTutorialStore';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 
@@ -25,12 +25,24 @@ const tutorials = {
     title: 'Lasat Starfighter — Quick Tutorial',
     text: 'WASD or touch to move; Space to fire; use abilities when charged. Target key structures.',
   },
+  6: {
+    title: 'Dance Interlude — Quick Tutorial',
+    text: 'Tap the glowing targets on the beat to build your combo. Press Space to skip the dance.',
+  },
+  7: {
+    title: 'Space Battle — Quick Tutorial',
+    text: 'W/S to thrust, A/D to rotate, Space to fire. Grab powerups and destroy the capital ship’s weak points.',
+  },
+  8: {
+    title: 'The Betrayal — Quick Tutorial',
+    text: 'WASD to move, Space to fire. Dodge the laser sweeps, clear the minions, and bring the AI down.',
+  },
 };
 
 export function TutorialOverlay() {
   const { currentStage } = useGameStore();
   const { show, markSeen, hide } = useTutorialStore();
-  const stageKey = (Math.min(Math.max(currentStage, 1), 5)) as keyof typeof tutorials;
+  const stageKey = toTutorialStage(currentStage);
 
   const tutorial = tutorials[stageKey];
 

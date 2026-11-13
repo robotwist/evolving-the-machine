@@ -11,7 +11,7 @@ const stageNames: { [key: number]: string } = {
   4: 'Defender',
   5: 'Lasat Starfighter',
   6: 'Dance Interlude',
-  7: 'Star Wars Battle',
+  7: 'Space Battle',
   8: 'The Betrayal',
 };
 
@@ -42,7 +42,7 @@ export function TopHUD() {
           aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
           className="bg-black/50 text-white border-white/20"
         >
-          {isMuted ? 'Mute' : 'Sound On'}
+          {isMuted ? 'Sound Off' : 'Sound On'}
         </Button>
         <Button
           variant="outline"

@@ -3,6 +3,7 @@ import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
 import { BaseGame } from '../lib/games/BaseGame';
 import { useSettingsStore } from '../lib/stores/useSettingsStore';
+import { toTutorialStage, useTutorialStore } from '../lib/stores/useTutorialStore';
 import { useIsMobile } from '../hooks/use-is-mobile';
 import { MobileControlsManager } from '../lib/controls/MobileControls';
 import { assetLoader } from '../lib/utils/AssetLoader';
@@ -51,6 +52,12 @@ const loadGame = async (stage: number): Promise<new (ctx: CanvasRenderingContext
     }
   }
 };
+
+// The game waits while the player has paused it or is reading the stage tutorial
+function isGameOnHold(stage: number): boolean {
+  return useGameStore.getState().gameState === 'paused' ||
+    !!useTutorialStore.getState().show[toTutorialStage(stage)];
+}
 
 // Custom hook for managing the game instance lifecycle
 function useGameInstance(
@@ -103,6 +110,7 @@ function useGameInstance(
           return Promise.resolve(game.init())
             .then(() => {
               game.start();
+              if (isGameOnHold(currentStage)) game.pause();
               isInitializing.current = false;
             })
             .catch((error: Error) => {
@@ -147,42 +155,32 @@ function useCanvasEvents(
   useEffect(() => {
     if (!canvas) return;
 
-    const handlePointerDown = (e: PointerEvent | TouchEvent) => {
+    // Pointer events cover mouse, pen and touch; also listening for touch events
+    // would deliver every tap twice.
+    const handlePointerDown = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const point = 'touches' in e ? e.touches[0] : (e as PointerEvent);
-      const x = point.clientX - rect.left;
-      const y = point.clientY - rect.top;
-      gameRef.current?.handlePointerDown?.(x, y);
+      gameRef.current?.handlePointerDown?.(e.clientX - rect.left, e.clientY - rect.top);
     };
 
-    const handlePointerMove = (e: PointerEvent | TouchEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const point = 'touches' in e ? e.touches[0] : (e as PointerEvent);
-      const x = point.clientX - rect.left;
-      const y = point.clientY - rect.top;
-      gameRef.current?.handlePointerMove?.(x, y);
+      gameRef.current?.handlePointerMove?.(e.clientX - rect.left, e.clientY - rect.top);
     };
 
     const handlePointerUp = () => {
       gameRef.current?.handlePointerUp?.();
     };
-    
-    // Add event listeners
-    canvas.addEventListener('pointerdown', handlePointerDown as EventListener);
-    canvas.addEventListener('pointermove', handlePointerMove as EventListener);
-    window.addEventListener('pointerup', handlePointerUp as EventListener);
-    canvas.addEventListener('touchstart', handlePointerDown as EventListener, { passive: true });
-    canvas.addEventListener('touchmove', handlePointerMove as EventListener, { passive: true });
-    window.addEventListener('touchend', handlePointerUp as EventListener);
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
 
     return () => {
-      // Remove event listeners
-      canvas.removeEventListener('pointerdown', handlePointerDown as EventListener);
-      canvas.removeEventListener('pointermove', handlePointerMove as EventListener);
-      window.removeEventListener('pointerup', handlePointerUp as EventListener);
-      canvas.removeEventListener('touchstart', handlePointerDown as EventListener);
-      canvas.removeEventListener('touchmove', handlePointerMove as EventListener);
-      window.removeEventListener('touchend', handlePointerUp as EventListener);
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
   }, [canvas, gameRef]);
 }
@@ -193,6 +191,7 @@ function GameCanvasInner() {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
   const { gameState, currentStage } = useGameStore();
+  const tutorialOpen = useTutorialStore(s => !!s.show[toTutorialStage(currentStage)]);
   const isMobile = useIsMobile();
   const mobileControlsRef = useRef<MobileControlsManager | null>(null);
   const handleError = useGameErrorHandler(`Stage-${currentStage}`);
@@ -284,7 +283,11 @@ function GameCanvasInner() {
     if (gameRef.current) {
       switch (gameState) {
         case 'playing':
-          gameRef.current.resume();
+          if (tutorialOpen) {
+            gameRef.current.pause();
+          } else {
+            gameRef.current.resume();
+          }
           break;
         case 'paused':
           gameRef.current.pause();
@@ -295,7 +298,7 @@ function GameCanvasInner() {
           break;
       }
     }
-  }, [gameState, gameRef]);
+  }, [gameState, gameRef, tutorialOpen]);
 
   // Performance monitoring effects
   useEffect(() => {
@@ -335,10 +338,12 @@ function GameCanvasInner() {
           objectFit: 'contain'
         }}
       />
-      <PerformanceDashboard
-        isVisible={showPerformanceDashboard}
-        onToggle={() => setShowPerformanceDashboard(prev => !prev)}
-      />
+      {(process.env.NODE_ENV === 'development' || showPerformanceDashboard) && (
+        <PerformanceDashboard
+          isVisible={showPerformanceDashboard}
+          onToggle={() => setShowPerformanceDashboard(prev => !prev)}
+        />
+      )}
     </>
   );
 }
