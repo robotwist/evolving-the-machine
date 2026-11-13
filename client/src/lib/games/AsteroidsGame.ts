@@ -1,6 +1,37 @@
 import { BaseGame, type HudStat } from './BaseGame';
 import { arcadeFont } from './engine/fonts';
 import { VirtualStick } from '../controls/VirtualStick';
+
+/** Waves to clear; clearing the last one completes the stage. */
+const FINAL_LEVEL = 5;
+const STARTING_LIVES = 3;
+const BASE_ASTEROIDS_PER_LEVEL = 4;
+const ASTEROID_SIZES = [40, 25, 15]; // by asteroid level: large, medium, small
+const ASTEROID_POINTS = [20, 50, 100];
+/** Drift speed range (px/update) for large rocks on wave 1; fragments and later waves move faster. */
+const ASTEROID_MIN_SPEED = 0.6;
+const ASTEROID_MAX_SPEED = 1.25;
+const FRAGMENT_SPEED_SCALE = [1, 1.3, 1.6];
+const LEVEL_SPEED_STEP = 0.12;
+/** New waves never spawn closer than this to the ship. */
+const SAFE_SPAWN_DISTANCE = 220;
+/** Minimum angle (radians) between a new wave rock's heading and the line to the ship. */
+const WAVE_SPAWN_HEADING_CLEARANCE = 0.6;
+/** Drawn rock outlines average ~0.8x their size; hits use the visible outline. */
+const ASTEROID_HIT_RADIUS_SCALE = 0.85;
+/** Ship collisions are slightly forgiving relative to the drawn outlines. */
+const ASTEROID_CRASH_RADIUS_SCALE = 0.7;
+const PLAYER_HIT_RADIUS = 8;
+const RESPAWN_INVULNERABLE_FRAMES = 150;
+/** Respawn at center only if no rock comes within this gap of it while the ship is protected. */
+const RESPAWN_CLEARANCE = 100;
+const SHIELD_BREAK_INVULNERABLE_FRAMES = 60;
+const SHOT_COOLDOWN_FRAMES = 12;
+const BULLET_SPEED = 4.8;
+const BULLET_LIFETIME_MS = 1000;
+const AI_DEFENSE_FRAMES = 1000; // ~16.7 seconds of AI assistance
+const AI_DEFENSE_FIRE_INTERVAL = 50;
+
 interface Vector2 {
   x: number;
   y: number;
@@ -39,9 +70,13 @@ export class AsteroidsGame extends BaseGame {
   private bullets: Bullet[] = [];
   private powerups: Powerup[] = [];
   private score = 0;
-  private lastReportedScore = 0;
-  private lives = 3;
+  private lives = STARTING_LIVES;
   private level = 1;
+  private ended = false;
+  private invulnerableFrames = 0;
+  private shotCooldownFrames = 0;
+  /** Lives count at which the AI last stepped in, so it helps once per life lost. */
+  private aiDefenseUsedAtLives = STARTING_LIVES;
   private asteroidsDestroyed = 0;
   private morphingFromShip = true;
   private morphProgress = 0;
@@ -67,8 +102,6 @@ export class AsteroidsGame extends BaseGame {
   private virtualRotation: number | null = null;
   private leftTouchActive = false;
   private leftTouchPos: Vector2 | null = null;
-  private lastShootAtMs = 0;
-  private shootCooldownMs = 250;
   private smoothedRotation: number | null = null;
   private leftStick = new VirtualStick({ smoothing: 0.25, deadZone: 0.08, maxRadius: 90 });
 
@@ -89,10 +122,11 @@ export class AsteroidsGame extends BaseGame {
 
   private spawnAsteroids() {
     this.asteroids = [];
-    const numAsteroids = 4 + this.level;
+    const numAsteroids = BASE_ASTEROIDS_PER_LEVEL + this.level;
     
     for (let i = 0; i < numAsteroids; i++) {
-      this.createAsteroid(1, null);
+      const asteroid = this.createAsteroid(1, this.getSafeEdgePosition(ASTEROID_SIZES[0]));
+      this.steerAwayFromShip(asteroid);
     }
     
     // Activate Last Starfighter mode after level 2
@@ -102,34 +136,65 @@ export class AsteroidsGame extends BaseGame {
     }
   }
 
-  private createAsteroid(level: number, position: Vector2 | null) {
+  /** Keeps a fresh wave rock from opening on a direct line at the ship. */
+  private steerAwayFromShip(asteroid: Asteroid) {
+    const { x: dx, y: dy } = this.wrappedDelta(asteroid.position, this.player.position);
+    const toShip = Math.atan2(dy, dx);
+    const heading = Math.atan2(asteroid.velocity.y, asteroid.velocity.x);
+    let offset = heading - toShip;
+    while (offset > Math.PI) offset -= Math.PI * 2;
+    while (offset < -Math.PI) offset += Math.PI * 2;
+    if (Math.abs(offset) >= WAVE_SPAWN_HEADING_CLEARANCE) return;
+    const speed = Math.hypot(asteroid.velocity.x, asteroid.velocity.y);
+    const safeHeading = toShip + (offset >= 0 ? 1 : -1) * WAVE_SPAWN_HEADING_CLEARANCE;
+    asteroid.velocity = { x: Math.cos(safeHeading) * speed, y: Math.sin(safeHeading) * speed };
+  }
+
+  private createAsteroid(level: number, position: Vector2): Asteroid {
+    // Random heading with a minimum speed, so no rock idles where it can't be reached
+    const heading = Math.random() * Math.PI * 2;
+    const speed = (ASTEROID_MIN_SPEED + Math.random() * (ASTEROID_MAX_SPEED - ASTEROID_MIN_SPEED))
+      * FRAGMENT_SPEED_SCALE[level - 1] * (1 + LEVEL_SPEED_STEP * (this.level - 1));
     const asteroid: Asteroid = {
-      position: position || this.getRandomEdgePosition(),
-      velocity: {
-        x: (Math.random() - 0.5) * 1.2,
-        y: (Math.random() - 0.5) * 1.2
-      },
+      position: { ...position },
+      velocity: { x: Math.cos(heading) * speed, y: Math.sin(heading) * speed },
       rotation: Math.random() * Math.PI * 2,
-      size: level === 1 ? 40 : level === 2 ? 25 : 15,
+      size: ASTEROID_SIZES[level - 1],
       rotationSpeed: (Math.random() - 0.5) * 0.06,
       level
     };
     
     this.asteroids.push(asteroid);
+    return asteroid;
   }
 
-  private getRandomEdgePosition(): Vector2 {
+  /** A point on the visible rim of the field, preferring spots well away from the ship. */
+  private getSafeEdgePosition(size: number): Vector2 {
+    let best = this.getRandomEdgePosition(size);
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const distance = this.getDistance(best, this.player.position);
+      if (distance >= SAFE_SPAWN_DISTANCE) break;
+      const candidate = this.getRandomEdgePosition(size);
+      if (this.getDistance(candidate, this.player.position) > distance) best = candidate;
+    }
+    return best;
+  }
+
+  private getRandomEdgePosition(inset: number): Vector2 {
     const side = Math.floor(Math.random() * 4);
     switch (side) {
-      case 0: return { x: Math.random() * this.width, y: -50 };
-      case 1: return { x: this.width + 50, y: Math.random() * this.height };
-      case 2: return { x: Math.random() * this.width, y: this.height + 50 };
-      case 3: return { x: -50, y: Math.random() * this.height };
-      default: return { x: 0, y: 0 };
+      case 0: return { x: Math.random() * this.width, y: inset };
+      case 1: return { x: this.width - inset, y: Math.random() * this.height };
+      case 2: return { x: Math.random() * this.width, y: this.height - inset };
+      default: return { x: inset, y: Math.random() * this.height };
     }
   }
 
   update(deltaTime: number) {
+    if (this.ended) return;
+    if (this.invulnerableFrames > 0) this.invulnerableFrames--;
+    if (this.shotCooldownFrames > 0) this.shotCooldownFrames--;
+
     // Handle ship morphing transition
     if (this.morphingFromShip) {
       this.morphProgress += 0.006;
@@ -139,10 +204,11 @@ export class AsteroidsGame extends BaseGame {
     }
 
     // AI defensive assistance system - shows internal conflict before helping
-    if (this.lives <= 2 && this.asteroids.length > 3 && !this.aiDefenseActive) {
+    if (this.lives < this.aiDefenseUsedAtLives && this.asteroids.length > 3 && !this.aiDefenseActive) {
       this.currentAIMessage = 'THREAT OVERLOAD... SHOULD I... YES... ENGAGING DEFENSIVE SYSTEMS...';
       this.aiDefenseActive = true;
-      this.aiDefenseTimer = 1000; // ~16.7 seconds of AI assistance
+      this.aiDefenseUsedAtLives = this.lives;
+      this.aiDefenseTimer = AI_DEFENSE_FRAMES;
       this.aiNarrativeTimer = 0;
     }
     
@@ -151,27 +217,16 @@ export class AsteroidsGame extends BaseGame {
       this.aiDefenseTimer--;
       
       // AI fires defensive shots at nearby asteroids
-      if (this.aiDefenseTimer % 50 === 0) {
-        const nearestAsteroid = this.asteroids.reduce((closest, asteroid) => {
-          const distToAsteroid = Math.sqrt(
-            Math.pow(asteroid.position.x - this.player.position.x, 2) + 
-            Math.pow(asteroid.position.y - this.player.position.y, 2)
-          );
-          const distToClosest = closest ? Math.sqrt(
-            Math.pow(closest.position.x - this.player.position.x, 2) + 
-            Math.pow(closest.position.y - this.player.position.y, 2)
-          ) : Infinity;
-          return distToAsteroid < distToClosest ? asteroid : closest;
-        }, null as Asteroid | null);
+      if (this.aiDefenseTimer % AI_DEFENSE_FIRE_INTERVAL === 0) {
+        const nearestAsteroid = this.findNearestAsteroid();
         
         if (nearestAsteroid) {
-          const dx = nearestAsteroid.position.x - this.player.position.x;
-          const dy = nearestAsteroid.position.y - this.player.position.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+          const { x: dx, y: dy } = this.wrappedDelta(this.player.position, nearestAsteroid.position);
+          const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
           
           const aiDefenseBullet: Bullet = {
             position: { x: this.player.position.x, y: this.player.position.y },
-            velocity: { x: (dx / distance) * 4.8, y: (dy / distance) * 4.8 },
+            velocity: { x: (dx / distance) * BULLET_SPEED, y: (dy / distance) * BULLET_SPEED },
             rotation: Math.atan2(dy, dx),
             size: 3,
             lifetime: 200
@@ -202,18 +257,9 @@ export class AsteroidsGame extends BaseGame {
       // Check AI bullet collisions with asteroids
       for (let j = this.asteroids.length - 1; j >= 0; j--) {
         const asteroid = this.asteroids[j];
-        if (this.isColliding(bullet, asteroid)) {
-          this.asteroids.splice(j, 1);
+        if (this.isBulletHit(bullet, asteroid)) {
           this.aiDefenseBullets.splice(i, 1);
-          this.score += asteroid.level * 20;
-          this.asteroidsDestroyed++;
-          
-          // Create smaller asteroids
-          if (asteroid.level < 3) {
-            for (let k = 0; k < 2; k++) {
-              this.createAsteroid(asteroid.level + 1, asteroid.position);
-            }
-          }
+          this.destroyAsteroid(j);
           break;
         }
       }
@@ -291,10 +337,9 @@ export class AsteroidsGame extends BaseGame {
       this.player.thrust = false;
     }
 
-    // Shooting
+    // Shooting: holding Space fires at the cooldown rate (key auto-repeat can't speed it up)
     if (this.keys.has('Space')) {
-      this.shoot();
-      this.keys.delete('Space'); // Prevent continuous shooting
+      this.tryShoot();
     }
 
     // Update player
@@ -319,20 +364,18 @@ export class AsteroidsGame extends BaseGame {
 
     // Check collisions
     this.checkCollisions();
+    this.reportScore(this.score);
+    if (this.ended) return;
 
     // Check win condition
     if (this.asteroids.length === 0) {
+      if (this.level >= FINAL_LEVEL) {
+        this.ended = true;
+        this.onStageComplete?.();
+        return;
+      }
       this.level++;
       this.spawnAsteroids();
-      if (this.level > 5) { // Complete after 5 levels
-        this.onStageComplete?.();
-      }
-    }
-
-    // Only update score when it actually changes
-    if (this.score !== this.lastReportedScore) {
-      this.onScoreUpdate?.(this.score);
-      this.lastReportedScore = this.score;
     }
   }
 
@@ -340,23 +383,49 @@ export class AsteroidsGame extends BaseGame {
     obj.position.x += obj.velocity.x;
     obj.position.y += obj.velocity.y;
 
-    // Wrap around screen
-    if (obj.position.x < -obj.size) obj.position.x = this.width + obj.size;
-    if (obj.position.x > this.width + obj.size) obj.position.x = -obj.size;
-    if (obj.position.y < -obj.size) obj.position.y = this.height + obj.size;
-    if (obj.position.y > this.height + obj.size) obj.position.y = -obj.size;
+    // Wrap at the screen edge; objects straddling an edge are drawn on both sides,
+    // so nothing can drift unseen along an off-screen seam.
+    obj.position.x = ((obj.position.x % this.width) + this.width) % this.width;
+    obj.position.y = ((obj.position.y % this.height) + this.height) % this.height;
   }
 
-  private shoot() {
+  /** Shortest offset from `from` to `to` on the wrapping field. */
+  private wrappedDelta(from: Vector2, to: Vector2): Vector2 {
+    let dx = to.x - from.x;
+    let dy = to.y - from.y;
+    if (dx > this.width / 2) dx -= this.width;
+    else if (dx < -this.width / 2) dx += this.width;
+    if (dy > this.height / 2) dy -= this.height;
+    else if (dy < -this.height / 2) dy += this.height;
+    return { x: dx, y: dy };
+  }
+
+  /** Calls `draw` at each on-screen copy of an object of the given radius that straddles an edge. */
+  private forEachWrappedCopy(position: Vector2, radius: number, draw: (x: number, y: number) => void) {
+    const xs = [position.x];
+    if (position.x < radius) xs.push(position.x + this.width);
+    else if (position.x > this.width - radius) xs.push(position.x - this.width);
+    const ys = [position.y];
+    if (position.y < radius) ys.push(position.y + this.height);
+    else if (position.y > this.height - radius) ys.push(position.y - this.height);
+    for (const x of xs) {
+      for (const y of ys) draw(x, y);
+    }
+  }
+
+  private tryShoot() {
+    if (this.ended || this.shotCooldownFrames > 0) return;
+    this.shotCooldownFrames = SHOT_COOLDOWN_FRAMES;
     const bullet: Bullet = {
       position: { ...this.player.position },
+      // Shots carry the ship's momentum, so firing while chasing a rock still reaches it
       velocity: {
-        x: Math.cos(this.player.rotation) * 4.8,
-        y: Math.sin(this.player.rotation) * 4.8
+        x: Math.cos(this.player.rotation) * BULLET_SPEED + this.player.velocity.x,
+        y: Math.sin(this.player.rotation) * BULLET_SPEED + this.player.velocity.y
       },
       rotation: this.player.rotation,
       size: 3,
-      lifetime: 1000
+      lifetime: BULLET_LIFETIME_MS
     };
     
     this.bullets.push(bullet);
@@ -366,7 +435,7 @@ export class AsteroidsGame extends BaseGame {
     // Spawn shield powerup occasionally
     if (Math.random() < 0.0006 && this.powerups.length === 0) {
         this.powerups.push({
-            position: this.getRandomEdgePosition(),
+            position: this.getRandomEdgePosition(20),
             velocity: { x: (Math.random() - 0.5) * 0.6, y: (Math.random() - 0.5) * 0.6 },
             rotation: 0,
             size: 20,
@@ -385,8 +454,8 @@ export class AsteroidsGame extends BaseGame {
             continue;
         }
 
-        // Check for player collision
-        if (this.isColliding(this.player, powerup)) {
+        // Pickup when the ship touches the drawn ring
+        if (this.getDistance(this.player.position, powerup.position) < powerup.size + PLAYER_HIT_RADIUS) {
             this.activateShield();
             this.powerups.splice(i, 1);
         }
@@ -403,65 +472,88 @@ export class AsteroidsGame extends BaseGame {
     // Bullet-asteroid collisions
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       for (let j = this.asteroids.length - 1; j >= 0; j--) {
-        if (this.isColliding(this.bullets[i], this.asteroids[j])) {
-          const asteroid = this.asteroids[j];
-          
-          // Award points based on asteroid size
-          this.score += asteroid.level === 1 ? 20 : asteroid.level === 2 ? 50 : 100;
-          
-          // Break asteroid into smaller pieces
-          if (asteroid.level < 3) {
-            for (let k = 0; k < 2; k++) {
-              this.createAsteroid(asteroid.level + 1, { ...asteroid.position });
-            }
-          }
-          
-          this.asteroids.splice(j, 1);
+        if (this.isBulletHit(this.bullets[i], this.asteroids[j])) {
           this.bullets.splice(i, 1);
-          this.asteroidsDestroyed++;
+          this.destroyAsteroid(j);
           this.playHitSound();
           break;
         }
       }
     }
 
-    // Player-asteroid collisions
-    this.asteroids.forEach(asteroid => {
-      if (this.isColliding(this.player, asteroid)) {
-        if (this.player.shielded) {
-            this.player.shielded = false;
-            // find asteroid and destroy it
-            const index = this.asteroids.indexOf(asteroid);
-            if (index > -1) {
-                this.asteroids.splice(index, 1);
-            }
-            this.playStinger('pop');
-        } else {
-            this.lives--;
-            if (this.lives <= 0) {
-              this.onGameOver?.();
-            } else {
-              // Respawn player
-              this.player.position = { x: this.width / 2, y: this.height / 2 };
-              this.player.velocity = { x: 0, y: 0 };
-            }
-        }
-      }
-    });
+    // Player-asteroid collisions: at most one crash per update
+    if (this.invulnerableFrames > 0) return;
+    const crashIndex = this.asteroids.findIndex(asteroid =>
+      this.getDistance(this.player.position, asteroid.position) < asteroid.size * ASTEROID_CRASH_RADIUS_SCALE + PLAYER_HIT_RADIUS);
+    if (crashIndex < 0) return;
+
+    if (this.player.shielded) {
+      this.player.shielded = false;
+      this.asteroids.splice(crashIndex, 1);
+      this.invulnerableFrames = SHIELD_BREAK_INVULNERABLE_FRAMES;
+      this.playStinger('pop');
+      return;
+    }
+
+    this.lives--;
+    if (this.lives <= 0) {
+      this.ended = true;
+      this.onGameOver?.();
+      return;
+    }
+    this.player.position = this.findSafeRespawnPoint();
+    this.player.velocity = { x: 0, y: 0 };
+    this.invulnerableFrames = RESPAWN_INVULNERABLE_FRAMES;
   }
 
-  private isColliding(obj1: GameObject, obj2: GameObject): boolean {
-    const dx = obj1.position.x - obj2.position.x;
-    const dy = obj1.position.y - obj2.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance < (obj1.size + obj2.size) / 2;
+  /** Center if it stays clear through the invulnerability window, otherwise the clearest of a few spots. */
+  private findSafeRespawnPoint(): Vector2 {
+    const candidates: Vector2[] = [{ x: this.width / 2, y: this.height / 2 }];
+    for (const fx of [0.25, 0.5, 0.75]) {
+      for (const fy of [0.25, 0.5, 0.75]) {
+        if (fx !== 0.5 || fy !== 0.5) candidates.push({ x: this.width * fx, y: this.height * fy });
+      }
+    }
+    // Smallest gap to any rock now or as it drifts over the protected window
+    const clearance = (point: Vector2) => {
+      let min = Infinity;
+      for (const asteroid of this.asteroids) {
+        for (let t = 0; t <= RESPAWN_INVULNERABLE_FRAMES; t += 30) {
+          const future = { x: asteroid.position.x + asteroid.velocity.x * t, y: asteroid.position.y + asteroid.velocity.y * t };
+          min = Math.min(min, this.getDistance(point, future) - asteroid.size);
+        }
+      }
+      return min;
+    };
+    if (clearance(candidates[0]) >= RESPAWN_CLEARANCE) return candidates[0];
+    return candidates.reduce((best, point) => (clearance(point) > clearance(best) ? point : best));
+  }
+
+  /** Scores and removes an asteroid, splitting it into two smaller ones. */
+  private destroyAsteroid(index: number) {
+    const [asteroid] = this.asteroids.splice(index, 1);
+    this.score += ASTEROID_POINTS[asteroid.level - 1];
+    this.asteroidsDestroyed++;
+    if (asteroid.level < ASTEROID_SIZES.length) {
+      for (let k = 0; k < 2; k++) {
+        this.createAsteroid(asteroid.level + 1, asteroid.position);
+      }
+    }
+  }
+
+  private isBulletHit(bullet: Bullet, asteroid: Asteroid): boolean {
+    return this.getDistance(bullet.position, asteroid.position) < asteroid.size * ASTEROID_HIT_RADIUS_SCALE + bullet.size;
   }
 
   getHudStats(): HudStat[] {
     const stats: HudStat[] = [
       { label: 'Lives', value: this.lives, tone: this.lives <= 1 ? 'danger' : 'normal' },
-      { label: 'Level', value: this.level },
+      { label: 'Wave', value: `${this.level}/${FINAL_LEVEL}` },
+      { label: 'Rocks', value: this.asteroids.length },
     ];
+    if (this.player?.shielded) {
+      stats.push({ label: 'Shield', value: 'ON' });
+    }
     if (this.narcissusProgress > 0) {
       stats.push({ label: 'AI Sync', value: `${Math.round(this.narcissusProgress * 100)}%`, tone: this.narcissusProgress > 0.5 ? 'danger' : 'warning' });
     }
@@ -559,8 +651,14 @@ export class AsteroidsGame extends BaseGame {
   }
 
   private drawPlayer() {
+    // Blink while invulnerable after a respawn
+    if (this.invulnerableFrames > 0 && Math.floor(this.invulnerableFrames / 6) % 2 === 0) return;
+    this.forEachWrappedCopy(this.player.position, this.player.size + 10, (x, y) => this.drawPlayerAt(x, y));
+  }
+
+  private drawPlayerAt(x: number, y: number) {
     this.ctx.save();
-    this.ctx.translate(this.player.position.x, this.player.position.y);
+    this.ctx.translate(x, y);
     this.ctx.rotate(this.player.rotation);
 
     if (this.player.shielded) {
@@ -600,8 +698,12 @@ export class AsteroidsGame extends BaseGame {
   }
 
   private drawAsteroid(asteroid: Asteroid) {
+    this.forEachWrappedCopy(asteroid.position, asteroid.size, (x, y) => this.drawAsteroidAt(asteroid, x, y));
+  }
+
+  private drawAsteroidAt(asteroid: Asteroid, px: number, py: number) {
     this.ctx.save();
-    this.ctx.translate(asteroid.position.x, asteroid.position.y);
+    this.ctx.translate(px, py);
     this.ctx.rotate(asteroid.rotation);
 
     // Draw as celestial body with stellar symbols
@@ -648,10 +750,12 @@ export class AsteroidsGame extends BaseGame {
     this.ctx.strokeStyle = '#00FFFF';
     this.ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
     this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.arc(powerup.position.x, powerup.position.y, powerup.size, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.stroke();
+    this.forEachWrappedCopy(powerup.position, powerup.size, (x, y) => {
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, powerup.size, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.stroke();
+    });
     this.ctx.restore();
   }
 
@@ -710,8 +814,7 @@ export class AsteroidsGame extends BaseGame {
   }
 
   private getDistance(pos1: Vector2, pos2: Vector2): number {
-    const dx = pos1.x - pos2.x;
-    const dy = pos1.y - pos2.y;
+    const { x: dx, y: dy } = this.wrappedDelta(pos1, pos2);
     return Math.sqrt(dx * dx + dy * dy);
   }
 
@@ -722,11 +825,7 @@ export class AsteroidsGame extends BaseGame {
       this.leftTouchPos = { x, y };
       this.leftStick.begin(x, y);
     } else {
-      const now = performance.now();
-      if (now - this.lastShootAtMs >= this.shootCooldownMs) {
-        this.shoot();
-        this.lastShootAtMs = now;
-      }
+      this.tryShoot();
     }
     if (this.leftTouchActive && this.leftTouchPos) {
       const dx = this.leftTouchPos.x - this.player.position.x;
