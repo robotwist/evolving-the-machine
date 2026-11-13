@@ -128,7 +128,7 @@ export function MobileGameUI({
           }}
         >
           <div className="absolute inset-2 border border-yellow-400/20 rounded flex items-center justify-center">
-            <span className="text-yellow-400 text-xs font-bold">⏸</span>
+            <span className="text-yellow-400 text-xs font-bold">II</span>
           </div>
         </div>
       </div>

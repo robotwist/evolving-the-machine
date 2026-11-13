@@ -18,9 +18,9 @@ export function ControlsHelp() {
   if (!controls) return null;
 
   return (
-    <div className="absolute bottom-4 left-4 text-white text-xs bg-black/50 p-2 rounded">
-      <div>Controls:</div>
-      <div>{controls}</div>
+    <div className="arcade-panel panel-dim absolute bottom-4 left-4 text-white px-3 py-2 max-w-[60vw]">
+      <div className="arcade-label text-neon-cyan mb-1">Controls</div>
+      <div className="text-lg leading-tight">{controls}</div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buttonVariants } from './ui/button';
 import { performanceMonitor, PerformanceMetrics, PerformanceHistory } from '../lib/utils/PerformanceMonitor';
 
 interface PerformanceDashboardProps {
@@ -28,7 +29,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
     return (
       <button
         onClick={onToggle}
-        className="fixed bottom-4 right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-mono"
+        className={`fixed bottom-4 right-4 z-50 ${buttonVariants({ variant: 'outline', size: 'sm' })}`}
         title="Toggle Performance Dashboard"
       >
         PERF
@@ -58,10 +59,10 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
   const summary = performanceMonitor.getPerformanceSummary();
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 bg-black/90 text-white p-4 rounded-lg font-mono text-xs max-w-sm">
+    <div className="arcade-panel panel-dim fixed bottom-4 right-4 z-50 text-white p-4 text-base max-w-sm">
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-sm font-bold text-blue-400">Performance Dashboard</h3>
+        <h3 className="arcade-label text-neon-cyan">Performance</h3>
         <button
           onClick={onToggle}
           className="text-gray-400 hover:text-white text-lg"
@@ -213,7 +214,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
               setHistory(performanceMonitor.getPerformanceHistory());
             });
           }}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+          className={`flex-1 ${buttonVariants({ size: 'sm' })}`}
         >
           Reset
         </button>
@@ -232,7 +233,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
             a.click();
             URL.revokeObjectURL(url);
           }}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+          className={`flex-1 ${buttonVariants({ variant: 'success', size: 'sm' })}`}
         >
           Export
         </button>

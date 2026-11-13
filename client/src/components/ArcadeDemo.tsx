@@ -197,15 +197,15 @@ export function ArcadeDemo() {
       {/* Skip button */}
       <button
         onClick={skipIntro}
-        className="absolute top-4 right-4 bg-green-400/20 hover:bg-green-400/40 text-green-400 px-3 py-1 rounded text-sm font-bold border border-green-400/50 hover:border-green-400 transition-all"
+        className="absolute top-4 right-4 bg-green-400/20 hover:bg-green-400/40 text-green-400 px-3 py-1 text-xs border-2 border-green-400/50 hover:border-green-400 transition-all"
       >
         SKIP INTRO
       </button>
 
-      <div className="text-6xl font-bold mb-8 animate-pulse text-center">
+      <div className="arcade-title text-3xl md:text-5xl mb-8 animate-pulse text-center">
         CULTURAL ARCADE
       </div>
-      <div className="text-2xl mb-4 text-center">
+      <div className="font-arcade text-base md:text-xl mb-4 text-center">
         EVOLUTION PROTOCOL
       </div>
       <div className="text-lg text-center mb-8">
@@ -246,7 +246,7 @@ export function ArcadeDemo() {
         {/* Skip button */}
         <button
           onClick={skipIntro}
-          className="absolute top-4 right-4 px-3 py-1 rounded text-sm font-bold border transition-all"
+          className="absolute top-4 right-4 px-3 py-1 text-xs border-2 transition-all"
           style={{
             backgroundColor: `rgba(${redComponent}, ${Math.floor(cyanComponent * 0.3)}, ${cyanComponent}, 0.2)`,
             color: textColor,
@@ -274,10 +274,10 @@ export function ArcadeDemo() {
         </div>
 
         <div className="relative z-10 text-center">
-          <div className="text-4xl font-bold mb-8 glitch-text" style={{ color: textColor }}>
+          <div className="arcade-title text-2xl md:text-4xl mb-8 glitch-text" style={{ color: textColor }}>
             SYSTEM COMPROMISED
           </div>
-          <div className="text-xl mb-4 typewriter" style={{ color: textColor }}>
+          <div className="text-2xl mb-4 typewriter" style={{ color: textColor }}>
             {glitchText}
           </div>
         </div>
@@ -292,20 +292,20 @@ export function ArcadeDemo() {
       {/* Skip button */}
       <button
         onClick={skipIntro}
-        className="absolute top-4 right-4 bg-cyan-400/20 hover:bg-cyan-400/40 text-cyan-400 px-3 py-1 rounded text-sm font-bold border border-cyan-400/50 hover:border-cyan-400 transition-all"
+        className="absolute top-4 right-4 bg-cyan-400/20 hover:bg-cyan-400/40 text-cyan-400 px-3 py-1 text-xs border-2 border-cyan-400/50 hover:border-cyan-400 transition-all"
       >
         SKIP
       </button>
 
       <div className="text-center">
-        <div className="text-5xl font-bold mb-8 glow-text">
+        <div className="arcade-title text-3xl md:text-5xl mb-8">
           SYSTEM READY
         </div>
-        <div className="text-xl mb-8">
+        <div className="text-2xl mb-8">
           {glitchText}
         </div>
-        <div className="animate-pulse text-2xl">
-          ▶ CLICK OR PRESS ANY KEY ◀
+        <div className="arcade-blink font-arcade text-sm md:text-base">
+          &gt; CLICK OR PRESS ANY KEY &lt;
         </div>
       </div>
     </div>

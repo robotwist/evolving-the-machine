@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Button } from './ui/button';
 
 export function UpdatePrompt() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
@@ -22,10 +23,11 @@ export function UpdatePrompt() {
 
   if (!show || !waiting) return null;
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-black/80 border border-white/20 text-white px-3 py-2 rounded shadow">
+    <div className="arcade-panel panel-yellow fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-white text-lg px-3 py-2 flex items-center">
       <span className="mr-3">An update is available.</span>
-      <button
-        className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded"
+      <Button
+        variant="warning"
+        size="sm"
         onClick={() => {
           waiting.postMessage({ type: 'SKIP_WAITING' });
           waiting.addEventListener('statechange', () => {
@@ -36,7 +38,7 @@ export function UpdatePrompt() {
         }}
       >
         Update now
-      </button>
+      </Button>
     </div>
   );
 }

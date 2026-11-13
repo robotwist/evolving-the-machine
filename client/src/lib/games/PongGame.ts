@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { arcadeFont } from './engine/fonts';
 import { VisualFeedback } from '../utils/VisualFeedback';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { AudioOptions } from '@shared/types';
@@ -805,7 +806,7 @@ export class PongGame extends BaseGame {
       if (paddle.regenerationTimer && paddle.regenerationTimer > 0) {
         this.ctx.save();
         this.ctx.fillStyle = '#FF0000';
-        this.ctx.font = '16px monospace';
+        this.ctx.font = arcadeFont(16, 'body');
         this.ctx.textAlign = 'center';
         const seconds = Math.ceil(paddle.regenerationTimer! / 60);
         this.ctx.fillText(`REGENERATING: ${seconds}s`, paddle.x + paddle.width/2, paddle.y - 20);
@@ -1420,7 +1421,7 @@ export class PongGame extends BaseGame {
   private drawScore() {
     this.ctx.save();
     this.ctx.fillStyle = '#00FFFF';
-    this.ctx.font = 'bold 48px Inter, sans-serif';
+    this.ctx.font = arcadeFont(48, 'display');
     this.ctx.textAlign = 'center';
 
     // Player 1 score (left)
@@ -1511,7 +1512,7 @@ export class PongGame extends BaseGame {
       this.ctx.save();
       this.ctx.globalAlpha = this.chainReactionTimer / 200;
       this.ctx.fillStyle = '#FF0000';
-      this.ctx.font = '16px monospace';
+      this.ctx.font = arcadeFont(16, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText('CHAIN REACTION!', this.width / 2, 50);
       this.ctx.restore();
@@ -1522,7 +1523,7 @@ export class PongGame extends BaseGame {
       this.ctx.save();
       this.ctx.globalAlpha = this.shockwaveTimer / 150;
       this.ctx.fillStyle = '#00FFFF';
-      this.ctx.font = '16px monospace';
+      this.ctx.font = arcadeFont(16, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText('SHOCKWAVE!', this.width / 2, 50);
       this.ctx.restore();
@@ -1560,7 +1561,7 @@ export class PongGame extends BaseGame {
     if (this.laserPowerupActive) {
       this.ctx.save();
       this.ctx.fillStyle = '#FF00FF';
-      this.ctx.font = '14px monospace';
+      this.ctx.font = arcadeFont(14, 'body');
       this.ctx.textAlign = 'left';
       this.ctx.fillText(`LASER ACTIVE: ${Math.ceil(this.laserPowerupDuration / 60)}s`, 10, this.height - 20);
       this.ctx.fillText('Press Z or X to fire!', 10, this.height - 5);

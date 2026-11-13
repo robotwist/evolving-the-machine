@@ -15,21 +15,11 @@ import { useAudio } from './lib/stores/useAudio';
 import { useSettingsStore } from './lib/stores/useSettingsStore';
 import { useIsMobile } from './hooks/use-is-mobile';
 import { assetLoader } from './lib/utils/AssetLoader';
+import { getStage } from './lib/stages';
 import './index.css';
 
-// Helper function to get game name from stage
 function getGameName(stage: number): string {
-  const gameNames = [
-    'Pong',
-    'Breakout',
-    'Asteroids',
-    'Defender',
-    'Lasat',
-    'Dance Interlude',
-    'Space Battle',
-    'Betrayal'
-  ];
-  return gameNames[stage - 1] || 'Unknown';
+  return getStage(stage)?.name ?? 'Unknown';
 }
 
 export default function App() {
@@ -287,8 +277,8 @@ export default function App() {
 
   if (!assetsLoaded) {
     return (
-      <div className="game-container">
-        <div className="text-white text-xl">Loading Cultural Arcade Evolution...</div>
+      <div className="game-container arcade-screen">
+        <div className="arcade-label text-neon-cyan arcade-blink">Loading</div>
       </div>
     );
   }

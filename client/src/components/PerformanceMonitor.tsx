@@ -48,8 +48,8 @@ export function PerformanceMonitor() {
   };
 
   return (
-    <div className="fixed top-16 right-4 bg-black/90 text-white text-xs font-mono p-3 rounded-lg border border-gray-600 z-50 backdrop-blur-sm">
-      <div className="mb-2 font-bold text-cyan-400">Performance Monitor</div>
+    <div className="arcade-panel panel-dim fixed top-16 right-4 text-white text-base p-3 z-50">
+      <div className="arcade-label mb-2 text-neon-cyan">Performance</div>
       <div className={`mb-1 ${getFpsColor(metrics.fps)}`}>
         FPS: <span className="font-bold">{metrics.fps}</span>
       </div>

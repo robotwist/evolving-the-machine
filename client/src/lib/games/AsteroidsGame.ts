@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { arcadeFont } from './engine/fonts';
 import { VirtualStick } from '../controls/VirtualStick';
 interface Vector2 {
   x: number;
@@ -707,7 +708,7 @@ export class AsteroidsGame extends BaseGame {
     this.ctx.stroke();
     
     // Target lock indicator
-    this.ctx.font = '12px monospace';
+    this.ctx.font = arcadeFont(12, 'body');
     this.ctx.fillStyle = reticleColor;
     this.ctx.textAlign = 'center';
     this.ctx.fillText('TARGET', x, y - size - 30);

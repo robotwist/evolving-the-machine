@@ -5,12 +5,24 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        arcade: ['"Arcade Display"', 'monospace'],
+        sans: ['"Arcade Body"', 'monospace'],
+        mono: ['"Arcade Body"', 'monospace'],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        neon: {
+          cyan: "rgb(var(--neon-cyan-rgb) / <alpha-value>)",
+          magenta: "rgb(var(--neon-magenta-rgb) / <alpha-value>)",
+          yellow: "rgb(var(--neon-yellow-rgb) / <alpha-value>)",
+          green: "rgb(var(--neon-green-rgb) / <alpha-value>)",
+          red: "rgb(var(--neon-red-rgb) / <alpha-value>)",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {

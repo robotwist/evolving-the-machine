@@ -3,17 +3,7 @@ import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
 import { Button } from './ui/button';
 import { useAudio } from '../lib/stores/useAudio';
-
-const stageNames: { [key: number]: string } = {
-  1: 'Pong Master',
-  2: 'Temple Breaker',
-  3: 'Asteroid Hunter',
-  4: 'Defender',
-  5: 'Lasat Starfighter',
-  6: 'Dance Interlude',
-  7: 'Space Battle',
-  8: 'The Betrayal',
-};
+import { ACCENT_CLASSES, getStage } from '../lib/stages';
 
 export function TopHUD() {
   const { currentStage, gameState, setGameState } = useGameStore();
@@ -24,14 +14,15 @@ export function TopHUD() {
     setGameState(gameState === 'paused' ? 'playing' : 'paused');
   };
 
-  const stageName = stageNames[currentStage] || 'Unknown';
+  const stage = getStage(currentStage);
+  const accentText = stage ? ACCENT_CLASSES[stage.accent].text : 'text-white';
 
   return (
-    <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
-      <div className="text-white">
-        <div className="text-xl font-bold">{stageName}</div>
-        <div className="text-sm">Score: {scores[currentStage] || 0}</div>
-        <div className="text-xs">Best: {highScores[currentStage] || 0}</div>
+    <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+      <div className="space-y-1">
+        <div className={`arcade-title text-sm ${accentText}`}>{stage?.name ?? 'Unknown'}</div>
+        <div className="arcade-label text-white">Score {scores[currentStage] || 0}</div>
+        <div className="arcade-label text-neon-yellow">Best {highScores[currentStage] || 0}</div>
       </div>
 
       <div className="flex gap-2">
@@ -40,7 +31,6 @@ export function TopHUD() {
           size="sm"
           onClick={toggleMute}
           aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
-          className="bg-black/50 text-white border-white/20"
         >
           {isMuted ? 'Sound Off' : 'Sound On'}
         </Button>
@@ -49,7 +39,6 @@ export function TopHUD() {
           size="sm"
           onClick={handlePause}
           aria-label={gameState === 'paused' ? 'Resume game' : 'Pause game'}
-          className="bg-black/50 text-white border-white/20"
         >
           {gameState === 'paused' ? 'Resume' : 'Pause'}
         </Button>

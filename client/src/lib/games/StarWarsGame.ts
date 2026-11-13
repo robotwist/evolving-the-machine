@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { arcadeFont } from './engine/fonts';
 import { FlashExplosions } from './engine/FlashExplosions';
 
 interface Player {
@@ -847,7 +848,7 @@ export class StarWarsGame extends BaseGame {
     // Add zone labels
     this.ctx.globalAlpha = 0.8;
     this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.font = '16px Arial';
+    this.ctx.font = arcadeFont(16, 'body');
     this.ctx.textAlign = 'center';
 
     // Movement label

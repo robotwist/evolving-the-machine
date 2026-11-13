@@ -1,126 +1,77 @@
 import React from 'react';
 import { useGameStore } from '../lib/stores/useGameStore';
 import { useScoreStore } from '../lib/stores/useScoreStore';
+import { ACCENT_CLASSES, STAGES } from '../lib/stages';
 import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+
+const MENU_STAGES = STAGES.slice(0, 5);
+
+const ERAS = [
+  { title: 'Classic Arena', text: 'Master competitive mechanics', className: 'text-neon-cyan' },
+  { title: 'Stellar Navigation', text: 'Navigate by celestial knowledge', className: 'text-neon-green' },
+  { title: 'Guardian Protocol', text: 'Protect with honor and skill', className: 'text-neon-red' },
+  { title: 'Final Evolution', text: 'Epic battles in the void', className: 'text-neon-magenta' },
+];
 
 export function MainMenu() {
   const { setCurrentScreen, unlockAllLevels } = useGameStore();
   const { highScores } = useScoreStore();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-black p-4">
-      <div className="fixed top-6 w-full flex justify-center pointer-events-none">
+    <div className="arcade-screen flex flex-col items-center justify-center min-h-screen p-4 overflow-y-auto">
+      <div className="text-center mb-8 select-none">
+        <div className="arcade-label text-white/50 mb-3">System Online</div>
         <GlitchTitle text="CULTURAL ARCADE EVOLUTION" />
+        <p className="text-xl text-white/80 mt-4">
+          Journey through gaming history while discovering world cultures
+        </p>
+        <div className="arcade-label text-neon-yellow mt-4 arcade-blink">Press Start</div>
       </div>
-      <Card className="bg-black/80 border-purple-500/30 mb-8 max-w-4xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-4xl font-bold text-white mb-2">
-            Cultural Arcade Evolution
-          </CardTitle>
-          <p className="text-gray-300 text-lg">
-            Journey through gaming history while discovering world cultures
-          </p>
-          <p className="text-gray-400 text-sm mt-2">
-            Master each era to unlock the next chapter of gaming evolution
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Game Stages Preview */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            {[
-              { 
-                stage: 1, 
-                name: 'Pong Master', 
-                culture: 'Classic Arena',
-                desc: 'Master paddle combat'
-              },
-              { 
-                stage: 2, 
-                name: 'Temple Breaker', 
-                culture: 'Structural Evolution',
-                desc: 'Columns become cosmic blocks'
-              },
-              { 
-                stage: 3, 
-                name: 'Asteroid Hunter', 
-                culture: 'Stellar Navigation',
-                desc: 'Ship navigates celestial bodies'
-              },
-              { 
-                stage: 4, 
-                name: 'Defender', 
-                culture: 'Guardian Protocol',
-                desc: 'Protection duty'
-              },
-              { 
-                stage: 5, 
-                name: 'Lasat Starfighter', 
-                culture: 'Final Evolution',
-                desc: 'Epic space battles'
-              }
-            ].map(({ stage, name, culture, desc }) => (
-              <div key={stage} className="text-center">
-                <div className="w-16 h-16 mx-auto mb-2 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-                  {stage}
+
+      <div className="arcade-panel w-full max-w-4xl p-6 space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {MENU_STAGES.map(stage => {
+            const accent = ACCENT_CLASSES[stage.accent];
+            return (
+              <div key={stage.id} className="text-center">
+                <div className={`arcade-panel ${accent.panel} w-14 h-14 mx-auto mb-3 flex items-center justify-center`}>
+                  <span className={`font-arcade text-xl ${accent.text}`}>{stage.id}</span>
                 </div>
-                <div className="text-white text-sm font-semibold">{name}</div>
-                <div className="text-purple-300 text-xs">{culture}</div>
-                <div className="text-gray-400 text-xs mt-1">{desc}</div>
-                {highScores[stage] && (
-                  <div className="text-yellow-400 text-xs mt-1">
-                    Best: {highScores[stage]}
-                  </div>
-                )}
+                <div className="arcade-label text-white leading-relaxed">{stage.name}</div>
+                <div className={`text-lg ${accent.text}`}>{stage.culture}</div>
+                <div className="text-base text-white/60">{stage.tagline}</div>
+                {highScores[stage.id] ? (
+                  <div className="arcade-label text-neon-yellow mt-1">Best {highScores[stage.id]}</div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button size="lg" onClick={() => setCurrentScreen('stage-select')}>
+            Start Journey
+          </Button>
+          <Button size="lg" variant="outline">
+            How to Play
+          </Button>
+          <Button size="lg" variant="success" onClick={() => unlockAllLevels()}>
+            Unlock All Levels
+          </Button>
+        </div>
+
+        <div className="arcade-panel panel-dim p-4">
+          <h3 className="arcade-label text-white mb-3">Evolve Through Play</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-lg">
+            {ERAS.map(era => (
+              <div key={era.title}>
+                <div className={era.className}>{era.title}</div>
+                <div className="text-white/70">{era.text}</div>
               </div>
             ))}
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              onClick={() => setCurrentScreen('stage-select')}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 text-lg"
-            >
-              Start Journey
-            </Button>
-            <Button 
-              variant="outline" 
-              className="border-purple-500/50 text-purple-300 hover:bg-purple-900/50 px-8 py-3 text-lg"
-            >
-              How to Play
-            </Button>
-            <Button 
-              onClick={() => unlockAllLevels()}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 text-lg"
-            >
-              Unlock All Levels
-            </Button>
-          </div>
-
-          {/* Evolution Features */}
-          <div className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 p-4 rounded-lg">
-            <h3 className="text-white font-semibold mb-2">Evolve Through Play</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-              <div>
-                <div className="text-purple-300">Classic Arena</div>
-                <div>Master competitive mechanics</div>
-              </div>
-              <div>
-                <div className="text-blue-300">Stellar Navigation</div>
-                <div>Navigate by celestial knowledge</div>
-              </div>
-              <div>
-                <div className="text-red-300">Guardian Protocol</div>
-                <div>Protect with honor and skill</div>
-              </div>
-              <div>
-                <div className="text-yellow-300">Final Evolution</div>
-                <div>Epic battles in the void</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -141,12 +92,9 @@ function GlitchTitle({ text }: { text: string }) {
   const noise = '!@#$%^&*()_+=-{}[]<>/\\'.charAt(step % 24);
   const tail = step < text.length ? noise : '';
   return (
-    <div className="text-center select-none">
-      <div className="text-sm tracking-widest text-white/40 mb-1">SYSTEM ONLINE</div>
-      <div className="text-2xl md:text-4xl font-bold text-white">
-        <span className="[text-shadow:_0_0_8px_#6bf,_0_0_16px_#6bf]">{visible}</span>
-        <span className="text-white/30">{tail}</span>
-      </div>
-    </div>
+    <h1 className="arcade-title text-2xl md:text-4xl text-neon-cyan">
+      <span>{visible}</span>
+      <span className="text-white/30">{tail}</span>
+    </h1>
   );
 }

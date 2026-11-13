@@ -4,6 +4,7 @@ import { performanceMonitor } from "../utils/PerformanceMonitor";
 import * as audio from "./engine/audio";
 import { vibrate, type HapticPreset } from "./engine/haptics";
 import { ScreenShake } from "./engine/ScreenShake";
+import { arcadeFont } from "./engine/fonts";
 import { getGameSettings, type GameSettingsSnapshot } from "./engine/settings";
 
 const SCROLL_KEYS = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
@@ -214,7 +215,7 @@ export abstract class BaseGame {
 
   protected drawText(text: string, x: number, y: number, size = 16, color = 'white', align: CanvasTextAlign = 'left') {
     this.ctx.save();
-    this.ctx.font = `${size}px Inter, sans-serif`;
+    this.ctx.font = arcadeFont(size);
     this.ctx.fillStyle = color;
     this.ctx.textAlign = align;
     this.ctx.fillText(text, x, y);

@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { useGameStore } from '../lib/stores/useGameStore';
+import { buttonVariants } from './ui/button';
 
 interface GameErrorBoundaryProps {
   children?: ReactNode;
@@ -103,45 +104,41 @@ export class GameErrorBoundary extends Component<GameErrorBoundaryProps, GameErr
       const retryText = canRetry ? `Retry (${this.state.retryCount + 1}/${this.maxRetries})` : 'Reload Page';
 
       return React.createElement('div', {
-        className: 'flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-red-900 via-black to-red-900 text-red-400 font-mono p-8'
+        className: 'arcade-screen flex flex-col items-center justify-center min-h-screen text-neon-red p-8'
       },
-        React.createElement('div', { className: 'text-center max-w-2xl' },
-          React.createElement('h1', { className: 'text-3xl mb-4 font-bold' }, 'Game System Error'),
-          React.createElement('p', { className: 'mb-6 text-gray-300 text-lg' }, 
+        React.createElement('div', { className: 'arcade-panel panel-red text-center max-w-2xl p-8' },
+          React.createElement('h1', { className: 'arcade-title text-xl mb-6 text-neon-red' }, 'Game System Error'),
+          React.createElement('p', { className: 'mb-6 text-white/80 text-xl' }, 
             'The game encountered an unexpected error. Don\'t worry, your progress is safe!'
           ),
           
           // Error context
           this.props.gameId && React.createElement('div', { 
-            className: 'mb-6 p-4 bg-red-900/30 rounded-lg border border-red-500/30' 
+            className: 'mb-6 p-4 border-2 border-neon-red/40' 
           },
-            React.createElement('p', { className: 'text-sm text-red-300' }, 
+            React.createElement('p', { className: 'text-lg text-neon-red' }, 
               `Game: ${this.props.gameId}`
             ),
-            React.createElement('p', { className: 'text-xs text-gray-400 mt-1' }, 
+            React.createElement('p', { className: 'text-base text-white/50 mt-1' }, 
               `Retry attempt: ${this.state.retryCount + 1}/${this.maxRetries}`
             )
           ),
 
           // Action buttons
-          React.createElement('div', { className: 'space-y-3' },
+          React.createElement('div', { className: 'flex flex-col gap-3' },
             React.createElement('button', {
               onClick: this.handleRetry,
-              className: `px-8 py-3 rounded-lg font-semibold transition-all ${
-                canRetry 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-orange-600 hover:bg-orange-700 text-white'
-              }`
+              className: buttonVariants({ variant: canRetry ? 'default' : 'warning', size: 'lg' })
             }, retryText),
             
             React.createElement('button', {
               onClick: this.handleRestart,
-              className: 'px-8 py-3 rounded-lg font-semibold bg-gray-600 hover:bg-gray-700 text-white transition-all'
+              className: buttonVariants({ variant: 'outline', size: 'lg' })
             }, 'Return to Menu'),
             
             React.createElement('button', {
               onClick: () => window.location.reload(),
-              className: 'px-8 py-3 rounded-lg font-semibold bg-red-600 hover:bg-red-700 text-white transition-all'
+              className: buttonVariants({ variant: 'destructive', size: 'lg' })
             }, 'Restart Application')
           ),
 
@@ -153,7 +150,7 @@ export class GameErrorBoundary extends Component<GameErrorBoundaryProps, GameErr
               className: 'cursor-pointer text-red-400 hover:text-red-300' 
             }, 'Error Details (Development Mode)'),
             React.createElement('div', {
-              className: 'mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700'
+              className: 'mt-4 p-4 bg-black border-2 border-white/20'
             },
               React.createElement('div', { className: 'mb-3' },
                 React.createElement('strong', { className: 'text-red-400' }, 'Error: '),

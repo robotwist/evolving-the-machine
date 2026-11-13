@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { useGameStore } from '../lib/stores/useGameStore';
+import { buttonVariants } from './ui/button';
 
 interface Props {
   children?: ReactNode;
@@ -39,19 +40,19 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return React.createElement('div', {
-        className: 'flex flex-col items-center justify-center min-h-screen bg-black text-red-400 font-mono p-8'
+        className: 'arcade-screen flex flex-col items-center justify-center min-h-screen text-neon-red p-8'
       },
-        React.createElement('div', { className: 'text-center' },
-          React.createElement('h1', { className: 'text-2xl mb-4' }, 'System Error'),
-          React.createElement('p', { className: 'mb-6 text-gray-300' }, 'A critical error occurred in the Cultural Arcade system.'),
-          React.createElement('div', { className: 'space-y-2' },
+        React.createElement('div', { className: 'arcade-panel panel-red text-center p-8' },
+          React.createElement('h1', { className: 'arcade-title text-xl mb-6 text-neon-red' }, 'System Error'),
+          React.createElement('p', { className: 'mb-6 text-white/80 text-xl' }, 'A critical error occurred in the Cultural Arcade system.'),
+          React.createElement('div', { className: 'flex flex-col sm:flex-row gap-3 justify-center' },
             React.createElement('button', {
               onClick: () => window.location.reload(),
-              className: 'bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded mr-4'
+              className: buttonVariants({ variant: 'destructive' })
             }, 'Restart System'),
             React.createElement('button', {
               onClick: () => useGameStore.getState().setCurrentScreen('menu'),
-              className: 'bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded'
+              className: buttonVariants({ variant: 'outline' })
             }, 'Return to Menu')
           ),
           process.env.NODE_ENV === 'development' && this.state.error && React.createElement('details', {
@@ -59,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
           },
             React.createElement('summary', { className: 'cursor-pointer' }, 'Error Details (Development)'),
             React.createElement('pre', {
-              className: 'mt-2 p-2 bg-gray-900 rounded text-xs overflow-auto'
+              className: 'mt-2 p-2 bg-black border-2 border-white/20 text-xs overflow-auto'
             },
               this.state.error.toString(),
               this.state.errorInfo?.componentStack

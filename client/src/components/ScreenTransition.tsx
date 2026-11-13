@@ -45,7 +45,7 @@ export function ScreenTransition({ message, onComplete }: ScreenTransitionProps)
       <div className="curtain-transition" />
       {phase === 'active' && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <h1 className="text-4xl font-bold text-red-500 glow-text typewriter" style={{ fontFamily: '"Press Start 2P", cursive' }}>
+          <h1 className="arcade-title text-2xl md:text-4xl text-neon-red typewriter px-6 text-center">
             {typedMessage}
           </h1>
         </div>

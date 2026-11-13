@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { arcadeFont } from './engine/fonts';
 interface Vector2 {
   x: number;
   y: number;
@@ -1486,36 +1487,36 @@ export class LasatGame extends BaseGame {
     
     // Title
     this.ctx.fillStyle = '#FFD700';
-    this.ctx.font = '48px monospace';
+    this.ctx.font = arcadeFont(48, 'display');
     this.ctx.textAlign = 'center';
     this.ctx.fillText('STARFIGHTER', this.width / 2, this.height / 2 - 100);
     
     // Subtitle
     this.ctx.fillStyle = '#00FF00';
-    this.ctx.font = '24px monospace';
+    this.ctx.font = arcadeFont(24, 'display');
     this.ctx.fillText('GUNSTAR FIGHTER', this.width / 2, this.height / 2 - 50);
     
     // Instructions
     this.ctx.fillStyle = '#DDD';
-    this.ctx.font = '18px monospace';
+    this.ctx.font = arcadeFont(18, 'body');
     this.ctx.fillText('PRESS ENTER OR SPACE TO START', this.width / 2, this.height / 2 + 50);
     
     // Konami code hint
     this.ctx.fillStyle = '#666';
-    this.ctx.font = '14px monospace';
+    this.ctx.font = arcadeFont(14, 'body');
     this.ctx.fillText('Try the Konami Code: ↑↑↓↓←→←→BA', this.width / 2, this.height / 2 + 100);
     
     // Konami code progress
     if (this.konamiCode.length > 0) {
       this.ctx.fillStyle = '#00FF00';
-      this.ctx.font = '16px monospace';
+      this.ctx.font = arcadeFont(16, 'body');
       this.ctx.fillText(`Code Progress: ${this.konamiCode.length}/${this.konamiCodeSequence.length}`, this.width / 2, this.height / 2 + 130);
     }
     
     // Konami code success
     if (this.konamiCodeActivated) {
       this.ctx.fillStyle = '#FFD700';
-      this.ctx.font = '20px monospace';
+      this.ctx.font = arcadeFont(20, 'body');
       this.ctx.fillText('KONAMI CODE ACTIVATED!', this.width / 2, this.height / 2 + 160);
       this.ctx.fillText('↑↑↓↓←→←→BA', this.width / 2, this.height / 2 + 190);
     }
@@ -1527,20 +1528,20 @@ export class LasatGame extends BaseGame {
     
     // Title
     this.ctx.fillStyle = '#FFD700';
-    this.ctx.font = '36px monospace';
+    this.ctx.font = arcadeFont(36, 'display');
     this.ctx.textAlign = 'center';
     this.ctx.fillText('SELECT DIFFICULTY', this.width / 2, this.height / 2 - 100);
     
     // Options
     this.ctx.fillStyle = '#DDD';
-    this.ctx.font = '20px monospace';
+    this.ctx.font = arcadeFont(20, 'body');
     this.ctx.fillText('1 - EASY', this.width / 2, this.height / 2 - 20);
     this.ctx.fillText('2 - NORMAL', this.width / 2, this.height / 2 + 20);
     this.ctx.fillText('3 - HARD', this.width / 2, this.height / 2 + 60);
     
     // Instructions
     this.ctx.fillStyle = '#666';
-    this.ctx.font = '16px monospace';
+    this.ctx.font = arcadeFont(16, 'body');
     this.ctx.fillText('PRESS NUMBER TO SELECT', this.width / 2, this.height / 2 + 120);
   }
 
@@ -1550,13 +1551,13 @@ export class LasatGame extends BaseGame {
     
     // Game Over title
     this.ctx.fillStyle = '#FF0000';
-    this.ctx.font = '48px monospace';
+    this.ctx.font = arcadeFont(48, 'display');
     this.ctx.textAlign = 'center';
     this.ctx.fillText('GAME OVER', this.width / 2, this.height / 2 - 150);
     
     // Stats
     this.ctx.fillStyle = '#DDD';
-    this.ctx.font = '20px monospace';
+    this.ctx.font = arcadeFont(20, 'body');
     this.ctx.fillText(`FINAL SCORE: ${this.score}`, this.width / 2, this.height / 2 - 80);
     this.ctx.fillText(`WAVE REACHED: ${this.ragnarokPhase}`, this.width / 2, this.height / 2 - 50);
     this.ctx.fillText(`ENEMIES DEFEATED: ${this.enemiesDefeated}`, this.width / 2, this.height / 2 - 20);
@@ -1564,12 +1565,12 @@ export class LasatGame extends BaseGame {
     
     // Lives remaining
     this.ctx.fillStyle = '#FFD700';
-    this.ctx.font = '18px monospace';
+    this.ctx.font = arcadeFont(18, 'body');
     this.ctx.fillText(`LIVES REMAINING: ${this.lives}`, this.width / 2, this.height / 2 + 40);
     
     // Restart instructions
     this.ctx.fillStyle = '#00FF00';
-    this.ctx.font = '18px monospace';
+    this.ctx.font = arcadeFont(18, 'body');
     this.ctx.fillText('PRESS ENTER OR SPACE TO RESTART', this.width / 2, this.height / 2 + 100);
   }
 
@@ -1727,7 +1728,7 @@ export class LasatGame extends BaseGame {
       
       // Lock-on text
       this.ctx.fillStyle = '#00FF00';
-      this.ctx.font = '12px monospace';
+      this.ctx.font = arcadeFont(12, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText('LOCK ON', this.width / 2, this.height / 2 - 50);
     }
@@ -1740,7 +1741,7 @@ export class LasatGame extends BaseGame {
     
     // Hull temperature and ship status
     this.ctx.fillStyle = '#FFD700';
-    this.ctx.font = '14px monospace';
+    this.ctx.font = arcadeFont(14, 'body');
     this.ctx.textAlign = 'left';
     this.ctx.fillText(`HULL TEMP: ${Math.round(this.player.health)}`, 20, this.height - 80);
     this.ctx.fillText(`SCORE: ${this.score}`, 20, this.height - 60);
@@ -1750,7 +1751,7 @@ export class LasatGame extends BaseGame {
     // Heat-seeking missiles display
     if (this.player.heatseekingMissiles > 0) {
       this.ctx.fillStyle = '#FF4500';
-      this.ctx.font = '14px monospace';
+      this.ctx.font = arcadeFont(14, 'body');
       this.ctx.textAlign = 'left';
       this.ctx.fillText(`HEAT-SEEKING MISSILES: ${this.player.heatseekingMissiles}`, 20, this.height - 40);
     }
@@ -1758,7 +1759,7 @@ export class LasatGame extends BaseGame {
     // Grace period indicator
     if (this.gracePeriod > 0) {
       this.ctx.fillStyle = '#00FF00';
-      this.ctx.font = '16px monospace';
+      this.ctx.font = arcadeFont(16, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText(`INVULNERABLE: ${Math.ceil(this.gracePeriod / 60)}s`, this.width / 2, this.height - 80);
     }
@@ -1766,11 +1767,11 @@ export class LasatGame extends BaseGame {
     // Wave completion indicator
     if (this.waveCompleteTimer > 0) {
       this.ctx.fillStyle = '#FFD700';
-      this.ctx.font = '20px monospace';
+      this.ctx.font = arcadeFont(20, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText(`WAVE ${this.ragnarokPhase} COMPLETE!`, this.width / 2, this.height - 100);
       this.ctx.fillStyle = '#00FF00';
-      this.ctx.font = '16px monospace';
+      this.ctx.font = arcadeFont(16, 'body');
       this.ctx.fillText(`NEXT WAVE IN: ${Math.ceil(this.waveCompleteTimer / 60)}s`, this.width / 2, this.height - 80);
     }
     
@@ -1786,7 +1787,7 @@ export class LasatGame extends BaseGame {
     if (this.enemyCommandTimer > 0 && this.enemyCommandTimer < 100) {
       const command = this.enemyCommands[Math.floor(Math.random() * this.enemyCommands.length)];
       this.ctx.fillStyle = '#FF0000';
-      this.ctx.font = '18px monospace';
+      this.ctx.font = arcadeFont(18, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText(command, this.width / 2, 50);
     }
@@ -1794,12 +1795,12 @@ export class LasatGame extends BaseGame {
     // Death Blossom status
     if (this.player.deathBlossomReady && this.player.deathBlossomCooldown <= 0) {
       this.ctx.fillStyle = '#FF0000';
-      this.ctx.font = '16px monospace';
+      this.ctx.font = arcadeFont(16, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText('DEATH BLOSSOM READY', this.width / 2, this.height - 20);
     } else if (this.player.deathBlossomCooldown > 0) {
       this.ctx.fillStyle = '#FFD700';
-      this.ctx.font = '12px monospace';
+      this.ctx.font = arcadeFont(12, 'body');
       this.ctx.textAlign = 'center';
       this.ctx.fillText(`DEATH BLOSSOM: ${Math.ceil(this.player.deathBlossomCooldown / 60)}s`, this.width / 2, this.height - 20);
     }
@@ -1907,7 +1908,7 @@ export class LasatGame extends BaseGame {
     
     this.ctx.save();
     this.ctx.fillStyle = '#FFD700';
-    this.ctx.font = '24px monospace';
+    this.ctx.font = arcadeFont(24, 'body');
     this.ctx.textAlign = 'center';
     this.ctx.shadowColor = '#FFD700';
     this.ctx.shadowBlur = 10;
@@ -1938,7 +1939,7 @@ export class LasatGame extends BaseGame {
     // Draw Vincent Price-style AI laugh message
     this.ctx.save();
     this.ctx.fillStyle = '#FF0000';
-    this.ctx.font = '20px monospace';
+    this.ctx.font = arcadeFont(20, 'body');
     this.ctx.textAlign = 'center';
     this.ctx.shadowColor = '#FF0000';
     this.ctx.shadowBlur = 15;
@@ -2011,7 +2012,7 @@ export class LasatGame extends BaseGame {
     
     // Weapon label
     this.ctx.fillStyle = color;
-    this.ctx.font = '12px monospace';
+    this.ctx.font = arcadeFont(12, 'body');
     this.ctx.textAlign = 'left';
     this.ctx.fillText(label, x, y);
     
@@ -2162,13 +2163,13 @@ export class LasatGame extends BaseGame {
     
     // Boss name and phase
     this.ctx.fillStyle = '#FF0000';
-    this.ctx.font = '16px monospace';
+    this.ctx.font = arcadeFont(16, 'body');
     this.ctx.textAlign = 'center';
     this.ctx.fillText(`SINISTAR BOSS - PHASE ${boss.phase}`, this.width / 2, y - 10);
     
     // Health text
     this.ctx.fillStyle = '#FFF';
-    this.ctx.font = '14px monospace';
+    this.ctx.font = arcadeFont(14, 'body');
     this.ctx.fillText(`${Math.round(boss.health)}/${boss.maxHealth}`, this.width / 2, y + barHeight + 20);
   }
 
@@ -2201,7 +2202,7 @@ export class LasatGame extends BaseGame {
         
         // Squadron indicator
         this.ctx.fillStyle = '#FFD700';
-        this.ctx.font = '8px monospace';
+        this.ctx.font = arcadeFont(8, 'body');
         this.ctx.textAlign = 'center';
         this.ctx.fillText(`${enemy.squadron}`, 0, -enemy.size/2 - 8);
         break;
@@ -2222,7 +2223,7 @@ export class LasatGame extends BaseGame {
         
         // Destroyer label
         this.ctx.fillStyle = '#FF4500';
-        this.ctx.font = '10px monospace';
+        this.ctx.font = arcadeFont(10, 'body');
         this.ctx.textAlign = 'center';
         this.ctx.fillText('DESTROYER', 0, -enemy.size/2 - 10);
         break;
@@ -2249,7 +2250,7 @@ export class LasatGame extends BaseGame {
         
         // Mothership label
         this.ctx.fillStyle = '#FF0000';
-        this.ctx.font = '12px monospace';
+        this.ctx.font = arcadeFont(12, 'body');
         this.ctx.textAlign = 'center';
         this.ctx.fillText('MOTHERSHIP', 0, -enemy.size/2 - 15);
         break;
@@ -2297,7 +2298,7 @@ export class LasatGame extends BaseGame {
         
         // Boss label
         this.ctx.fillStyle = '#FF0000';
-        this.ctx.font = '16px monospace';
+        this.ctx.font = arcadeFont(16, 'body');
         this.ctx.textAlign = 'center';
         this.ctx.fillText('SINISTAR', 0, -enemy.size/2 - 20);
         break;

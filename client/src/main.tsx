@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { preloadArcadeFonts } from "./lib/games/engine/fonts";
 import App from "./App";
 import "./index.css";
 import { useSettingsStore } from "./lib/stores/useSettingsStore";
@@ -24,6 +25,8 @@ declare global {
     unlockAllLevels: () => void; // Console command to unlock all levels
   }
 }
+
+preloadArcadeFonts();
 
 // Initialize React app
 try {

@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { arcadeFont } from './engine/fonts';
 import { VirtualStick } from '../controls/VirtualStick';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { ScreenShake } from './engine/ScreenShake';
@@ -1350,7 +1351,7 @@ export class BreakoutGame extends BaseGame {
       // Show remaining spike count
       if (spikeCount > 5) {
         this.ctx.fillStyle = '#FF0000';
-        this.ctx.font = 'bold 12px Arial';
+        this.ctx.font = arcadeFont(12, 'body');
         this.ctx.fillText(`+${spikeCount - 5}`, this.paddle.x + this.paddle.width + 5, this.paddle.y - 5);
       }
     }

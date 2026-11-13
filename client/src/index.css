@@ -2,7 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Arcade typography. Both pixel fonts are registered under our own family names
+ * with size-adjust so a given px size renders at roughly the cap height of a
+ * normal UI font (VT323 is small, Press Start 2P is large). That keeps existing
+ * font sizes in the DOM and on the game canvas visually stable.
+ */
+@font-face {
+  font-family: 'Arcade Display';
+  src: url('../../node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+  size-adjust: 70%;
+}
+
+@font-face {
+  font-family: 'Arcade Body';
+  src: url('../../node_modules/@fontsource/vt323/files/vt323-latin-400-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+  size-adjust: 130%;
+}
+
 @layer base {
+  :root {
+    /* Neon-on-black arcade palette (HSL triplets for the shadcn-style tokens) */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 300 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 60 100% 50%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 180 100% 50%;
+    --input: 180 100% 50%;
+    --ring: 60 100% 50%;
+    --radius: 0px;
+
+    /* RGB channels so Tailwind opacity modifiers (e.g. border-neon-green/40) work */
+    --neon-cyan-rgb: 0 255 255;
+    --neon-magenta-rgb: 255 43 214;
+    --neon-yellow-rgb: 255 230 0;
+    --neon-green-rgb: 57 255 20;
+    --neon-red-rgb: 255 49 49;
+    --neon-cyan: rgb(var(--neon-cyan-rgb));
+    --neon-magenta: rgb(var(--neon-magenta-rgb));
+    --neon-yellow: rgb(var(--neon-yellow-rgb));
+    --neon-green: rgb(var(--neon-green-rgb));
+    --neon-red: rgb(var(--neon-red-rgb));
+  }
+
   * {
     @apply border-border;
   }
@@ -15,6 +73,78 @@
     width: 100vw;
     height: 100vh;
   }
+
+  h1, h2, h3, button {
+    @apply font-arcade;
+  }
+}
+
+@layer components {
+  /* Full-screen arcade backdrop: black with a faint pixel grid and CRT scanlines */
+  .arcade-screen {
+    position: relative;
+    background-color: #000;
+    background-image:
+      linear-gradient(rgba(0, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .arcade-screen::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.25) 3px,
+      rgba(0, 0, 0, 0) 4px
+    );
+    z-index: 0;
+  }
+
+  .arcade-screen > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Bordered cabinet panel; set the accent with a neon-* border class */
+  .arcade-panel {
+    background: rgba(0, 0, 0, 0.88);
+    border: 2px solid var(--panel-accent, var(--neon-cyan));
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 12px var(--panel-accent, var(--neon-cyan)),
+      inset 0 0 12px rgba(0, 255, 255, 0.08);
+  }
+
+  .arcade-title {
+    @apply font-arcade uppercase tracking-wider;
+    text-shadow: 0 0 6px currentColor, 0 0 14px currentColor;
+  }
+
+  .arcade-label {
+    @apply font-arcade uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+  }
+
+  .arcade-blink {
+    animation: arcade-blink 1s steps(2, start) infinite;
+  }
+
+  .panel-cyan { --panel-accent: var(--neon-cyan); }
+  .panel-magenta { --panel-accent: var(--neon-magenta); }
+  .panel-yellow { --panel-accent: var(--neon-yellow); }
+  .panel-green { --panel-accent: var(--neon-green); }
+  .panel-red { --panel-accent: var(--neon-red); }
+  .panel-dim { --panel-accent: #3a3a3a; }
+}
+
+@keyframes arcade-blink {
+  to { visibility: hidden; }
 }
 
 #root {

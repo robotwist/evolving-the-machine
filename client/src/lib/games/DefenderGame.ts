@@ -1,4 +1,5 @@
 import { BaseGame } from './BaseGame';
+import { arcadeFont } from './engine/fonts';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { WindowExtensions } from '@shared/types';
 import { isAudioMuted } from './engine/audio';
@@ -1184,7 +1185,7 @@ export class DefenderGame extends BaseGame {
     
     // Text
     this.ctx.fillStyle = '#FFF';
-    this.ctx.font = '14px monospace';
+    this.ctx.font = arcadeFont(14, 'body');
     this.ctx.textAlign = 'left';
     const label = 'health' in entity ? 'Player Health' : 'Enemy Health';
     this.ctx.fillText(`${label}: ${Math.round(entity.health)}/${entity.maxHealth}`, x, y - 5);

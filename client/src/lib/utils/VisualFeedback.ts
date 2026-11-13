@@ -1,3 +1,5 @@
+import { arcadeFont } from '../games/engine/fonts';
+
 interface HitMarker {
   x: number;
   y: number;
@@ -69,7 +71,7 @@ export class VisualFeedback {
     render() {
         this.ctx.save();
         this.ctx.fillStyle = 'red';
-        this.ctx.font = 'bold 16px Arial';
+        this.ctx.font = arcadeFont(16, 'display');
         this.ctx.textAlign = 'center';
 
         // Render damage numbers
@@ -82,7 +84,7 @@ export class VisualFeedback {
         if (this.comboCounter && this.comboCounter.count > 1) {
             this.ctx.globalAlpha = this.comboCounter.timer / 120;
             this.ctx.fillStyle = 'orange';
-            this.ctx.font = `bold ${18 + this.comboCounter.count}px Arial`;
+            this.ctx.font = arcadeFont(18 + this.comboCounter.count, 'display');
             this.ctx.fillText(`x${this.comboCounter.count}`, this.comboCounter.x, this.comboCounter.y);
         }
 
