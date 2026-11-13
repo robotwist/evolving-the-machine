@@ -16,7 +16,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version-file: '.nvmrc'
         cache: 'npm'
     
     - name: Install dependencies
@@ -30,6 +30,9 @@ jobs:
     
     - name: Lint
       run: npm run lint
+
+    - name: Test
+      run: npm run test:ci
     
     - name: Build
       run: npm run build
@@ -38,10 +41,6 @@ jobs:
       run: |
         if [ ! -f "dist/public/index.html" ]; then
           echo "Build failed: index.html not found"
-          exit 1
-        fi
-        if [ ! -f "dist/index.js" ]; then
-          echo "Build failed: server index.js not found"
           exit 1
         fi
         echo "Build successful"

@@ -2,8 +2,10 @@ node_modules
 dist
 coverage
 lint_output.txt
+test-results.json
 .DS_Store
-server/public
+.local/
+.config/
 vite.config.ts.*
 *.tar.gz
 
