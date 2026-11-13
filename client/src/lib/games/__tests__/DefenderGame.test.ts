@@ -282,18 +282,75 @@ describe('DefenderGame', () => {
   });
 
   describe('Kamikaze System', () => {
-    test('should create kamikaze bombers', () => {
+    // Kamikazes are only recruited from enemies the player can see
+    const placeVisibleEnemy = () => {
       game['spawnWave']();
-      const _initialEnemies = game['enemies'].length;
+      game['enemies'][0].position = { x: 400, y: 200 };
+    };
+
+    test('should create kamikaze bombers', () => {
+      placeVisibleEnemy();
       
-      game['createKamikazeBomber']();
+      expect(game['createKamikazeBomber']()).toBe(true);
       
       const kamikazeCount = game['enemies'].filter(e => e.kamikazeMode).length;
       expect(kamikazeCount).toBeGreaterThan(0);
     });
 
+    test('should fly off-screen recruits into view before the telegraph countdown starts', () => {
+      game['enemies'].forEach(e => { e.position.x = 1800; e.position.y = 200; });
+
+      expect(game['createKamikazeBomber']()).toBe(true);
+      const kamikaze = game['enemies'].find(e => e.kamikazeMode)!;
+      const timer = kamikaze.kamikazeTimer;
+
+      game['updateKamikaze'](kamikaze);
+      expect(kamikaze.position.x).toBeLessThan(1800);
+      expect(kamikaze.position.y).toBe(200);
+      expect(kamikaze.kamikazeTimer).toBe(timer);
+    });
+
+    test('should telegraph, then dive at the locked target and explode on the ground', () => {
+      placeVisibleEnemy();
+      game['createKamikazeBomber']();
+      const kamikaze = game['enemies'].find(e => e.kamikazeMode)!;
+      const distanceToPlayer = () => Math.hypot(
+        kamikaze.position.x - game['player'].position.x,
+        kamikaze.position.y - game['player'].position.y
+      );
+      const startDistance = distanceToPlayer();
+      expect(kamikaze.kamikazePhase).toBe('telegraph');
+
+      game['updateKamikaze'](kamikaze);
+      expect(kamikaze.kamikazePhase).toBe('telegraph');
+      expect(distanceToPlayer()).toBeLessThan(startDistance);
+
+      kamikaze.kamikazeTimer = 1;
+      game['updateKamikaze'](kamikaze);
+      expect(kamikaze.kamikazePhase).toBe('dive');
+      expect(kamikaze.velocity.y).toBeGreaterThan(0);
+
+      game['player'].position = { x: 50, y: game['groundY'] };
+      for (let i = 0; i < 300 && kamikaze.alive; i++) game['updateKamikaze'](kamikaze);
+      expect(kamikaze.alive).toBe(false);
+      expect(kamikaze.position.y).toBeGreaterThanOrEqual(game['groundY']);
+    });
+
+    test('should damage the player when the dive connects', () => {
+      placeVisibleEnemy();
+      game['createKamikazeBomber']();
+      const kamikaze = game['enemies'].find(e => e.kamikazeMode)!;
+      game['player'].position = { x: 300, y: game['groundY'] };
+      kamikaze.kamikazeTimer = 1;
+      game['updateKamikaze'](kamikaze);
+
+      for (let i = 0; i < 300 && kamikaze.alive; i++) game['updateKamikaze'](kamikaze);
+      expect(kamikaze.alive).toBe(false);
+      expect(game['player'].health).toBeLessThan(100);
+    });
+
     test('should make kamikaze bombers target player', () => {
-      game['spawnWave']();
+      placeVisibleEnemy();
       game['createKamikazeBomber']();
       
       const kamikaze = game['enemies'].find(e => e.kamikazeMode);

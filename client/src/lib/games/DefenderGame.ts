@@ -8,6 +8,49 @@ interface Vector2 {
   y: number;
 }
 
+const TOTAL_WAVES = 5;
+/** The player's craft rests this far above the bottom of the canvas. */
+const GROUND_CLEARANCE = 60;
+/** New waves never spawn enemies this close (horizontally) to the player. */
+const SPAWN_SAFE_RADIUS = 300;
+/** Enemies hold fire for at least this long after a wave spawns. */
+const WAVE_START_FIRE_GRACE_FRAMES = 270;
+/** Hull repaired when a wave is cleared, and per civilian rescued. */
+const WAVE_CLEAR_HEAL = 10;
+const CIVILIAN_RESCUE_HEAL = 5;
+const WAVE_BANNER_FRAMES = 150;
+const ENEMY_SIZE = { invader: { x: 26, y: 18 }, bomber: { x: 34, y: 24 } };
+/** Frames between an enemy's shots: base (shrinking each wave) plus a random spread. */
+const ENEMY_REFIRE_BASE_FRAMES = 100;
+const ENEMY_REFIRE_RANDOM_FRAMES = 100;
+const ENEMY_REFIRE_DECREASE_PER_WAVE = 10;
+const ENEMY_BULLET_BASE_DAMAGE = 15;
+const ENEMY_BULLET_DAMAGE_PER_WAVE = 2;
+const PLAYER_BULLET_SPEED = 8;
+const PLAYER_VERTICAL_BULLET_SPEED = 9;
+
+const KAMIKAZE_INTERVAL_FRAMES = 1000;
+/** Later waves send kamikazes more often. */
+const KAMIKAZE_INTERVAL_DECREASE_PER_WAVE = 100;
+/** On-screen flashing warning before a kamikaze commits to its dive. */
+const KAMIKAZE_TELEGRAPH_FRAMES = 60;
+/** Creep speed toward the player while telegraphing. */
+const KAMIKAZE_STALK_SPEED = 1.8;
+/** Level flight speed for a kamikaze recruited off-screen, until it comes into view. */
+const KAMIKAZE_APPROACH_SPEED = 3;
+/** Preferred recruits are on screen, at least this far from the player and this high up. */
+const KAMIKAZE_MIN_DISTANCE = 200;
+const KAMIKAZE_MIN_ALTITUDE = 120;
+const KAMIKAZE_MAX_HEALTH = 50;
+const KAMIKAZE_BASE_DIVE_SPEED = 4.5;
+const KAMIKAZE_DIVE_SPEED_PER_WAVE = 0.3;
+const KAMIKAZE_BLAST_RADIUS = 45;
+const KAMIKAZE_DAMAGE = 25;
+const KAMIKAZE_SHOT_DOWN_SCORE = 300;
+
+/** Shield pods hover just above the ground so they can be collected without jumping. */
+const POWERUP_HOVER_HEIGHT = 15;
+
 interface Entity {
   position: Vector2;
   velocity: Vector2;
@@ -30,6 +73,10 @@ interface Enemy extends Entity {
   maxHealth: number;
   kamikazeMode?: boolean; // For dive bomber behavior
   originalVelocity?: { x: number; y: number }; // Store original movement
+  kamikazePhase?: 'telegraph' | 'dive';
+  kamikazeTimer?: number;
+  /** Ground point the kamikaze tracks while telegraphing and locks onto when it dives. */
+  diveTarget?: Vector2;
 }
 
 interface Civilian extends Entity {
@@ -76,8 +123,11 @@ export class DefenderGame extends BaseGame {
     narcissusStage: 0 // 0-5, how much AI mirrors the user
   };
   private playerShootCooldown = 0;
-  private kamikazeTimer = 0; // Timer for kamikaze bombers (~16.7 seconds = 1000 frames)
-  private kamikazeInterval = 1000; // ~16.7 seconds in frames
+  private kamikazeTimer = 0;
+  private kamikazeInterval = KAMIKAZE_INTERVAL_FRAMES;
+  private frameCount = 0;
+  private gameEnded = false;
+  private waveBannerTimer = WAVE_BANNER_FRAMES;
   // Particle system for effects
   private particles: ParticleSystem | null = null;
   // Ambient whispers (WebAudio)
@@ -121,6 +171,7 @@ export class DefenderGame extends BaseGame {
     const enemyCount = baseEnemyCount + this.wave * 3; // More enemies per wave
     const bomberRatio = Math.min(0.3 + (this.wave * 0.1), 0.8); // More bombers in later waves
     const speedMultiplier = 1 + (this.wave * 0.3); // Faster movement each wave
+    this.enemies = this.enemies.filter(e => e.alive);
     
     for (let i = 0; i < enemyCount; i++) {
       // Spawn enemies at various heights, some within jump range
@@ -140,17 +191,17 @@ export class DefenderGame extends BaseGame {
       const isBomber = Math.random() < bomberRatio;
       const enemy: Enemy = {
         position: {
-          x: Math.random() * this.worldWidth,
+          x: this.randomSpawnX(),
           y: y
         },
         velocity: {
           x: (Math.random() - 0.5) * 1.2 * speedMultiplier, // Faster movement
           y: 0
         },
-        size: { x: 25, y: 15 },
+        size: { ...(isBomber ? ENEMY_SIZE.bomber : ENEMY_SIZE.invader) },
         alive: true,
         type: isBomber ? 'bomber' : 'invader',
-        shootTimer: Math.random() * (100 - this.wave * 8), // Faster shooting each wave
+        shootTimer: WAVE_START_FIRE_GRACE_FRAMES + Math.random() * (100 - this.wave * 8), // Faster shooting each wave
         health: isBomber ? 150 + (this.wave * 20) : 75 + (this.wave * 10), // More health each wave
         maxHealth: isBomber ? 150 + (this.wave * 20) : 75 + (this.wave * 10),
         kamikazeMode: false,
@@ -159,6 +210,21 @@ export class DefenderGame extends BaseGame {
       
       this.enemies.push(enemy);
     }
+  }
+
+  /** A random world x outside the safe radius around the player. */
+  private randomSpawnX(): number {
+    const px = this.player?.position.x ?? 0;
+    const left = Math.max(0, px - SPAWN_SAFE_RADIUS);
+    const right = Math.min(this.worldWidth, px + SPAWN_SAFE_RADIUS);
+    const free = left + (this.worldWidth - right);
+    if (free <= 0) return Math.random() * this.worldWidth;
+    const r = Math.random() * free;
+    return r < left ? r : right + (r - left);
+  }
+
+  private get groundY(): number {
+    return this.height - GROUND_CLEARANCE;
   }
 
   private spawnCivilians() {
@@ -180,6 +246,9 @@ export class DefenderGame extends BaseGame {
   }
 
   update(_deltaTime: number) {
+    if (this.gameEnded) return;
+    this.frameCount++;
+
     // Handle input
     this.handleMovement();
 
@@ -218,15 +287,20 @@ export class DefenderGame extends BaseGame {
     this.updateCamera();
 
     // Check wave completion
-    if (this.enemies && this.enemies.filter(e => e.alive).length === 0) {
-      this.wave++;
-      this.spawnWave();
-      if (this.wave > 5) { // Complete after 5 waves
+    if (!this.gameEnded && this.enemies && this.enemies.every(e => !e.alive)) {
+      if (this.wave >= TOTAL_WAVES) {
+        this.gameEnded = true;
         this.playSuccessSound();
-        // Complete the stage
         this.onStageComplete?.();
+      } else {
+        this.wave++;
+        this.kamikazeInterval = KAMIKAZE_INTERVAL_FRAMES - (this.wave - 1) * KAMIKAZE_INTERVAL_DECREASE_PER_WAVE;
+        this.healPlayer(WAVE_CLEAR_HEAL);
+        this.waveBannerTimer = WAVE_BANNER_FRAMES;
+        this.spawnWave();
       }
     }
+    if (this.waveBannerTimer > 0) this.waveBannerTimer--;
 
     // Only update score when it actually changes to prevent infinite loop
     if (this.score !== this.lastScore) {
@@ -305,6 +379,11 @@ export class DefenderGame extends BaseGame {
   }
 
   private updateEnemy(enemy: Enemy) {
+    if (enemy.kamikazeMode) {
+      this.updateKamikaze(enemy);
+      return;
+    }
+
     enemy.position.x += enemy.velocity.x;
     
     // Bounce off world boundaries
@@ -316,7 +395,8 @@ export class DefenderGame extends BaseGame {
     enemy.shootTimer--;
     if (enemy.shootTimer <= 0) {
       this.shootEnemyBullet(enemy);
-      enemy.shootTimer = 100 + Math.random() * 100;
+      const refireBase = ENEMY_REFIRE_BASE_FRAMES - (this.wave - 1) * ENEMY_REFIRE_DECREASE_PER_WAVE;
+      enemy.shootTimer = refireBase + Math.random() * ENEMY_REFIRE_RANDOM_FRAMES;
     }
 
     // Bombers try to pick up civilians
@@ -352,15 +432,15 @@ export class DefenderGame extends BaseGame {
     }
     
     // Calculate bullet direction based on player state
-    let bulletDx = this.player.direction * 4.8;
+    let bulletDx = this.player.direction * PLAYER_BULLET_SPEED;
     let bulletDy = 0;
 
     // If player is jumping, give bullets upward trajectory
     if (!this.player.onGround && this.player.velocity.y < 0) {
-      bulletDy = -2.4; // Slight upward angle when jumping
+      bulletDy = -PLAYER_BULLET_SPEED * 0.5; // Slight upward angle when jumping
     } else if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
       // If W/Up is pressed, shoot upward
-      bulletDy = -3.6;
+      bulletDy = -PLAYER_BULLET_SPEED * 0.75;
       bulletDx *= 0.7; // Reduce horizontal speed for upward shots
     }
 
@@ -384,7 +464,7 @@ export class DefenderGame extends BaseGame {
   private shootEnemyBullet(enemy: Enemy) {
     // Progressive difficulty: faster projectiles each wave
     const bulletSpeed = 1.8 + (this.wave * 0.3); // Faster bullets each wave
-    const bulletDamage = 15 + (this.wave * 2); // More damage each wave
+    const bulletDamage = ENEMY_BULLET_BASE_DAMAGE + this.wave * ENEMY_BULLET_DAMAGE_PER_WAVE;
     
     const bullet: Projectile = {
       position: { ...enemy.position },
@@ -411,7 +491,7 @@ export class DefenderGame extends BaseGame {
         x: this.player.position.x,
         y: this.player.position.y - 10 // Start slightly above player
       },
-      velocity: { x: 0, y: -4.8 }, // Straight up
+      velocity: { x: 0, y: -PLAYER_VERTICAL_BULLET_SPEED }, // Straight up
       size: { x: 3, y: 8 }, // Taller bullet for vertical shots
       alive: true,
       owner: 'player',
@@ -452,7 +532,7 @@ export class DefenderGame extends BaseGame {
     // Spawn shield powerup occasionally
     if (Math.random() < 0.0012 && this.powerups.length === 0) {
         this.powerups.push({
-            position: { x: Math.random() * this.worldWidth, y: this.height / 2 },
+            position: { x: Math.random() * this.worldWidth, y: this.groundY - POWERUP_HOVER_HEIGHT },
             velocity: { x: 0, y: 0 },
             size: { x: 20, y: 20 },
             alive: true,
@@ -479,61 +559,109 @@ export class DefenderGame extends BaseGame {
   }
 
   private updateKamikazeBombers() {
-    // Update kamikaze timer
+    // Every ~16.7 seconds (sooner in later waves), convert an enemy to a kamikaze
     this.kamikazeTimer++;
-    
-    // Every ~16.7 seconds, convert an existing enemy to kamikaze
-    if (this.kamikazeTimer >= this.kamikazeInterval) {
+    if (this.kamikazeTimer >= this.kamikazeInterval && this.createKamikazeBomber()) {
       this.kamikazeTimer = 0;
-      this.createKamikazeBomber();
     }
-    
-    // Update existing kamikaze bombers
-    if (!this.enemies) return;
-
-    this.enemies.forEach(enemy => {
-      if (enemy.kamikazeMode && enemy.alive) {
-        this.aimKamikazeAtPlayer(enemy);
-      }
-    });
   }
 
-  private aimKamikazeAtPlayer(enemy: Enemy) {
-    // Kamikaze bombers dive straight at the player
+  private isOnScreen(position: Vector2): boolean {
+    return position.x >= this.camera.x && position.x <= this.camera.x + this.width;
+  }
+
+  /**
+   * Kamikaze lifecycle: fly level into view if recruited off-screen; then flash and creep
+   * toward the player for a full telegraph while a ground reticle tracks them; then dive in a
+   * straight line at the locked point. Explodes on contact with the player or the ground; the
+   * blast hurts the player only if they are within its radius.
+   */
+  private updateKamikaze(enemy: Enemy) {
+    if (enemy.kamikazePhase === 'telegraph') {
+      const dx = this.player.position.x - enemy.position.x;
+      enemy.diveTarget = { x: this.player.position.x, y: this.groundY };
+      if (!this.isOnScreen(enemy.position)) {
+        enemy.position.x += Math.sign(dx) * KAMIKAZE_APPROACH_SPEED;
+        return;
+      }
+      const dy = this.player.position.y - enemy.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+      enemy.position.x += (dx / distance) * KAMIKAZE_STALK_SPEED;
+      enemy.position.y += (dy / distance) * KAMIKAZE_STALK_SPEED;
+      enemy.kamikazeTimer = (enemy.kamikazeTimer ?? 0) - 1;
+      if (enemy.kamikazeTimer <= 0) this.startKamikazeDive(enemy);
+      return;
+    }
+
+    enemy.position.x += enemy.velocity.x;
+    enemy.position.y += enemy.velocity.y;
+    enemy.position.x = Math.max(0, Math.min(this.worldWidth, enemy.position.x));
+    if (this.isColliding(enemy, this.player) || enemy.position.y >= this.groundY) {
+      this.explodeKamikaze(enemy);
+    }
+  }
+
+  private startKamikazeDive(enemy: Enemy) {
+    const target = enemy.diveTarget ?? { x: this.player.position.x, y: this.groundY };
+    const dx = target.x - enemy.position.x;
+    const dy = target.y - enemy.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+    const speed = KAMIKAZE_BASE_DIVE_SPEED + this.wave * KAMIKAZE_DIVE_SPEED_PER_WAVE;
+    enemy.kamikazePhase = 'dive';
+    enemy.diveTarget = { ...target };
+    enemy.velocity.x = (dx / distance) * speed;
+    enemy.velocity.y = Math.max(1, (dy / distance) * speed);
+    this.playStinger('kamikaze_warning');
+  }
+
+  private explodeKamikaze(enemy: Enemy) {
+    enemy.alive = false;
     const dx = this.player.position.x - enemy.position.x;
     const dy = this.player.position.y - enemy.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const inBlast = Math.sqrt(dx * dx + dy * dy) <= KAMIKAZE_BLAST_RADIUS || this.isColliding(enemy, this.player);
 
-    if (distance > 0) {
-      const speed = 2.4 + (this.wave * 0.3); // Faster dive each wave
-      enemy.velocity.x = (dx / distance) * speed;
-      enemy.velocity.y = (dy / distance) * speed;
+    this.screenShake.trigger(10);
+    this.playExplosionSound();
+    if (this.getSettings().particles && this.particles) {
+      this.particles.addExplosion(enemy.position.x, enemy.position.y, 30, '#FF4500', 'epic');
     }
+    if (inBlast) this.damagePlayer(KAMIKAZE_DAMAGE);
   }
 
-  private createKamikazeBomber() {
-    // Find a suitable enemy to convert to kamikaze
-    const candidates = this.enemies.filter(e => 
-      e.alive && 
-      !e.kamikazeMode && 
-      e.type !== 'kamikaze' &&
-      Math.abs(e.position.x - this.player.position.x) > 100 // Not too close
+  /**
+   * Converts an enemy into a telegraphing kamikaze, preferring one already on screen with room
+   * to dive; otherwise the nearest enemy, which flies into view first. Returns false if none.
+   */
+  private createKamikazeBomber(): boolean {
+    const available = this.enemies.filter(e => e.alive && !e.kamikazeMode);
+    if (available.length === 0) return false;
+    const preferred = available.filter(e =>
+      this.isOnScreen(e.position) &&
+      Math.abs(e.position.x - this.player.position.x) >= KAMIKAZE_MIN_DISTANCE &&
+      e.position.y <= this.groundY - KAMIKAZE_MIN_ALTITUDE
     );
-    
-    if (candidates.length > 0) {
-      const kamikaze = candidates[Math.floor(Math.random() * candidates.length)];
-      
-      // Store original velocity
-      kamikaze.originalVelocity = { ...kamikaze.velocity };
-      
-      // Convert to kamikaze mode
-      kamikaze.kamikazeMode = true;
-      kamikaze.type = 'kamikaze';
-      this.aimKamikazeAtPlayer(kamikaze);
-      
-      // Play kamikaze sound
-      this.playStinger('kamikaze_warning');
+    const offScreen = available.filter(e => !this.isOnScreen(e.position));
+    const distanceTo = (e: Enemy) => Math.abs(e.position.x - this.player.position.x);
+
+    let kamikaze: Enemy | undefined;
+    if (preferred.length > 0) {
+      kamikaze = preferred[Math.floor(Math.random() * preferred.length)];
+    } else if (offScreen.length > 0) {
+      kamikaze = offScreen.reduce((a, b) => (distanceTo(b) < distanceTo(a) ? b : a));
     }
+    if (!kamikaze) return false;
+    kamikaze.originalVelocity = { ...kamikaze.velocity };
+    kamikaze.kamikazeMode = true;
+    kamikaze.type = 'kamikaze';
+    kamikaze.kamikazePhase = 'telegraph';
+    kamikaze.kamikazeTimer = KAMIKAZE_TELEGRAPH_FRAMES;
+    kamikaze.velocity = { x: 0, y: 0 };
+    kamikaze.diveTarget = { x: this.player.position.x, y: this.groundY };
+    kamikaze.maxHealth = Math.min(kamikaze.maxHealth, KAMIKAZE_MAX_HEALTH);
+    kamikaze.health = Math.min(kamikaze.health, kamikaze.maxHealth);
+
+    this.playStinger('kamikaze_warning');
+    return true;
   }
 
   private activateShield() {
@@ -542,11 +670,38 @@ export class DefenderGame extends BaseGame {
       this.playStinger('arcade_powerup');
   }
 
+  /** Applies damage (or pops the shield) and ends the game exactly once when health runs out. */
+  private damagePlayer(amount: number) {
+    if (this.gameEnded) return;
+    if (this.player.shielded) {
+      this.player.shielded = false;
+      this.playStinger('pop');
+      return;
+    }
+
+    this.player.health -= amount;
+    const allowParticles = this.getSettings().particles;
+    this.screenShake.trigger(7);
+    if (allowParticles && this.particles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 20, '#FF0000', 'dramatic');
+    this.playHitSound();
+
+    if (this.player.health <= 0) {
+      this.player.alive = false;
+      this.gameEnded = true;
+      this.onGameOver?.();
+      this.playExplosionSound();
+    }
+  }
+
+  private healPlayer(amount: number) {
+    this.player.health = Math.min(this.player.maxHealth, this.player.health + amount);
+  }
+
   private checkCollisions() {
     // Player bullets vs enemies
     this.playerBullets.forEach(bullet => {
       this.enemies.forEach(enemy => {
-        if (enemy.alive && this.isColliding(bullet, enemy)) {
+        if (bullet.alive && enemy.alive && this.isColliding(bullet, enemy)) {
           // Apply damage instead of instant kill
           enemy.health -= bullet.damage;
           bullet.alive = false;
@@ -560,7 +715,7 @@ export class DefenderGame extends BaseGame {
           // Check if enemy is destroyed
           if (enemy.health <= 0) {
             enemy.alive = false;
-            this.score += enemy.type === 'bomber' ? 200 : 100;
+            this.score += enemy.kamikazeMode ? KAMIKAZE_SHOT_DOWN_SCORE : enemy.type === 'bomber' ? 200 : 100;
             this.playExplosionSound();
             if (allowParticles && this.particles) this.particles.addExplosion(enemy.position.x, enemy.position.y, 25, '#FF0000', 'epic');
           }
@@ -570,29 +725,9 @@ export class DefenderGame extends BaseGame {
 
     // Enemy bullets vs player
     this.enemyBullets.forEach(bullet => {
-      if (this.isColliding(bullet, this.player)) {
-        if (this.player.shielded) {
-            this.player.shielded = false;
-            bullet.alive = false;
-            this.playStinger('pop');
-        } else {
-            // Apply damage to player
-            this.player.health -= bullet.damage;
-            bullet.alive = false;
-            
-            // Effects
-            const allowParticles = this.getSettings().particles;
-            this.screenShake.trigger(7);
-            if (allowParticles && this.particles) this.particles.addExplosion(this.player.position.x, this.player.position.y, 20, '#FF0000', 'dramatic');
-            this.playHitSound();
-            
-            // Check if player is destroyed
-            if (this.player.health <= 0) {
-              this.player.alive = false;
-              this.onGameOver?.();
-              this.playExplosionSound();
-            }
-        }
+      if (bullet.alive && this.isColliding(bullet, this.player)) {
+        bullet.alive = false;
+        this.damagePlayer(bullet.damage);
       }
       // Trails for enemy bullets
       const allowParticles = this.getSettings().particles;
@@ -608,6 +743,7 @@ export class DefenderGame extends BaseGame {
         civilian.alive = false;
         this.score += 500;
         this.civiliansRescued++;
+        this.healPlayer(CIVILIAN_RESCUE_HEAL);
         this.playSuccessSound();
       }
     });
@@ -619,10 +755,9 @@ export class DefenderGame extends BaseGame {
       return false;
     }
 
-    return obj1.position.x < obj2.position.x + obj2.size.x &&
-           obj1.position.x + obj1.size.x > obj2.position.x &&
-           obj1.position.y < obj2.position.y + obj2.size.y &&
-           obj1.position.y + obj1.size.y > obj2.position.y;
+    // Entities are drawn centered on their position, so hitboxes are centered too
+    return Math.abs(obj1.position.x - obj2.position.x) * 2 < obj1.size.x + obj2.size.x &&
+           Math.abs(obj1.position.y - obj2.position.y) * 2 < obj1.size.y + obj2.size.y;
   }
 
   private findNearestEnemy(position: Vector2): Enemy | null {
@@ -693,6 +828,7 @@ export class DefenderGame extends BaseGame {
     // Draw enemies
     this.enemies.forEach(enemy => {
       if (enemy.alive) {
+        if (enemy.kamikazeMode) this.drawKamikazeReticle(enemy);
         this.drawEnemy(enemy);
       }
     });
@@ -950,8 +1086,9 @@ export class DefenderGame extends BaseGame {
     this.ctx.translate(enemy.position.x, enemy.position.y);
     
     if (enemy.type === 'kamikaze' || enemy.kamikazeMode) {
-      // Kamikaze bomber - glowing red with flames
-      this.ctx.fillStyle = '#FF0000';
+      // Kamikaze bomber - glowing red with flames; flashes white while telegraphing its dive
+      const flashing = enemy.kamikazePhase === 'telegraph' && Math.floor(this.frameCount / 6) % 2 === 0;
+      this.ctx.fillStyle = flashing ? '#FFFFFF' : '#FF0000';
       this.ctx.strokeStyle = '#FF4500';
       this.ctx.lineWidth = 3;
       this.ctx.shadowColor = '#FF0000';
@@ -1085,6 +1222,30 @@ export class DefenderGame extends BaseGame {
     this.ctx.restore();
   }
 
+  /** Ground marker and dashed flight line: tracks the player while telegraphing, solid once locked. */
+  private drawKamikazeReticle(enemy: Enemy) {
+    if (!enemy.diveTarget) return;
+    const locked = enemy.kamikazePhase === 'dive';
+    const { x, y } = enemy.diveTarget;
+    this.ctx.save();
+    this.ctx.strokeStyle = locked ? '#FF2200' : 'rgba(255, 80, 0, 0.7)';
+    this.ctx.lineWidth = locked ? 3 : 2;
+    this.ctx.setLineDash([6, 6]);
+    this.ctx.beginPath();
+    this.ctx.moveTo(enemy.position.x, enemy.position.y);
+    this.ctx.lineTo(x, y);
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, KAMIKAZE_BLAST_RADIUS, 0, Math.PI * 2);
+    this.ctx.moveTo(x - 10, y);
+    this.ctx.lineTo(x + 10, y);
+    this.ctx.moveTo(x, y - 10);
+    this.ctx.lineTo(x, y + 10);
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
   private drawCivilian(civilian: Civilian) {
     this.ctx.save();
     this.ctx.fillStyle = civilian.beingCarried ? '#FFD700' : '#4169E1';
@@ -1139,9 +1300,10 @@ export class DefenderGame extends BaseGame {
     if (!this.player) return [];
     const stats: HudStat[] = [
       { label: 'Health', meter: { value: Math.max(0, this.player.health), max: this.player.maxHealth } },
-      { label: 'Wave', value: `${Math.min(this.wave, 5)}/5` },
+      { label: 'Wave', value: `${Math.min(this.wave, TOTAL_WAVES)}/${TOTAL_WAVES}` },
       { label: 'Rescued', value: this.civiliansRescued },
     ];
+    if (this.player.shielded) stats.push({ label: 'Shield', value: 'ON' });
     const kamikazeCount = this.enemies.filter(e => e.alive && e.kamikazeMode).length;
     if (kamikazeCount > 0) stats.push({ label: 'Kamikaze', value: kamikazeCount, tone: 'danger' });
     return stats;
@@ -1149,7 +1311,7 @@ export class DefenderGame extends BaseGame {
 
   private drawUI() {
     // Enemy health bars (for visible enemies)
-    this.enemies.forEach((enemy, index) => {
+    this.enemies.forEach(enemy => {
       if (enemy.alive && enemy.health < enemy.maxHealth) {
         const screenX = enemy.position.x - this.camera.x;
         if (screenX >= 0 && screenX <= this.width) {
@@ -1158,6 +1320,12 @@ export class DefenderGame extends BaseGame {
       }
     });
     
+    if (this.waveBannerTimer > 0) {
+      const subtitle = this.wave > 1 ? 'HULL REPAIRED' : 'PROTECT THE INNOCENT';
+      this.drawText(`WAVE ${this.wave}/${TOTAL_WAVES}`, this.width / 2, this.height * 0.3, 32, '#FFD93D', 'center');
+      this.drawText(subtitle, this.width / 2, this.height * 0.3 + 30, 16, '#FFF', 'center');
+    }
+
     // Guardian protocol
     this.drawText('Guardian Protocol: Protect the innocent with honor and courage', this.width / 2, this.height - 20, 14, '#FFF', 'center');
   }
@@ -1193,7 +1361,7 @@ export class DefenderGame extends BaseGame {
   }
 
   // Touch/pointer controls for mobile
-  handlePointerDown(x: number, y: number) {
+  handlePointerDown(x: number, _y: number) {
     // Left side of screen = move left, right side = move right
     if (x < this.width * 0.5) {
       this.keys.add('ArrowLeft');
@@ -1215,7 +1383,7 @@ export class DefenderGame extends BaseGame {
     this.keys.delete('KeyD');
   }
 
-  handlePointerMove(x: number, y: number) {
+  handlePointerMove(_x: number, _y: number) {
     // Optional: Add touch movement tracking here if needed
     // For now, we'll keep it simple with just tap-to-shoot
   }
