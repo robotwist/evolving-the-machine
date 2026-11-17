@@ -453,18 +453,18 @@ export class BetrayalGame extends BaseGame {
   }
 
   private updatePlayer() {
-    // Player controls - keyboard (desktop)
-    if (this.keys.has('KeyA')) {
+    // Player controls - keyboard (WASD or arrows)
+    if (this.isKeyDown('KeyA', 'ArrowLeft')) {
       this.player.rotation -= PLAYER_ROTATION_SPEED;
     }
-    if (this.keys.has('KeyD')) {
+    if (this.isKeyDown('KeyD', 'ArrowRight')) {
       this.player.rotation += PLAYER_ROTATION_SPEED;
     }
-    if (this.keys.has('KeyW')) {
+    if (this.isKeyDown('KeyW', 'ArrowUp')) {
       this.player.velocity.x += Math.cos(this.player.rotation) * PLAYER_THRUST;
       this.player.velocity.y += Math.sin(this.player.rotation) * PLAYER_THRUST;
     }
-    if (this.keys.has('KeyS')) {
+    if (this.isKeyDown('KeyS', 'ArrowDown')) {
       this.player.velocity.x *= PLAYER_BRAKE;
       this.player.velocity.y *= PLAYER_BRAKE;
     }

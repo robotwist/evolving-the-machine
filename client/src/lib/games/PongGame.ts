@@ -245,17 +245,17 @@ export class PongGame extends BaseGame {
   }
 
   private updatePlayer(_deltaTime: number) {
-    // Human Player 1 controls
-    if (this.keys.has('KeyW')) {
+    // Human Player 1 controls (WASD or arrows)
+    if (this.isKeyDown('KeyW', 'ArrowUp')) {
       this.player1.y = Math.max(0, this.player1.y - this.player1.speed);
     }
-    if (this.keys.has('KeyS')) {
+    if (this.isKeyDown('KeyS', 'ArrowDown')) {
       this.player1.y = Math.min(this.height - this.player1.height, this.player1.y + this.player1.speed);
     }
-    if (this.keys.has('KeyA')) {
+    if (this.isKeyDown('KeyA', 'ArrowLeft')) {
       this.player1.x = Math.max(20, this.player1.x - this.player1.speed);
     }
-    if (this.keys.has('KeyD')) {
+    if (this.isKeyDown('KeyD', 'ArrowRight')) {
       this.player1.x = Math.min(this.width / 3, this.player1.x + this.player1.speed);
     }
 

@@ -306,11 +306,11 @@ export class AsteroidsGame extends BaseGame {
 
     this.updatePowerups();
 
-    // Human player controls (WASD only) + virtual controls
-    if (this.keys.has('KeyA')) {
+    // Human player controls (WASD or arrows) + virtual controls
+    if (this.isKeyDown('KeyA', 'ArrowLeft')) {
       this.player.rotation -= this.player.rotationSpeed;
     }
-    if (this.keys.has('KeyD')) {
+    if (this.isKeyDown('KeyD', 'ArrowRight')) {
       this.player.rotation += this.player.rotationSpeed;
     }
     if (this.virtualRotation != null) {
@@ -328,7 +328,7 @@ export class AsteroidsGame extends BaseGame {
     } else {
       this.smoothedRotation = null;
     }
-    if (this.keys.has('KeyW') || this.virtualThrust) {
+    if (this.isKeyDown('KeyW', 'ArrowUp') || this.virtualThrust) {
       this.player.thrust = true;
       const thrustPower = 0.108;
       this.player.velocity.x += Math.cos(this.player.rotation) * thrustPower;

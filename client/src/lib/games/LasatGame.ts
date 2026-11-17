@@ -745,18 +745,18 @@ export class LasatGame extends BaseGame {
   private handleMovement() {
     const speed = 3.6;
     
-    // Gunstar Fighter controls (WASD + targeting)
-    if (this.keys.has('KeyA')) {
+    // Gunstar Fighter controls (WASD or arrows + targeting)
+    if (this.isKeyDown('KeyA', 'ArrowLeft')) {
       this.player.velocity.x = -speed;
-    } else if (this.keys.has('KeyD')) {
+    } else if (this.isKeyDown('KeyD', 'ArrowRight')) {
       this.player.velocity.x = speed;
     } else {
       this.player.velocity.x *= 0.907;
     }
 
-    if (this.keys.has('KeyW')) {
+    if (this.isKeyDown('KeyW', 'ArrowUp')) {
       this.player.velocity.y = -speed;
-    } else if (this.keys.has('KeyS')) {
+    } else if (this.isKeyDown('KeyS', 'ArrowDown')) {
       this.player.velocity.y = speed;
     } else {
       this.player.velocity.y *= 0.907;
